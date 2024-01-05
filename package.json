@@ -1,0 +1,44 @@
+{
+  "name": "pinch-bob-backend",
+  "author": "kush",
+  "license": "ISC",
+  "version": "1.0.0",
+  "description": "This project consists of backend code for pinch and bob",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "start:prod": "NODE_ENV=production node -r ts-node/register/transpile-only -r tsconfig-paths/register ./dist/index.js",
+    "build": "tsc",
+    "prepare": "husky install",
+    "lint-staged": "lint-staged --config lint-staged.js"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.4",
+    "@commitlint/config-conventional": "^18.4.4",
+    "@types/dotenv-safe": "^8.1.5",
+    "@types/node": "^16.4.1",
+    "@typescript-eslint/eslint-plugin": "^4.28.4",
+    "@typescript-eslint/parser": "^4.28.4",
+    "eslint": "^7.31.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-import-resolver-typescript": "^2.4.0",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-prettier": "^3.4.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.2.0",
+    "nodemon": "^2.0.12",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.1.0",
+    "tsconfig-paths": "^3.10.1",
+    "typescript": "^4.3.5"
+  },
+  "dependencies": {
+    "dotenv-safe": "^8.2.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  }
+}
