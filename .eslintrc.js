@@ -19,14 +19,14 @@ module.exports = {
   },
   plugins: ['@typescript-eslint', 'prettier', 'import'],
   rules: {
-    'import/no-extraneous-dependencies': [
-      'error',
-      {
-        devDependencies: false,
-        optionalDependencies: false,
-        peerDependencies: false,
-      },
-    ],
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['error'],
+    'no-shadow': 0,
+    'import/no-extraneous-dependencies': 0,
+    '@typescript-eslint/no-shadow': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 0,
+    'func-names': 0,
+    'no-underscore-dangle': 0,
     'prettier/prettier': 'error',
     'import/extensions': 'off',
     'import/no-unresolved': 'error',
