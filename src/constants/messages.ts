@@ -10,6 +10,10 @@ export const USER_SCHEMA_VALIDATION = {
   brand: 'A brand is required',
   password: 'A password is required',
   mismatchPasswords: 'Password and Confirm password did not match.',
+  confirmPassword: 'Please confirm your password',
 };
 export const brandEnum = ['pinch', 'bob'];
 export const roleEnum = ['admin', 'customer', 'staff'];
+export const routeNotFound = (url: string): string =>
+  `Can't find ${url} on this server!`;
+export const imageFileTypeValidation = 'Please upload valid image file';
