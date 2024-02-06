@@ -12,8 +12,17 @@ export const USER_SCHEMA_VALIDATION = {
   mismatchPasswords: 'Password and Confirm password did not match.',
   confirmPassword: 'Please confirm your password',
 };
-export const brandEnum = ['pinch', 'bob'];
-export const roleEnum = ['admin', 'customer', 'staff'];
 export const routeNotFound = (url: string): string =>
   `Can't find ${url} on this server!`;
-export const imageFileTypeValidation = 'Please upload valid image file';
+export const IMAGE_FILE_TYPE_VALIDATION = 'Please upload valid image file';
+export const INVALID_CREDENTIALS = 'Please provide valid email and password';
+export const UNAUTHORISED = 'Please login again.';
+export const NO_USER = 'User does not exist';
+export const LOGIN_AGAIN =
+  'User recently changed the password, Please login again.';
+export const INVALID_TOKEN = 'Please provide a valid token.';
+export const UNAUTHORISED_ROLE = 'You are not authorised to access';
+export const TOKEN_SENT = 'Token sent to email';
+export const EMAIL_FAILED =
+  'Error in sending email, Please try again after sometime';
+export const CURRENT_PASSWORD_INCORRECT = 'Your current password is incorrect.';
