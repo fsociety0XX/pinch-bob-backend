@@ -3,7 +3,7 @@ import multer, { FileFilterCallback, Multer } from 'multer';
 import multerS3 from 'multer-s3';
 import { Express } from 'express';
 import { S3Client } from '@aws-sdk/client-s3';
-import { imageFileTypeValidation } from '@src/constants/messages';
+import { IMAGE_FILE_TYPE_VALIDATION } from '@src/constants/messages';
 import AppError from './appError';
 import { StatusCode } from '@src/types/customTypes';
 import { IMAGE_SIZE_LIMIT } from '@src/constants/static';
@@ -39,7 +39,7 @@ function sanitizeFile(file: Express.Multer.File, cb: FileFilterCallback) {
   if (isAllowedMimeType) {
     return cb(null, true);
   }
-  return cb(new AppError(imageFileTypeValidation, StatusCode.BAD_REQUEST));
+  return cb(new AppError(IMAGE_FILE_TYPE_VALIDATION, StatusCode.BAD_REQUEST));
 }
 
 const uploadImage = (destinationPath: string): Multer =>
