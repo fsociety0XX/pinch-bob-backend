@@ -1,12 +1,9 @@
-// import crypto from 'crypto';
-import { Schema, model, Query, Types } from 'mongoose';
+import crypto from 'crypto';
+import { Schema, model, Query, Types, Model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
-import {
-  USER_SCHEMA_VALIDATION,
-  brandEnum,
-  roleEnum,
-} from '@src/constants/messages';
+import { USER_SCHEMA_VALIDATION } from '@src/constants/messages';
+import { Role, brandEnum } from '@src/types/customTypes';
 
 interface IWishlist {
   _id: Types.ObjectId;
@@ -45,12 +42,24 @@ export interface IUser {
   wishlist?: Types.DocumentArray<IWishlist>;
   cart?: Types.DocumentArray<ICart>;
   passwordChangedAt: Date;
-  resetPasswordToken: string;
-  resetPasswordTokenExpiresIn: Date;
+  resetPasswordToken: string | undefined;
+  resetPasswordTokenExpiresIn: Date | undefined;
   active: boolean;
 }
 
-const userSchema = new Schema<IUser>(
+export interface IUserMethods {
+  comparePassword(
+    enteredPassword: string,
+    userPassword: string
+  ): Promise<boolean>;
+  compareTimestamps(tokenIssuedTime: number): boolean;
+  generateResetPasswordToken(): string;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+type UserModel = Model<IUser, {}, IUserMethods>;
+
+const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     firstName: {
       type: String,
@@ -91,8 +100,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      default: roleEnum[1], // default role -> customer
-      enum: roleEnum,
+      default: Role.CUSTOMER, // default role -> customer
+      enum: Role,
     },
     birthday: {
       type: Date,
@@ -156,6 +165,44 @@ userSchema.pre('save', async function (next) {
   return next();
 });
 
-const User = model<IUser>('User', userSchema);
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+  this.passwordChangedAt = new Date(Date.now() - 1000); // just to make sure everything is fine
+  return next();
+});
+
+// Instance method
+userSchema.methods.comparePassword = async function (
+  enteredPassword: string,
+  userPassword: string
+): Promise<boolean> {
+  const result = await bcrypt.compare(enteredPassword, userPassword);
+  return result;
+};
+
+userSchema.methods.compareTimestamps = function (
+  tokenIssuedTime: number
+): boolean {
+  if (this.passwordChangedAt) {
+    const passwordChangedTimestamp = this.passwordChangedAt.getTime() / 1000;
+
+    return passwordChangedTimestamp > tokenIssuedTime;
+  }
+
+  // False means password not changed
+  return false;
+};
+
+userSchema.methods.generateResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  this.resetPasswordTokenExpiresIn = new Date(Date.now() + 10 * 60 * 1000);
+  return resetToken;
+};
+
+const User = model<IUser, UserModel>('User', userSchema);
 
 export default User;
