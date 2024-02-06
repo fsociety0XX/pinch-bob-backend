@@ -1,4 +1,4 @@
-const VERSION1 = '/v1';
+const VERSION1 = '/api/v1';
 
 // AUTH
 export const SIGN_UP = `/signup`;

@@ -37,7 +37,7 @@ userRouter.patch(
   // roleRistriction(Role.CUSTOMER), //TODO
   changePassword
 );
-userRouter.get('/test', protect, (req, res) => {
+userRouter.get('/test', (req, res) => {
   res.send({
     status: 'success',
   });
