@@ -19,7 +19,7 @@ interface ICart {
   message?: string;
 }
 
-interface IProfile {
+interface IPhoto {
   key: string;
   name: string;
   mimeType: string;
@@ -34,7 +34,7 @@ export interface IUser {
   email: string;
   password: string;
   phone: string;
-  profile: IProfile;
+  photo: IPhoto;
   brand: string;
   role: string;
   birthday?: Date;
@@ -63,10 +63,12 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     firstName: {
       type: String,
+      trim: true,
       required: [true, USER_SCHEMA_VALIDATION.firstName],
     },
     lastName: {
       type: String,
+      trim: true,
       required: [true, USER_SCHEMA_VALIDATION.lastName],
     },
     email: {
@@ -86,7 +88,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: String,
       required: [true, USER_SCHEMA_VALIDATION.phone],
     },
-    profile: {
+    photo: {
       key: String,
       name: String,
       mimeType: String,

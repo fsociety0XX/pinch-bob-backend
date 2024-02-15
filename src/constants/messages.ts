@@ -26,3 +26,17 @@ export const TOKEN_SENT = 'Token sent to email';
 export const EMAIL_FAILED =
   'Error in sending email, Please try again after sometime';
 export const CURRENT_PASSWORD_INCORRECT = 'Your current password is incorrect.';
+export const PRODUCT_SCHEMA_VALIDATION = {
+  name: 'A product must have a name',
+  price: 'A product must have a price',
+  currency: 'A currency is required',
+  brand: 'A product must have a brand',
+  images: 'Product images are required',
+  type: 'A product must have a type',
+  detail: 'A product detail is required',
+  category: 'A category is required.',
+};
+export const CATEGORY_SCHEMA_VALIDATION = {
+  brand: 'A brand is required',
+  name: 'A name is required',
+};
