@@ -86,6 +86,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     phone: {
       type: String,
+      unique: true,
       required: [true, USER_SCHEMA_VALIDATION.phone],
     },
     photo: {
@@ -136,7 +137,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         message: String,
       },
     ],
-    passwordChangedAt: Date,
+    passwordChangedAt: {
+      type: Date,
+      select: false,
+    },
     resetPasswordToken: String,
     resetPasswordTokenExpiresIn: Date,
     active: {
