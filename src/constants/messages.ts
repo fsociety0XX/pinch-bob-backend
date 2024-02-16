@@ -17,6 +17,8 @@ export const routeNotFound = (url: string): string =>
 export const IMAGE_FILE_TYPE_VALIDATION = 'Please upload valid image file';
 export const INVALID_CREDENTIALS = 'Please provide valid email and password';
 export const UNAUTHORISED = 'Please login again.';
+export const TOKEN_INVALID = 'Token invalid, Please login again.';
+export const TOKEN_EXPIRED = 'Token expired, Please login again.';
 export const NO_USER = 'User does not exist';
 export const LOGIN_AGAIN =
   'User recently changed the password, Please login again.';
@@ -40,3 +42,4 @@ export const CATEGORY_SCHEMA_VALIDATION = {
   brand: 'A brand is required',
   name: 'A name is required',
 };
+export const GENERIC_ERROR = 'Something went wrong!';

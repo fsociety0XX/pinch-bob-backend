@@ -36,7 +36,7 @@ interface MulterRequest extends Request {
 }
 
 interface IRequestWithUser extends Request {
-  user: IUser;
+  user?: IUser;
 }
 
 const generateToken = (id: string) =>
@@ -117,17 +117,16 @@ export const protect = catchAsync(
 export const roleRistriction =
   (...roles: string[]) =>
   (req: IRequestWithUser, res: Response, next: NextFunction): void => {
-    console.log('req.user.role111');
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user!.role)) {
       return next(new AppError(UNAUTHORISED_ROLE, StatusCode.UNAUTHORISED));
     }
-    return next();
+    next();
   };
 
 export const signup = catchAsync(async (req: MulterRequest, res: Response) => {
   if (req.file) {
     const { key, originalname, mimetype, size, location } = req.file;
-    req.body.profile = {
+    req.body.photo = {
       key,
       name: originalname,
       mimeType: mimetype,
@@ -235,7 +234,7 @@ export const changePassword = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
     // 1. get user from collection
-    const user = await User.findById(req.user._id).select('+password');
+    const user = await User.findById(req.user!._id).select('+password');
     // 2. check if entered password is correct
     if (
       !user ||

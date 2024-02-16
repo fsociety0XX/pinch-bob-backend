@@ -4,7 +4,7 @@ import {
   forgotPassword,
   protect,
   resetPassword,
-  // roleRistriction,
+  roleRistriction,
   signin,
   signup,
 } from '@src/controllers/authController';
@@ -16,14 +16,14 @@ import {
   SIGN_IN,
   SIGN_UP,
 } from '@src/constants/routeConstants';
-// import { Role } from '@src/types/customTypes';
+import { Role } from '@src/types/customTypes';
 
 const userRouter = express.Router();
 
 // Auth routes
 userRouter.post(
   SIGN_UP,
-  uploadImage(process.env.AWS_BUCKET_PROFILE_PATH!).single('profile'),
+  uploadImage(process.env.AWS_BUCKET_PROFILE_PATH!).single('photo'),
   signup
 );
 userRouter.post(SIGN_IN, signin);
@@ -34,13 +34,8 @@ userRouter.patch(RESET_PASSWORD, resetPassword);
 userRouter.patch(
   CHANGE_PASSWORD,
   protect,
-  // roleRistriction(Role.CUSTOMER), //TODO
+  roleRistriction(Role.CUSTOMER),
   changePassword
 );
-userRouter.get('/test', (req, res) => {
-  res.send({
-    status: 'success',
-  });
-});
 
 export default userRouter;

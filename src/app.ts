@@ -15,7 +15,9 @@ import { TOO_MANY_REQUEST, routeNotFound } from './constants/messages';
 import userRouter from './routes/userRoutes';
 import AppError from './utils/appError';
 import { StatusCode } from './types/customTypes';
-import { USER_ROUTE } from './constants/routeConstants';
+import { CATEGORY_ROUTE, USER_ROUTE } from './constants/routeConstants';
+import categoryRouter from './routes/categoryRoutes';
+import globalErrorController from './controllers/globalErrorController';
 
 const app = express();
 const dirname = path.resolve();
@@ -62,11 +64,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // 3) ROUTES
 app.use(USER_ROUTE, userRouter);
+app.use(CATEGORY_ROUTE, categoryRouter);
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
   next(new AppError(routeNotFound(req.originalUrl), StatusCode.NOT_FOUND));
 });
 
-// app.use(globalErrorHandler);
+app.use(globalErrorController);
 
 export default app;
