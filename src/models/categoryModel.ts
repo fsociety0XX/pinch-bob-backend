@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { CATEGORY_SCHEMA_VALIDATION } from '@src/constants/messages';
 
-interface ICategory {
+export interface ICategory {
   brand: string;
   name: string;
 }
