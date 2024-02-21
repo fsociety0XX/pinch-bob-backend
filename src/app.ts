@@ -1,4 +1,5 @@
 import path from 'path';
+import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
@@ -28,6 +29,9 @@ const app = express();
 const dirname = path.resolve();
 
 // GLOBAL MIDDLEWARES
+
+// Allow cors
+app.use(cors());
 
 // Set security http headers
 app.use(helmet());
