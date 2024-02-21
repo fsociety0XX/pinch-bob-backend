@@ -43,3 +43,4 @@ export const CATEGORY_SCHEMA_VALIDATION = {
   name: 'A name is required',
 };
 export const GENERIC_ERROR = 'Something went wrong!';
+export const NO_DATA_FOUND = 'No data found with that ID';
