@@ -3,6 +3,7 @@ const VERSION1 = '/api/v1';
 // MASTER ROUTES
 export const USER_ROUTE = `${VERSION1}/users`;
 export const CATEGORY_ROUTE = `${VERSION1}/category`;
+export const PRODUCT_ROUTE = `${VERSION1}/product`;
 
 // AUTH
 export const SIGN_UP = `/signup`;
