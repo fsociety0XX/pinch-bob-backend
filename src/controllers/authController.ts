@@ -5,7 +5,7 @@ import { Express, NextFunction, Request, Response } from 'express';
 import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode } from '@src/types/customTypes';
-// import { PRODUCTION } from '@src/constants/static';
+import { PRODUCTION } from '@src/constants/static';
 import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
 import {
@@ -22,7 +22,7 @@ import {
 
 interface ICookieOptions {
   expires: Date;
-  httpOnly?: boolean;
+  httpOnly: boolean;
   secure?: boolean;
 }
 
@@ -54,10 +54,10 @@ const createAndSendToken = (
     expires: new Date(
       Date.now() + +process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: false, // if true => restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
+    httpOnly: true, // if true => restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
   };
 
-  // if (process.env.NODE_ENV === PRODUCTION) cookieOptions.secure = true; // allows to access only via https
+  if (process.env.NODE_ENV === PRODUCTION) cookieOptions.secure = true; // allows to access only via https
   res.cookie('jwt', token, cookieOptions);
   res.status(statusCode).json({
     status: 'success',
