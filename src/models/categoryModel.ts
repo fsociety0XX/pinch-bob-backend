@@ -5,6 +5,7 @@ import { CATEGORY_SCHEMA_VALIDATION } from '@src/constants/messages';
 export interface ICategory {
   brand: string;
   name: string;
+  active: boolean;
 }
 
 const categorySchema = new mongoose.Schema<ICategory>(
@@ -19,6 +20,11 @@ const categorySchema = new mongoose.Schema<ICategory>(
       required: [true, CATEGORY_SCHEMA_VALIDATION.name],
       unique: true,
       trim: true,
+    },
+    active: {
+      type: Boolean,
+      default: true,
+      select: false,
     },
   },
   {

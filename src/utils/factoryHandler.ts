@@ -16,6 +16,9 @@ export const createOne = (
   model: Model<any>
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response) => {
+    if (req.files?.length) {
+      req.body.images = req.files;
+    }
     const doc = await model.create(req.body);
     res.status(StatusCode.CREATE).json({
       status: 'success',
