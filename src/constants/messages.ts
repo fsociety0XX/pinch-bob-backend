@@ -34,6 +34,7 @@ export const PRODUCT_SCHEMA_VALIDATION = {
   currency: 'A currency is required',
   brand: 'A product must have a brand',
   images: 'Product images are required',
+  atleastOneImage: 'Atleast one image is required',
   type: 'A product must have a type',
   detail: 'A product detail is required',
   category: 'A category is required.',

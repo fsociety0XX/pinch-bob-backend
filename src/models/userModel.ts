@@ -21,10 +21,10 @@ interface ICart {
 
 interface IPhoto {
   key: string;
-  name: string;
-  mimeType: string;
+  originalname: string;
+  mimetype: string;
   size: number;
-  url: string;
+  location: string;
 }
 
 export interface IUser {
@@ -91,10 +91,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     photo: {
       key: String,
-      name: String,
-      mimeType: String,
+      originalname: String,
+      mimetype: String,
       size: Number,
-      url: String,
+      location: String,
     },
     brand: {
       type: String,

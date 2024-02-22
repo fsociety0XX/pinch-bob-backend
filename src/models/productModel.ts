@@ -14,10 +14,10 @@ interface IPieces {
 
 interface IPhoto {
   key: string;
-  name: string;
-  mimeType: string;
+  originalname: string;
+  mimetype: string;
   size: number;
-  url: string;
+  location: string;
 }
 
 interface IProductDetails {
@@ -48,10 +48,10 @@ interface IProduct {
 
 const ProductImageSchema = new mongoose.Schema({
   key: String,
-  name: String,
-  mimeType: String,
+  originalname: String,
+  mimetype: String,
   size: Number,
-  url: String,
+  location: String,
 });
 
 const ProductDetailSchema = new mongoose.Schema({
@@ -95,7 +95,13 @@ const productSchema = new mongoose.Schema<IProduct>({
   ],
   images: {
     type: [ProductImageSchema],
-    // required: [true, PRODUCT_SCHEMA_VALIDATION.images],
+    required: [true, PRODUCT_SCHEMA_VALIDATION.images],
+    validate: {
+      validator(images: IPhoto[]) {
+        return images.length;
+      },
+      message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
+    },
   },
   flavour: [String],
   type: {
