@@ -22,7 +22,7 @@ import {
 
 interface ICookieOptions {
   expires: Date;
-  httpOnly: boolean;
+  httpOnly?: boolean;
   secure?: boolean;
 }
 
@@ -54,7 +54,7 @@ const createAndSendToken = (
     expires: new Date(
       Date.now() + +process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: true, // restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
+    // httpOnly: true, // restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
   };
 
   // if (process.env.NODE_ENV === PRODUCTION) cookieOptions.secure = true; // allows to access only via https
