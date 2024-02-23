@@ -4,7 +4,6 @@ import {
   forgotPassword,
   protect,
   resetPassword,
-  roleRistriction,
   signin,
   signup,
 } from '@src/controllers/authController';
@@ -16,7 +15,6 @@ import {
   SIGN_IN,
   SIGN_UP,
 } from '@src/constants/routeConstants';
-import { Role } from '@src/types/customTypes';
 
 const userRouter = express.Router();
 
@@ -31,11 +29,6 @@ userRouter.post(FORGOT_PASSWORD, forgotPassword);
 userRouter.patch(RESET_PASSWORD, resetPassword);
 
 // User routes
-userRouter.patch(
-  CHANGE_PASSWORD,
-  protect,
-  roleRistriction(Role.CUSTOMER),
-  changePassword
-);
+userRouter.patch(CHANGE_PASSWORD, protect, changePassword);
 
 export default userRouter;
