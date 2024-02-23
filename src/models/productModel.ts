@@ -1,4 +1,5 @@
 import mongoose, { Types, model } from 'mongoose';
+import slugify from 'slugify';
 import { brandEnum, typeEnum } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -29,10 +30,13 @@ interface IProductDetails {
 
 interface IProduct {
   name: string;
+  slug: string;
   price: number;
   discountedPrice?: number;
   currency: string;
   brand: string;
+  ratingsAvg: number;
+  totalRatings: number;
   pieces?: IPieces[];
   size?: ISize[];
   images: IPhoto[];
@@ -67,6 +71,7 @@ const productSchema = new mongoose.Schema<IProduct>({
     trim: true,
     required: [true, PRODUCT_SCHEMA_VALIDATION.name],
   },
+  slug: String,
   price: {
     type: Number,
     required: [true, PRODUCT_SCHEMA_VALIDATION.price],
@@ -80,6 +85,17 @@ const productSchema = new mongoose.Schema<IProduct>({
     type: String,
     required: [true, PRODUCT_SCHEMA_VALIDATION.brand],
     enum: brandEnum,
+  },
+  ratingsAvg: {
+    type: Number,
+    default: 4.5,
+    min: [1, PRODUCT_SCHEMA_VALIDATION.minRatingsAvg],
+    max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
+    set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
+  },
+  totalRatings: {
+    type: Number,
+    default: 0,
   },
   pieces: [
     {
@@ -123,12 +139,55 @@ const productSchema = new mongoose.Schema<IProduct>({
     ref: 'Category',
     required: [true, PRODUCT_SCHEMA_VALIDATION.category],
   },
-  fbt: [String], // TODO
+  fbt: [
+    {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Product',
+    },
+  ],
   active: {
     type: Boolean,
     default: true,
     select: false,
   },
+});
+
+productSchema.index({ price: 1, ratingsAverage: -1 });
+productSchema.index({ slug: 1 });
+
+// When reviews are ready
+// productSchema.virtual('reviews', {
+//   ref: 'Reviews',
+//   foreignField: 'product',
+//   localField: '_id',
+// });
+
+// Document middleware
+productSchema.pre('save', function (next) {
+  this.slug = slugify(this.name);
+  next();
+});
+
+// Query middleware
+// TODO: check if we can access user role and change active condition just for admins
+productSchema.pre('findOne', function (next) {
+  this.populate({ path: 'category', select: 'name' })
+    .populate({
+      path: 'fbt',
+      select: 'name price category discountedPrice',
+    })
+    .find({ active: { $eq: true } });
+  next();
+});
+
+productSchema.pre('find', function (next) {
+  this.populate({ path: 'category', select: 'name' })
+    .populate({
+      path: 'fbt',
+      select: 'name price category discountedPrice',
+    })
+    .find({ active: { $eq: true } });
+  next();
 });
 
 const Product = model<IProduct>('Product', productSchema);
