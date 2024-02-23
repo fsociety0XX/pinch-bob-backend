@@ -3,6 +3,7 @@ import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
@@ -32,6 +33,9 @@ const dirname = path.resolve();
 
 // Allow cors
 app.use(cors());
+
+// Parse incoming request bodies in JSON format
+app.use(bodyParser.json());
 
 // Set security http headers
 app.use(helmet());

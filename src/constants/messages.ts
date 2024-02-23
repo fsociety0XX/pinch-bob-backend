@@ -3,7 +3,7 @@ export const TOO_MANY_REQUEST =
 export const DB_CONNECT_SUCCESS = 'DB connection successful';
 export const USER_SCHEMA_VALIDATION = {
   firstName: 'A first name is required',
-  lastName: 'A first name is required',
+  lastName: 'A last name is required',
   email: 'A email is required',
   phone: 'A phone number is required',
   invalidEmail: 'Invalid email id',
@@ -38,6 +38,8 @@ export const PRODUCT_SCHEMA_VALIDATION = {
   type: 'A product must have a type',
   detail: 'A product detail is required',
   category: 'A category is required.',
+  minRatingsAvg: 'Rating must be greater than 1',
+  maxRatingsAvg: 'Rating must be less than 5',
 };
 export const CATEGORY_SCHEMA_VALIDATION = {
   brand: 'A brand is required',
