@@ -129,7 +129,7 @@ export const signup = catchAsync(async (req: MulterRequest, res: Response) => {
   }
   const newUser = await User.create(req.body);
   createAndSendToken(newUser, StatusCode.CREATE, res);
-  // TODO: change later
+  // TODO: change email later
   await sendEmail({
     email: newUser.email,
     subject: 'Congrats! Welcome to Pinchbakehouse',
@@ -170,7 +170,7 @@ export const forgotPassword = catchAsync(
       'host'
     )}/api/v1/users/resetPassword/${resetToken}`;
 
-    // TODO: change later
+    // TODO: change email later
     const message = `Forgot your password ? Don't worry, you can reset it here - ${resetUrl}. \nIf you remember the password then ignore the email.`;
 
     try {

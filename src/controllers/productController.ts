@@ -1,6 +1,7 @@
 import Product from '@src/models/productModel';
 import {
   createOne,
+  deleteOne,
   getAll,
   getOne,
   updateOne,
@@ -17,3 +18,4 @@ export const getAllProduct = getAll(
   'name images price discountedPrice sizeDetails',
   ['category', 'size']
 );
+export const deleteProduct = deleteOne(Product);

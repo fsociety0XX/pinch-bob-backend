@@ -88,7 +88,7 @@ export const getAll = (
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let totalDocsCount = 0;
     let isExtraParam = false; // Any param which is not related to pageination
-    const pageParams = ['page', 'sort', 'limit', 'fields'];
+    const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
 
     // let filter = {};
     // if (req.params.id) filter = { product: req.params.id };
