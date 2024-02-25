@@ -39,7 +39,7 @@ const handleDuplicateErrorDB = (err: MongooseDuplicateError): AppError => {
   const duplicateData = err?.keyValue || {};
   const fieldName = Object.keys(duplicateData);
   const value = Object.values(duplicateData)[0];
-  const message = `Duplicate value: ${value} found for ${fieldName}. Please try another value`;
+  const message = `The ${fieldName}: ${value} already present in records. Please try another value`;
   return new AppError(message, StatusCode.BAD_REQUEST);
 };
 

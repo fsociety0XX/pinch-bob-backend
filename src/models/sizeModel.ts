@@ -2,13 +2,13 @@ import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
-export interface ICategory {
+export interface ISize {
   brand: string;
   name: string;
   active: boolean;
 }
 
-const categorySchema = new mongoose.Schema<ICategory>(
+const sizeSchema = new mongoose.Schema<ISize>(
   {
     brand: {
       type: String,
@@ -34,6 +34,6 @@ const categorySchema = new mongoose.Schema<ICategory>(
   }
 );
 
-const Category = mongoose.model('Category', categorySchema);
+const Size = mongoose.model('Size', sizeSchema);
 
-export default Category;
+export default Size;

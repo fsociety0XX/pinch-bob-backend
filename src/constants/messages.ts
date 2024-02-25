@@ -41,7 +41,7 @@ export const PRODUCT_SCHEMA_VALIDATION = {
   minRatingsAvg: 'Rating must be greater than 1',
   maxRatingsAvg: 'Rating must be less than 5',
 };
-export const CATEGORY_SCHEMA_VALIDATION = {
+export const COMMON_SCHEMA_VALIDATION = {
   brand: 'A brand is required',
   name: 'A name is required',
 };

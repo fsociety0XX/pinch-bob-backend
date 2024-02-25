@@ -13,11 +13,20 @@ class APIFeatures<T extends Document> {
     this.queryString = queryString;
   }
 
-  filter(): this {
+  filter(fieldName: string[]): this {
     const queryObj = { ...this.queryString };
     const paramsToExclude = ['page', 'sort', 'limit', 'fields'];
     paramsToExclude.forEach((el) => delete queryObj[el]);
 
+    fieldName.forEach((field: string) => {
+      if (queryObj[field]) {
+        if (field === 'size') {
+          // Special case to handle size filter in get all product API
+          queryObj['sizeDetails.size'] = (queryObj[field] as string).split(',');
+          delete queryObj.size;
+        } else queryObj[field] = (queryObj[field] as string).split(',');
+      }
+    });
     // Advance Filtering
     let queryString = JSON.stringify(queryObj);
     // Replace operators like gte,get,lte,lt -> $gte...
@@ -47,7 +56,7 @@ class APIFeatures<T extends Document> {
 
   pagination(): this {
     const page = +this.queryString.page! || 1;
-    const limit = +this.queryString.limit!;
+    const limit = +this.queryString.limit! || 10;
     const skip = (page - 1) * limit;
     this.query = this.query.skip(skip).limit(limit);
     return this;

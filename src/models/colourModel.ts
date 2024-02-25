@@ -2,13 +2,13 @@ import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
-export interface ICategory {
+export interface IColour {
   brand: string;
   name: string;
   active: boolean;
 }
 
-const categorySchema = new mongoose.Schema<ICategory>(
+const colourSchema = new mongoose.Schema<IColour>(
   {
     brand: {
       type: String,
@@ -34,6 +34,6 @@ const categorySchema = new mongoose.Schema<ICategory>(
   }
 );
 
-const Category = mongoose.model('Category', categorySchema);
+const Colour = mongoose.model('Colour', colourSchema);
 
-export default Category;
+export default Colour;
