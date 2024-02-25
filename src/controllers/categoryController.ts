@@ -1,4 +1,3 @@
-/* eslint-disable import/prefer-default-export */
 import Category from '@src/models/categoryModel';
 import {
   createOne,

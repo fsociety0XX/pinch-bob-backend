@@ -10,6 +10,7 @@ import APIFeatures, { QueryString } from './apiFeatures';
 
 interface IPopulateOptions {
   path: string;
+  select?: string;
 }
 
 export const createOne = (
@@ -80,19 +81,38 @@ export const getOne = (
   });
 
 export const getAll = (
-  model: Model<any>
+  model: Model<any>,
+  selectFields = '',
+  filterFields = ['']
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    let totalDocsCount = 0;
+    let isExtraParam = false; // Any param which is not related to pageination
+    const pageParams = ['page', 'sort', 'limit', 'fields'];
+
     // let filter = {};
     // if (req.params.id) filter = { product: req.params.id };
-    const totalDocsLength = await model.countDocuments();
-    const features = new APIFeatures(model.find(), req.query as QueryString)
-      .filter()
+    const features = new APIFeatures(
+      model.find().select(selectFields),
+      req.query as QueryString
+    )
+      .filter(filterFields)
       .sort()
       .limit()
       .pagination();
-
     const allDocs = await features.query.exec();
+
+    // Calculate total docs count
+    Object.keys(req.query).forEach((params) => {
+      if (!pageParams.includes(params)) {
+        isExtraParam = true;
+      }
+    });
+    if (isExtraParam) {
+      totalDocsCount = await model.find(features.query).countDocuments();
+    } else {
+      totalDocsCount = await model.countDocuments();
+    }
 
     if (!allDocs) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
@@ -103,7 +123,7 @@ export const getAll = (
         data: allDocs,
       },
       meta: {
-        totalData: totalDocsLength,
+        totalDataCount: totalDocsCount,
         currentPage: req.query.page || 1,
       },
     });

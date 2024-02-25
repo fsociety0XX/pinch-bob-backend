@@ -19,12 +19,20 @@ import AppError from './utils/appError';
 import { StatusCode } from './types/customTypes';
 import {
   CATEGORY_ROUTE,
+  COLOUR_ROUTE,
+  FLAVOUR_ROUTE,
+  PIECES_ROUTE,
   PRODUCT_ROUTE,
+  SIZE_ROUTE,
   USER_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
 import productRouter from './routes/productRoutes';
+import sizeRouter from './routes/sizeRoutes';
+import piecesRouter from './routes/piecesRoutes';
+import flavourRouter from './routes/flavourRoutes';
+import colourRouter from './routes/colourRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -79,6 +87,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(USER_ROUTE, userRouter);
 app.use(CATEGORY_ROUTE, categoryRouter);
 app.use(PRODUCT_ROUTE, productRouter);
+app.use(SIZE_ROUTE, sizeRouter);
+app.use(PIECES_ROUTE, piecesRouter);
+app.use(FLAVOUR_ROUTE, flavourRouter);
+app.use(COLOUR_ROUTE, colourRouter);
+
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
   next(new AppError(routeNotFound(req.originalUrl), StatusCode.NOT_FOUND));

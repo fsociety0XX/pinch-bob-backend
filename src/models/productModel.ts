@@ -4,12 +4,12 @@ import { brandEnum, typeEnum } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 interface ISize {
-  name: string;
+  size: mongoose.Types.ObjectId;
   price: number;
 }
 
 interface IPieces {
-  name: string;
+  pieces: mongoose.Types.ObjectId;
   price: number;
 }
 
@@ -36,11 +36,13 @@ interface IProduct {
   currency: string;
   brand: string;
   ratingsAvg: number;
+  sold: number;
   totalRatings: number;
-  pieces?: IPieces[];
-  size?: ISize[];
+  piecesDetails?: IPieces[];
+  sizeDetails?: ISize[];
   images: IPhoto[];
-  flavour?: string[];
+  flavour?: mongoose.Types.ObjectId[];
+  colour?: mongoose.Types.ObjectId[];
   type: string; // cake or bake ?
   details: IProductDetails;
   maxQty?: number;
@@ -93,19 +95,26 @@ const productSchema = new mongoose.Schema<IProduct>({
     max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
     set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
   },
+  sold: Number,
   totalRatings: {
     type: Number,
     default: 0,
   },
-  pieces: [
+  piecesDetails: [
     {
-      name: String,
+      pieces: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Pieces',
+      },
       price: Number,
     },
   ],
-  size: [
+  sizeDetails: [
     {
-      name: String,
+      size: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Size',
+      },
       price: Number,
     },
   ],
@@ -119,7 +128,18 @@ const productSchema = new mongoose.Schema<IProduct>({
       message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
     },
   },
-  flavour: [String],
+  flavour: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Flavour',
+    },
+  ],
+  colour: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Colour',
+    },
+  ],
   type: {
     type: String,
     required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -171,22 +191,22 @@ productSchema.pre('save', function (next) {
 // Query middleware
 // TODO: check if we can access user role and change active condition just for admins
 productSchema.pre('findOne', function (next) {
-  this.populate({ path: 'category', select: 'name' })
-    .populate({
+  let alreadyPopulated = false;
+  if (!alreadyPopulated) {
+    this.populate({
       path: 'fbt',
-      select: 'name price category discountedPrice',
-    })
-    .find({ active: { $eq: true } });
+      select: 'name price images category discountedPrice',
+    });
+    alreadyPopulated = true;
+  }
+  this.find({ active: { $eq: true } });
   next();
 });
 
 productSchema.pre('find', function (next) {
-  this.populate({ path: 'category', select: 'name' })
-    .populate({
-      path: 'fbt',
-      select: 'name price category discountedPrice',
-    })
-    .find({ active: { $eq: true } });
+  this.find({
+    active: true,
+  });
   next();
 });
 
