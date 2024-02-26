@@ -168,7 +168,7 @@ export const forgotPassword = catchAsync(
 
     const resetUrl = `${req.protocol}://${req.get(
       'host'
-    )}/api/v1/users/resetPassword/${resetToken}`;
+    )}/reset-password/${resetToken}`;
 
     // TODO: change email later
     const message = `Forgot your password ? Don't worry, you can reset it here - ${resetUrl}. \nIf you remember the password then ignore the email.`;
