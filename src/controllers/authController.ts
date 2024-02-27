@@ -15,6 +15,7 @@ import {
   INVALID_TOKEN,
   LOGIN_AGAIN,
   NO_USER,
+  REGISTER_ERROR,
   TOKEN_SENT,
   UNAUTHORISED,
   UNAUTHORISED_ROLE,
@@ -123,19 +124,27 @@ export const roleRistriction =
     next();
   };
 
-export const signup = catchAsync(async (req: MulterRequest, res: Response) => {
-  if (req.file) {
-    req.body.photo = req.file;
+export const signup = catchAsync(
+  async (req: MulterRequest, res: Response, next: NextFunction) => {
+    if (!req.body || !Object.keys(req.body).length) {
+      return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
+    }
+    if (req.file) {
+      req.body.photo = req.file;
+    }
+    const newUser = await User.create(req.body);
+    if (!newUser) {
+      return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
+    }
+    createAndSendToken(newUser, StatusCode.CREATE, res);
+    // TODO: change email later
+    await sendEmail({
+      email: newUser.email,
+      subject: 'Congrats! Welcome to Pinchbakehouse',
+      message: 'So glad to see you here.',
+    });
   }
-  const newUser = await User.create(req.body);
-  createAndSendToken(newUser, StatusCode.CREATE, res);
-  // TODO: change email later
-  await sendEmail({
-    email: newUser.email,
-    subject: 'Congrats! Welcome to Pinchbakehouse',
-    message: 'So glad to see you here.',
-  });
-});
+);
 
 export const signin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
