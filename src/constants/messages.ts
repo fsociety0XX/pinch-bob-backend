@@ -16,6 +16,8 @@ export const routeNotFound = (url: string): string =>
   `Can't find ${url} on this server!`;
 export const IMAGE_FILE_TYPE_VALIDATION = 'Please upload valid image file';
 export const INVALID_CREDENTIALS = 'Please provide valid email and password';
+export const REGISTER_ERROR =
+  'You were not registered, Please provide correct details';
 export const UNAUTHORISED = 'Please login again.';
 export const TOKEN_INVALID = 'Token invalid, Please login again.';
 export const TOKEN_EXPIRED = 'Token expired, Please login again.';
