@@ -49,3 +49,14 @@ export const COMMON_SCHEMA_VALIDATION = {
 };
 export const GENERIC_ERROR = 'Something went wrong!';
 export const NO_DATA_FOUND = 'No data found with that ID';
+export const ADDRESS_SCHEMA_VALIDATION = {
+  firstName: 'A first name is required',
+  lastName: 'A last name is required',
+  city: 'A city is required',
+  country: 'A country is required',
+  address1: 'A address1 is required',
+  postalCode: 'A postal code is required',
+  phone: 'A phone number is required',
+};
+export const ADDRESS_AUTH_ERR =
+  'You are not authorised to make any changes to this address';

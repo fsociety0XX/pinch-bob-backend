@@ -36,7 +36,7 @@ interface MulterRequest extends Request {
   file: ICustomFile;
 }
 
-interface IRequestWithUser extends Request {
+export interface IRequestWithUser extends Request {
   user?: IUser;
 }
 

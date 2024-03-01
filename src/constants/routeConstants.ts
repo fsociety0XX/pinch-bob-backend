@@ -8,6 +8,7 @@ export const SIZE_ROUTE = `${VERSION1}/size`;
 export const PIECES_ROUTE = `${VERSION1}/pieces`;
 export const FLAVOUR_ROUTE = `${VERSION1}/flavour`;
 export const COLOUR_ROUTE = `${VERSION1}/colour`;
+export const ADDRESS_ROUTE = `${VERSION1}/address`;
 
 // AUTH
 export const SIGN_UP = `/signup`;

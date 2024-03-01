@@ -18,6 +18,7 @@ import userRouter from './routes/userRoutes';
 import AppError from './utils/appError';
 import { StatusCode } from './types/customTypes';
 import {
+  ADDRESS_ROUTE,
   CATEGORY_ROUTE,
   COLOUR_ROUTE,
   FLAVOUR_ROUTE,
@@ -33,6 +34,7 @@ import sizeRouter from './routes/sizeRoutes';
 import piecesRouter from './routes/piecesRoutes';
 import flavourRouter from './routes/flavourRoutes';
 import colourRouter from './routes/colourRoutes';
+import addressRouter from './routes/addressRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -91,6 +93,7 @@ app.use(SIZE_ROUTE, sizeRouter);
 app.use(PIECES_ROUTE, piecesRouter);
 app.use(FLAVOUR_ROUTE, flavourRouter);
 app.use(COLOUR_ROUTE, colourRouter);
+app.use(ADDRESS_ROUTE, addressRouter);
 
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
