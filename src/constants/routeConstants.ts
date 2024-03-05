@@ -9,6 +9,8 @@ export const PIECES_ROUTE = `${VERSION1}/pieces`;
 export const FLAVOUR_ROUTE = `${VERSION1}/flavour`;
 export const COLOUR_ROUTE = `${VERSION1}/colour`;
 export const ADDRESS_ROUTE = `${VERSION1}/address`;
+export const DELIVERY_METHOD_ROUTE = `${VERSION1}/deliveryMethod`;
+export const COLLECTION_TIME_ROUTE = `${VERSION1}/collectionTime`;
 
 // AUTH
 export const SIGN_UP = `/signup`;

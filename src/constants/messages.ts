@@ -60,3 +60,11 @@ export const ADDRESS_SCHEMA_VALIDATION = {
 };
 export const ADDRESS_AUTH_ERR =
   'You are not authorised to make any changes to this address';
+export const DELIVERY_METHOD_VALIDATION = {
+  price: 'A delivery method must have a price',
+  info: 'A delivery method must have a description',
+};
+export const COLLECTION_TIME_VALIDATION = {
+  startTime: 'A collection time must have start time',
+  endTime: 'A collection time must have end time',
+};

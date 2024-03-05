@@ -20,7 +20,9 @@ import { StatusCode } from './types/customTypes';
 import {
   ADDRESS_ROUTE,
   CATEGORY_ROUTE,
+  COLLECTION_TIME_ROUTE,
   COLOUR_ROUTE,
+  DELIVERY_METHOD_ROUTE,
   FLAVOUR_ROUTE,
   PIECES_ROUTE,
   PRODUCT_ROUTE,
@@ -35,6 +37,8 @@ import piecesRouter from './routes/piecesRoutes';
 import flavourRouter from './routes/flavourRoutes';
 import colourRouter from './routes/colourRoutes';
 import addressRouter from './routes/addressRoutes';
+import deliveryMethodRouter from './routes/deliveryMethodRoutes';
+import collectionTimeRoutes from './routes/collectionTimeRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -94,6 +98,8 @@ app.use(PIECES_ROUTE, piecesRouter);
 app.use(FLAVOUR_ROUTE, flavourRouter);
 app.use(COLOUR_ROUTE, colourRouter);
 app.use(ADDRESS_ROUTE, addressRouter);
+app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
+app.use(COLLECTION_TIME_ROUTE, collectionTimeRoutes);
 
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
