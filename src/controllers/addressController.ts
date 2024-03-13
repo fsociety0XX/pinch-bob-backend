@@ -47,4 +47,4 @@ export const createAddress = createOne(Address);
 export const updateAddress = updateOne(Address);
 export const deleteAddress = deleteOne(Address);
 export const getOneAddress = getOne(Address);
-export const getAllAddress = getAll(Address, '', ['user']);
+export const getAllAddress = getAll(Address, ['user']);

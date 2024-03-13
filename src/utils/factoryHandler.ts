@@ -82,7 +82,6 @@ export const getOne = (
 
 export const getAll = (
   model: Model<any>,
-  selectFields = '',
   filterFields = ['']
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -92,10 +91,7 @@ export const getAll = (
 
     // let filter = {};
     // if (req.params.id) filter = { product: req.params.id };
-    const features = new APIFeatures(
-      model.find().select(selectFields),
-      req.query as QueryString
-    )
+    const features = new APIFeatures(model.find(), req.query as QueryString)
       .filter(filterFields)
       .sort()
       .limit()

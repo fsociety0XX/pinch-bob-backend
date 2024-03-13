@@ -19,3 +19,4 @@ export interface errorObject {
 
 export const brandEnum = ['pinch', 'bob'];
 export const typeEnum = ['cake', 'bake'];
+export const deliveryTypeEnum = ['single', 'multiple'];

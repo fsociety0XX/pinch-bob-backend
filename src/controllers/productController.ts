@@ -13,9 +13,5 @@ export const getOneProduct = getOne(Product, {
   path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
   select: 'name',
 });
-export const getAllProduct = getAll(
-  Product,
-  'name images price discountedPrice sizeDetails',
-  ['category', 'size']
-);
+export const getAllProduct = getAll(Product, ['category', 'size']);
 export const deleteProduct = deleteOne(Product);
