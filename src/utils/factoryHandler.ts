@@ -86,6 +86,7 @@ export const getAll = (
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let totalDocsCount = 0;
+    const currentPage = +req.query.page!;
     let isExtraParam = false; // Any param which is not related to pagination
     const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
     if (req.query.category) {
@@ -135,7 +136,7 @@ export const getAll = (
       },
       meta: {
         totalDataCount: totalDocsCount,
-        currentPage: req.query.page || 1,
+        currentPage: +currentPage || 1,
       },
     });
   });
