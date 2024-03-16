@@ -105,6 +105,7 @@ export const getAll = (
 
     if (isExtraParam) {
       delete req.query.limit;
+      delete req.query.page;
       const featuresWithoutLimit = new APIFeatures(
         model.find(),
         req.query as QueryString
