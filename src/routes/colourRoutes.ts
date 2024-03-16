@@ -10,9 +10,11 @@ import {
 } from '@src/controllers/colourController';
 
 const colourRouter = express.Router();
-colourRouter.use(protect, roleRistriction(Role.ADMIN));
 
-colourRouter.route('/').get(getAllColour).post(createColour);
+colourRouter.route('/').get(getAllColour);
+
+colourRouter.use(protect, roleRistriction(Role.ADMIN));
+colourRouter.route('/').post(createColour);
 
 colourRouter
   .route('/:id')

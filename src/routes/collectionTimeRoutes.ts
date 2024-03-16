@@ -10,12 +10,11 @@ import {
 } from '@src/controllers/collectionTimeController';
 
 const collectionTimeRoutes = express.Router();
-collectionTimeRoutes.use(protect, roleRistriction(Role.ADMIN));
 
-collectionTimeRoutes
-  .route('/')
-  .get(getAllCollectionTime)
-  .post(createCollectionTime);
+collectionTimeRoutes.route('/').get(getAllCollectionTime); // No protection for get all data
+
+collectionTimeRoutes.use(protect, roleRistriction(Role.ADMIN));
+collectionTimeRoutes.route('/').post(createCollectionTime);
 
 collectionTimeRoutes
   .route('/:id')

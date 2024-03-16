@@ -10,12 +10,11 @@ import {
 } from '@src/controllers/deliveryMethodController';
 
 const deliveryMethodRouter = express.Router();
-deliveryMethodRouter.use(protect, roleRistriction(Role.ADMIN));
 
-deliveryMethodRouter
-  .route('/')
-  .get(getAllDeliveryMethod)
-  .post(createDeliveryMethod);
+deliveryMethodRouter.route('/').get(getAllDeliveryMethod);
+
+deliveryMethodRouter.use(protect, roleRistriction(Role.ADMIN));
+deliveryMethodRouter.route('/').post(createDeliveryMethod);
 
 deliveryMethodRouter
   .route('/:id')

@@ -10,9 +10,11 @@ import {
 } from '@src/controllers/piecesController';
 
 const piecesRouter = express.Router();
-piecesRouter.use(protect, roleRistriction(Role.ADMIN));
 
-piecesRouter.route('/').get(getAllPieces).post(createPieces);
+piecesRouter.route('/').get(getAllPieces);
+
+piecesRouter.use(protect, roleRistriction(Role.ADMIN));
+piecesRouter.route('/').post(createPieces);
 
 piecesRouter
   .route('/:id')

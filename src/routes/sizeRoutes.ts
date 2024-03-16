@@ -10,9 +10,11 @@ import {
 } from '@src/controllers/sizeController';
 
 const sizeRouter = express.Router();
-sizeRouter.use(protect, roleRistriction(Role.ADMIN));
 
-sizeRouter.route('/').get(getAllSize).post(createSize);
+sizeRouter.route('/').get(getAllSize);
+
+sizeRouter.use(protect, roleRistriction(Role.ADMIN));
+sizeRouter.route('/').post(createSize);
 
 sizeRouter.route('/:id').get(getOneSize).patch(updateSize).delete(deleteSize);
 
