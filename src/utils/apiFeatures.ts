@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Document, Query } from 'mongoose';
 
 export interface QueryString {
