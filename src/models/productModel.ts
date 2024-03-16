@@ -155,11 +155,13 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Category',
-      required: [true, PRODUCT_SCHEMA_VALIDATION.category],
-    },
+    category: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: [true, PRODUCT_SCHEMA_VALIDATION.category],
+      },
+    ],
     fbt: [
       {
         type: mongoose.Schema.ObjectId,

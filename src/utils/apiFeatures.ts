@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Document, Query } from 'mongoose';
 
 export interface QueryString {
@@ -31,10 +32,9 @@ class APIFeatures<T extends Document> {
     let queryString = JSON.stringify(queryObj);
     // Replace operators like gte,get,lte,lt -> $gte...
     queryString = queryString.replace(
-      /\b(gte|gt|lte|lt)\b/g,
+      /\b(gte|gt|lte|lt|in)\b/g,
       (match) => `$${match}`
     );
-
     this.query.find(JSON.parse(queryString));
     return this;
   }

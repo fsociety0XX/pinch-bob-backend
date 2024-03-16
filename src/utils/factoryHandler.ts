@@ -88,7 +88,11 @@ export const getAll = (
     let totalDocsCount = 0;
     let isExtraParam = false; // Any param which is not related to pagination
     const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
-
+    if (req.query.category) {
+      req.query.category = {
+        in: (req.query.category as string).split(','),
+      };
+    }
     const features = new APIFeatures(model.find(), req.query as QueryString)
       .filter(filterFields)
       .sort()
