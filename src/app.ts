@@ -11,6 +11,7 @@ import {
   BODY_PARSER_LIMIT,
   DEVELOPMENT,
   PREVENT_PARAMETER_POLLUTION,
+  PRODUCTION,
   RATE_LIMIT,
 } from './constants/static';
 import { TOO_MANY_REQUEST, routeNotFound } from './constants/messages';
@@ -60,12 +61,14 @@ if (process.env.NODE_ENV === DEVELOPMENT) {
 }
 
 // Limit requests from same API
-const limiter = rateLimit({
-  max: RATE_LIMIT.max,
-  windowMs: RATE_LIMIT.windowMs,
-  message: TOO_MANY_REQUEST,
-});
-app.use('/api', limiter);
+if (process.env.NODE_ENV === PRODUCTION) {
+  const limiter = rateLimit({
+    max: RATE_LIMIT.max,
+    windowMs: RATE_LIMIT.windowMs,
+    message: TOO_MANY_REQUEST,
+  });
+  app.use('/api', limiter);
+}
 
 // Body parser -> Reading data from body into req.body
 app.use(express.json({ limit: BODY_PARSER_LIMIT }));

@@ -67,110 +67,117 @@ const ProductDetailSchema = new mongoose.Schema({
   sizesAndPortions: String,
 });
 
-const productSchema = new mongoose.Schema<IProduct>({
-  name: {
-    type: String,
-    trim: true,
-    required: [true, PRODUCT_SCHEMA_VALIDATION.name],
-  },
-  slug: String,
-  price: {
-    type: Number,
-    required: [true, PRODUCT_SCHEMA_VALIDATION.price],
-  },
-  discountedPrice: Number,
-  currency: {
-    type: String,
-    default: 'SGD',
-  },
-  brand: {
-    type: String,
-    required: [true, PRODUCT_SCHEMA_VALIDATION.brand],
-    enum: brandEnum,
-  },
-  ratingsAvg: {
-    type: Number,
-    default: 4.5,
-    min: [1, PRODUCT_SCHEMA_VALIDATION.minRatingsAvg],
-    max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
-    set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
-  },
-  sold: Number, // TODO: work on this after order module
-  totalRatings: {
-    type: Number,
-    default: 0,
-  },
-  piecesDetails: [
-    {
-      pieces: {
+const productSchema = new mongoose.Schema<IProduct>(
+  {
+    name: {
+      type: String,
+      trim: true,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.name],
+    },
+    slug: String,
+    price: {
+      type: Number,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.price],
+    },
+    discountedPrice: Number,
+    currency: {
+      type: String,
+      default: 'SGD',
+    },
+    brand: {
+      type: String,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.brand],
+      enum: brandEnum,
+    },
+    ratingsAvg: {
+      type: Number,
+      default: 4.5,
+      min: [1, PRODUCT_SCHEMA_VALIDATION.minRatingsAvg],
+      max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
+      set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
+    },
+    sold: Number, // TODO: work on this after order module
+    totalRatings: {
+      type: Number,
+      default: 0,
+    },
+    piecesDetails: [
+      {
+        pieces: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Pieces',
+        },
+        price: Number,
+      },
+    ],
+    sizeDetails: [
+      {
+        size: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Size',
+        },
+        price: Number,
+      },
+    ],
+    images: {
+      type: [ProductImageSchema],
+      required: [true, PRODUCT_SCHEMA_VALIDATION.images],
+      validate: {
+        validator(images: IPhoto[]) {
+          return images.length;
+        },
+        message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
+      },
+    },
+    flavour: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pieces',
+        ref: 'Flavour',
       },
-      price: Number,
-    },
-  ],
-  sizeDetails: [
-    {
-      size: {
+    ],
+    colour: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Size',
+        ref: 'Colour',
       },
-      price: Number,
+    ],
+    type: {
+      type: String,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.type],
+      enum: typeEnum,
     },
-  ],
-  images: {
-    type: [ProductImageSchema],
-    required: [true, PRODUCT_SCHEMA_VALIDATION.images],
-    validate: {
-      validator(images: IPhoto[]) {
-        return images.length;
+    details: {
+      type: ProductDetailSchema,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
+    },
+    maxQty: Number,
+    recommended: {
+      type: Boolean,
+      default: false,
+    },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: [true, PRODUCT_SCHEMA_VALIDATION.category],
+    },
+    fbt: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Product',
       },
-      message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
+    ],
+    active: {
+      type: Boolean,
+      default: true,
+      select: false,
     },
   },
-  flavour: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Flavour',
-    },
-  ],
-  colour: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Colour',
-    },
-  ],
-  type: {
-    type: String,
-    required: [true, PRODUCT_SCHEMA_VALIDATION.type],
-    enum: typeEnum,
-  },
-  details: {
-    type: ProductDetailSchema,
-    required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
-  },
-  maxQty: Number,
-  recommended: {
-    type: Boolean,
-    default: false,
-  },
-  category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: [true, PRODUCT_SCHEMA_VALIDATION.category],
-  },
-  fbt: [
-    {
-      type: mongoose.Schema.ObjectId,
-      ref: 'Product',
-    },
-  ],
-  active: {
-    type: Boolean,
-    default: true,
-    select: false,
-  },
-});
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
 
 productSchema.index({ price: 1, ratingsAverage: -1 });
 productSchema.index({ slug: 1 });
