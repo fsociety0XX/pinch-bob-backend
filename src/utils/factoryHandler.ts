@@ -86,11 +86,9 @@ export const getAll = (
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     let totalDocsCount = 0;
-    let isExtraParam = false; // Any param which is not related to pageination
+    let isExtraParam = false; // Any param which is not related to pagination
     const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
 
-    // let filter = {};
-    // if (req.params.id) filter = { product: req.params.id };
     const features = new APIFeatures(model.find(), req.query as QueryString)
       .filter(filterFields)
       .sort()
@@ -104,8 +102,20 @@ export const getAll = (
         isExtraParam = true;
       }
     });
+
     if (isExtraParam) {
-      totalDocsCount = await model.find(features.query).countDocuments();
+      delete req.query.limit;
+      const featuresWithoutLimit = new APIFeatures(
+        model.find(),
+        req.query as QueryString
+      )
+        .filter(filterFields)
+        .sort()
+        .limit()
+        .pagination();
+      totalDocsCount = await model
+        .find(featuresWithoutLimit.query)
+        .countDocuments();
     } else {
       totalDocsCount = await model.countDocuments();
     }
