@@ -10,9 +10,11 @@ import {
 } from '@src/controllers/flavourController';
 
 const flavourRouter = express.Router();
-flavourRouter.use(protect, roleRistriction(Role.ADMIN));
 
-flavourRouter.route('/').get(getAllFlavour).post(createFlavour);
+flavourRouter.route('/').get(getAllFlavour);
+
+flavourRouter.use(protect, roleRistriction(Role.ADMIN));
+flavourRouter.route('/').post(createFlavour);
 
 flavourRouter
   .route('/:id')

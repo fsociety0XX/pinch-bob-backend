@@ -10,9 +10,11 @@ import {
 import { Role } from '@src/types/customTypes';
 
 const categoryRouter = express.Router();
-categoryRouter.use(protect, roleRistriction(Role.ADMIN));
 
-categoryRouter.route('/').get(getAllCategory).post(createCategory);
+categoryRouter.route('/').get(getAllCategory); // No protection for get all data
+
+categoryRouter.use(protect, roleRistriction(Role.ADMIN));
+categoryRouter.route('/').post(createCategory);
 
 categoryRouter
   .route('/:id')
