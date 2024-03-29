@@ -76,6 +76,7 @@ export const webhookCheckout = (req: Request, res: Response): void => {
       });
     }
   } catch (err) {
+    console.log(err, 'Error in stripe webhook');
     res.status(StatusCode.BAD_REQUEST).json({
       status: 'fail',
       message: 'Error in webhook payment processing',
