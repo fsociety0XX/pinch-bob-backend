@@ -53,33 +53,32 @@ const updateOrder = async (session: StripeWebhookEvent, payment: string) => {
 
 export const webhookCheckout = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';
-  let event;
+  let event: StripeWebhookEvent;
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
+    if (event?.type === 'checkout.session.completed') {
+      // payment is successfull
+      updateOrder(event, 'success');
+      res.status(StatusCode.SUCCESS).send({
+        status: 'success',
+        message: 'Payment successfull',
+      });
+    } else {
+      // payment is unsuccessfull
+      updateOrder(event!, 'fail');
+      res.status(StatusCode.BAD_REQUEST).send({
+        status: 'fail',
+        message: 'Payment unsuccessfull',
+      });
+    }
   } catch (err) {
     res.status(StatusCode.BAD_REQUEST).json({
       status: 'fail',
       message: 'Error in webhook payment processing',
-    });
-  }
-
-  if (event?.type === 'checkout.session.completed') {
-    // payment is successfull
-    updateOrder(event, 'success');
-    res.status(StatusCode.SUCCESS).send({
-      status: 'success',
-      message: 'Payment successfull',
-    });
-  } else {
-    // payment is unsuccessfull
-    updateOrder(event!, 'fail');
-    res.status(StatusCode.BAD_REQUEST).send({
-      status: 'fail',
-      message: 'Payment unsuccessfull',
     });
   }
 };
