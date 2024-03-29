@@ -52,6 +52,13 @@ const dirname = path.resolve();
 // Allow cors
 app.use(cors());
 
+// Stripe webhook, BEFORE body-parser, because stripe needs the body as stream
+app.post(
+  WEBHOOK_CHECKOUT_ROUTE,
+  express.raw({ type: 'application/json' }),
+  webhookCheckout
+);
+
 // Parse incoming request bodies in JSON format
 app.use(express.json());
 
@@ -72,13 +79,6 @@ if (process.env.NODE_ENV === PRODUCTION) {
   });
   app.use('/api', limiter);
 }
-
-// Stripe webhook, BEFORE body-parser, because stripe needs the body as stream
-app.post(
-  WEBHOOK_CHECKOUT_ROUTE,
-  express.raw({ type: 'application/json' }),
-  webhookCheckout
-);
 
 // Body parser -> Reading data from body into req.body
 app.use(express.json({ limit: BODY_PARSER_LIMIT }));
