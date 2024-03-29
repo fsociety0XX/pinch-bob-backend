@@ -39,9 +39,6 @@ export const placeOrder = catchAsync(
       mode: 'payment',
       currency: 'sgd',
       line_items: productList,
-      metadata: {
-        orderId: order.id,
-      },
     });
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -53,7 +50,7 @@ export const placeOrder = catchAsync(
 const updateOrderAfterPaymentSuccess = async (
   session: StripeCheckoutSessionCompletedEvent
 ) => {
-  const orderId = session.data.object?.metadata;
+  const orderId = session.data.object?.client_reference_id;
   const {
     id,
     created,
