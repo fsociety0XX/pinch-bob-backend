@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import catchAsync from '@src/utils/catchAsync';
@@ -6,7 +7,7 @@ import { IRequestWithUser } from './authController';
 import { StatusCode } from '@src/types/customTypes';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-type StripeWebhookEvent = Stripe.Event;
+type StripeCheckoutSessionCompletedEvent = Stripe.CheckoutSessionCompletedEvent;
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response) => {
@@ -33,11 +34,14 @@ export const placeOrder = catchAsync(
       customer: req.user?._id,
       client_reference_id: order.id,
       payment_method_types: ['paynow', 'card'],
-      success_url: `https://stg-pinch.netlify.com/order-confirm`, // Need to change URL later
+      success_url: `https://stg-pinch.netlify.com/order-confirm/${order.id}`, // Need to change URL later
       cancel_url: `https://stg-pinch.netlify.com/checkout`, // Need to change URL later
       mode: 'payment',
       currency: 'sgd',
       line_items: productList,
+      metadata: {
+        orderId: order.id,
+      },
     });
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -46,14 +50,31 @@ export const placeOrder = catchAsync(
   }
 );
 
-const updateOrder = async (session: StripeWebhookEvent, payment: string) => {
-  // const orderId = session.data.object;
-  console.log(session, payment, 'session after payment success');
+const updateOrderAfterPaymentSuccess = async (
+  session: StripeCheckoutSessionCompletedEvent
+) => {
+  const orderId = session.data.object?.metadata;
+  const {
+    id,
+    created,
+    data: { object },
+  } = session;
+
+  const stripeDetails = {
+    eventId: id,
+    created,
+    checkoutSessionId: object?.id,
+    amount: object?.amount_total,
+    paymentIntent: object?.payment_intent,
+    paymentStatus: object?.payment_status,
+    transactionStatus: object?.status,
+  };
+  await Order.findByIdAndUpdate(orderId, { stripeDetails, paid: true });
 };
 
 export const webhookCheckout = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';
-  let event: StripeWebhookEvent;
+  let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
@@ -62,14 +83,13 @@ export const webhookCheckout = (req: Request, res: Response): void => {
     );
     if (event?.type === 'checkout.session.completed') {
       // payment is successfull
-      updateOrder(event, 'success');
+      updateOrderAfterPaymentSuccess(event!);
       res.status(StatusCode.SUCCESS).send({
         status: 'success',
         message: 'Payment successfull',
       });
     } else {
       // payment is unsuccessfull
-      updateOrder(event!, 'fail');
       res.status(StatusCode.BAD_REQUEST).send({
         status: 'fail',
         message: 'Payment unsuccessfull',
