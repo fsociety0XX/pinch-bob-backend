@@ -59,9 +59,9 @@ const updateOrderAfterPaymentSuccess = async (
 
   const stripeDetails = {
     eventId: id,
-    created,
+    createdAt: new Date(created),
     checkoutSessionId: object?.id,
-    amount: object?.amount_total,
+    amount: object.amount_total! / 100, // Since stripe returns amount in cents
     paymentIntent: object?.payment_intent,
     paymentStatus: object?.payment_status,
     transactionStatus: object?.status,
