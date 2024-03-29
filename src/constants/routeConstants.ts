@@ -12,6 +12,7 @@ export const ADDRESS_ROUTE = `${VERSION1}/address`;
 export const DELIVERY_METHOD_ROUTE = `${VERSION1}/deliveryMethod`;
 export const COLLECTION_TIME_ROUTE = `${VERSION1}/collectionTime`;
 export const ORDER_ROUTE = `${VERSION1}/order`;
+export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
 
 // AUTH
 export const SIGN_UP = `/signup`;

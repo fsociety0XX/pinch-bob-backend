@@ -1,6 +1,9 @@
+import Stripe from 'stripe';
 import mongoose, { model } from 'mongoose';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum } from '@src/types/customTypes';
+
+type StripeWebhookEvent = Stripe.Event;
 
 interface IPhoto {
   key: string;
@@ -32,7 +35,12 @@ interface IDelivery {
 }
 
 export interface IProduct {
-  id: mongoose.Schema.Types.ObjectId;
+  product: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+    images: IPhoto[];
+  };
+  price: number;
   quantity?: number;
   size?: mongoose.Schema.Types.ObjectId;
   pieces?: mongoose.Schema.Types.ObjectId;
@@ -53,6 +61,8 @@ interface IOrderSchema {
   recipInfo?: IRecipInfo;
   paid: boolean;
   orderStatus: string;
+  stripeDetails: StripeWebhookEvent;
+  active: boolean;
 }
 
 const ProductImageSchema = new mongoose.Schema<IPhoto>({
@@ -64,10 +74,11 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 });
 
 const ProductSchema = new mongoose.Schema<IProduct>({
-  id: {
+  product: {
     type: mongoose.Schema.ObjectId,
     ref: 'Product',
   },
+  price: Number,
   quantity: Number,
   size: {
     type: mongoose.Schema.ObjectId,
@@ -118,7 +129,7 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     product: [
       {
         type: ProductSchema,
-        required: [true, 'An order must have a product'],
+        required: [true, 'An order must have a product details'],
       },
     ],
     user: {
@@ -147,6 +158,11 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
       default: false,
     },
     orderStatus: String,
+    stripeDetails: Object,
+    active: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
@@ -154,6 +170,15 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     toObject: { virtuals: true },
   }
 );
+
+orderSchema.pre('findOne', function (next) {
+  this.populate({
+    path: 'product.product',
+    select: 'name images',
+  });
+  // this.find({ active: { $eq: true } });
+  next();
+});
 
 const Order = model<IOrderSchema>('Order', orderSchema);
 

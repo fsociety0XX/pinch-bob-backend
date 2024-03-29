@@ -3,7 +3,6 @@ import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import bodyParser from 'body-parser';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
@@ -30,6 +29,7 @@ import {
   PRODUCT_ROUTE,
   SIZE_ROUTE,
   USER_ROUTE,
+  WEBHOOK_CHECKOUT_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -42,6 +42,7 @@ import addressRouter from './routes/addressRoutes';
 import deliveryMethodRouter from './routes/deliveryMethodRoutes';
 import orderRouter from './routes/orderRoutes';
 import collectionTimeRouter from './routes/collectionTimeRoutes';
+import { webhookCheckout } from './controllers/orderController';
 
 const app = express();
 const dirname = path.resolve();
@@ -52,7 +53,7 @@ const dirname = path.resolve();
 app.use(cors());
 
 // Parse incoming request bodies in JSON format
-app.use(bodyParser.json());
+app.use(express.json());
 
 // Set security http headers
 app.use(helmet());
@@ -71,6 +72,13 @@ if (process.env.NODE_ENV === PRODUCTION) {
   });
   app.use('/api', limiter);
 }
+
+// Stripe webhook, BEFORE body-parser, because stripe needs the body as stream
+app.post(
+  WEBHOOK_CHECKOUT_ROUTE,
+  express.raw({ type: 'application/json' }),
+  webhookCheckout
+);
 
 // Body parser -> Reading data from body into req.body
 app.use(express.json({ limit: BODY_PARSER_LIMIT }));
