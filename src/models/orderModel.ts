@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { model } from 'mongoose';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum } from '@src/types/customTypes';
 
@@ -11,11 +11,12 @@ interface IPhoto {
 }
 
 interface IRecipInfo {
+  sameAsSender: boolean;
   name: string;
   contact: number;
 }
 
-interface ISummary {
+interface IPricingSummary {
   subTotal: string;
   gst: string;
   deliveryCharge: string;
@@ -30,13 +31,13 @@ interface IDelivery {
   address: mongoose.Schema.Types.ObjectId;
 }
 
-interface IProduct {
+export interface IProduct {
   id: mongoose.Schema.Types.ObjectId;
   quantity?: number;
   size?: mongoose.Schema.Types.ObjectId;
   pieces?: mongoose.Schema.Types.ObjectId;
   flavour?: mongoose.Schema.Types.ObjectId;
-  refImage?: IPhoto[];
+  refImage?: IPhoto;
   msg?: string;
   fondantInfo?: string;
   address?: string; // will be used if delivery type - multi location delivery
@@ -48,13 +49,13 @@ interface IOrderSchema {
   product: IProduct[];
   user: mongoose.Schema.Types.ObjectId;
   delivery: IDelivery;
-  summary: ISummary;
-  recipInfo: IRecipInfo;
+  pricingSummary: IPricingSummary;
+  recipInfo?: IRecipInfo;
   paid: boolean;
   orderStatus: string;
 }
 
-const ProductImageSchema = new mongoose.Schema({
+const ProductImageSchema = new mongoose.Schema<IPhoto>({
   key: String,
   originalname: String,
   mimetype: String,
@@ -93,30 +94,67 @@ const DeliverySchema = new mongoose.Schema<IDelivery>({
   address: mongoose.Schema.ObjectId,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const orderSchema = new mongoose.Schema<IOrderSchema>({
-  brand: {
-    type: String,
-    required: [true, COMMON_SCHEMA_VALIDATION.brand],
-    enum: brandEnum,
-  },
-  deliveryType: {
-    type: String,
-    default: 'single',
-    enum: deliveryTypeEnum,
-  },
-  product: [
-    {
-      type: ProductSchema,
-      required: [true, 'An order must have a product'],
-    },
-  ],
-  user: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-  },
-  delivery: {
-    type: DeliverySchema,
-    required: [true, 'Delivery details are for the order'],
-  },
+const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
+  subTotal: String,
+  gst: String,
+  deliveryCharge: String,
+  coupon: mongoose.Schema.ObjectId,
+  total: String,
 });
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const orderSchema = new mongoose.Schema<IOrderSchema>(
+  {
+    brand: {
+      type: String,
+      required: [true, COMMON_SCHEMA_VALIDATION.brand],
+      enum: brandEnum,
+    },
+    deliveryType: {
+      type: String,
+      default: 'single',
+      enum: deliveryTypeEnum,
+    },
+    product: [
+      {
+        type: ProductSchema,
+        required: [true, 'An order must have a product'],
+      },
+    ],
+    user: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+    },
+    delivery: {
+      type: DeliverySchema,
+      required: [true, 'Delivery details are for the order'],
+    },
+    pricingSummary: {
+      type: PricingSummarySchema,
+      required: [true, 'Pricing details in order summary is required'],
+    },
+    recipInfo: {
+      sameAsSender: Boolean,
+      name: String,
+      contact: Number,
+    },
+    paid: {
+      type: Boolean,
+      required: [
+        true,
+        'A payment confirmation status is required for an order',
+      ],
+      default: false,
+    },
+    orderStatus: String,
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+const Order = model<IOrderSchema>('Order', orderSchema);
+
+export default Order;

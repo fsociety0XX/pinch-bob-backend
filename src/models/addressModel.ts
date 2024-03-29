@@ -53,6 +53,12 @@ const addressSchema = new mongoose.Schema<IAddress>(
       required: [true, ADDRESS_SCHEMA_VALIDATION.address1],
       trim: true,
     },
+    address2: {
+      type: String,
+      required: [true, ADDRESS_SCHEMA_VALIDATION.address2],
+      trim: true,
+    },
+    company: String,
     postalCode: {
       type: String,
       required: [true, ADDRESS_SCHEMA_VALIDATION.postalCode],

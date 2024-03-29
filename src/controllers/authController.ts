@@ -208,7 +208,6 @@ export const resetPassword = catchAsync(
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
-    console.log(req.params.token, 'req.params.token');
     // 1. get user based on token
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
