@@ -15,6 +15,7 @@ import {
   INVALID_TOKEN,
   LOGIN_AGAIN,
   NO_USER,
+  REGISTER_ERROR,
   TOKEN_SENT,
   UNAUTHORISED,
   UNAUTHORISED_ROLE,
@@ -35,8 +36,8 @@ interface MulterRequest extends Request {
   file: ICustomFile;
 }
 
-interface IRequestWithUser extends Request {
-  user: IUser;
+export interface IRequestWithUser extends Request {
+  user?: IUser;
 }
 
 const generateToken = (id: string) =>
@@ -54,7 +55,7 @@ const createAndSendToken = (
     expires: new Date(
       Date.now() + +process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: true, // restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
+    httpOnly: true, // if true => restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
   };
 
   if (process.env.NODE_ENV === PRODUCTION) cookieOptions.secure = true; // allows to access only via https
@@ -117,33 +118,33 @@ export const protect = catchAsync(
 export const roleRistriction =
   (...roles: string[]) =>
   (req: IRequestWithUser, res: Response, next: NextFunction): void => {
-    console.log('req.user.role111');
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(req.user!.role)) {
       return next(new AppError(UNAUTHORISED_ROLE, StatusCode.UNAUTHORISED));
     }
-    return next();
+    next();
   };
 
-export const signup = catchAsync(async (req: MulterRequest, res: Response) => {
-  if (req.file) {
-    const { key, originalname, mimetype, size, location } = req.file;
-    req.body.profile = {
-      key,
-      name: originalname,
-      mimeType: mimetype,
-      size,
-      url: location,
-    };
+export const signup = catchAsync(
+  async (req: MulterRequest, res: Response, next: NextFunction) => {
+    if (!req.body || !Object.keys(req.body).length) {
+      return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
+    }
+    if (req.file) {
+      req.body.photo = req.file;
+    }
+    const newUser = await User.create(req.body);
+    if (!newUser) {
+      return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
+    }
+    createAndSendToken(newUser, StatusCode.CREATE, res);
+    // TODO: change email later
+    await sendEmail({
+      email: newUser.email,
+      subject: 'Congrats! Welcome to Pinchbakehouse',
+      message: 'So glad to see you here.',
+    });
   }
-  const newUser = await User.create(req.body);
-  createAndSendToken(newUser, StatusCode.CREATE, res);
-  // TODO: change later
-  await sendEmail({
-    email: newUser.email,
-    subject: 'Congrats! Welcome to Pinchbakehouse',
-    message: 'So glad to see you here.',
-  });
-});
+);
 
 export const signin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -176,9 +177,9 @@ export const forgotPassword = catchAsync(
 
     const resetUrl = `${req.protocol}://${req.get(
       'host'
-    )}/api/v1/users/resetPassword/${resetToken}`;
+    )}/reset-password/${resetToken}`;
 
-    // TODO: change later
+    // TODO: change email later
     const message = `Forgot your password ? Don't worry, you can reset it here - ${resetUrl}. \nIf you remember the password then ignore the email.`;
 
     try {
@@ -207,7 +208,6 @@ export const resetPassword = catchAsync(
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
-    console.log(req.params.token, 'req.params.token');
     // 1. get user based on token
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
@@ -235,7 +235,7 @@ export const changePassword = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
     // 1. get user from collection
-    const user = await User.findById(req.user._id).select('+password');
+    const user = await User.findById(req.user!._id).select('+password');
     // 2. check if entered password is correct
     if (
       !user ||

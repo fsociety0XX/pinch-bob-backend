@@ -5,6 +5,7 @@ export enum StatusCode {
   BAD_REQUEST = 400,
   UNAUTHORISED = 401,
   INTERNAL_SERVER_ERROR = 500,
+  NO_CONTENT = 204,
 }
 
 export enum Role {
@@ -17,3 +18,5 @@ export interface errorObject {
 }
 
 export const brandEnum = ['pinch', 'bob'];
+export const typeEnum = ['cake', 'bake'];
+export const deliveryTypeEnum = ['single', 'multiple'];
