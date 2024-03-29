@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import Stripe from 'stripe';
 import cron from 'node-cron';
 import { Request, Response } from 'express';
@@ -9,14 +8,17 @@ import { StatusCode } from '@src/types/customTypes';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+// cron
 function cancelOrder(id: string) {
   const currentTime = new Date();
   const thirtyMinutesAfterCurrentTime = new Date(
-    currentTime.getTime() + 2 * 60 * 1000
+    currentTime.getTime() + 30 * 60 * 1000
   );
   const cronScheduleTime = `${thirtyMinutesAfterCurrentTime.getMinutes()} ${thirtyMinutesAfterCurrentTime.getHours()} * * *`;
   cron.schedule(cronScheduleTime, async () => {
-    await Order.findByIdAndUpdate(id, { orderStatus: 'cancelled' });
+    const order = await Order.findById(id);
+    if (!order?.paid && order?.orderStatus !== 'cancelled')
+      await Order.findByIdAndUpdate(id, { orderStatus: 'cancelled' });
   });
 }
 
