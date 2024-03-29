@@ -9,17 +9,17 @@ import {
   updateCollectionTime,
 } from '@src/controllers/collectionTimeController';
 
-const collectionTimeRoutes = express.Router();
+const collectionTimeRouter = express.Router();
 
-collectionTimeRoutes.route('/').get(getAllCollectionTime); // No protection for get all data
+collectionTimeRouter.route('/').get(getAllCollectionTime); // No protection for get all data
 
-collectionTimeRoutes.use(protect, roleRistriction(Role.ADMIN));
-collectionTimeRoutes.route('/').post(createCollectionTime);
+collectionTimeRouter.use(protect, roleRistriction(Role.ADMIN));
+collectionTimeRouter.route('/').post(createCollectionTime);
 
-collectionTimeRoutes
+collectionTimeRouter
   .route('/:id')
   .get(getOneCollectionTime)
   .patch(updateCollectionTime)
   .delete(deleteCollectionTime);
 
-export default collectionTimeRoutes;
+export default collectionTimeRouter;

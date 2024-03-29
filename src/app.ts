@@ -25,6 +25,7 @@ import {
   COLOUR_ROUTE,
   DELIVERY_METHOD_ROUTE,
   FLAVOUR_ROUTE,
+  ORDER_ROUTE,
   PIECES_ROUTE,
   PRODUCT_ROUTE,
   SIZE_ROUTE,
@@ -39,7 +40,8 @@ import flavourRouter from './routes/flavourRoutes';
 import colourRouter from './routes/colourRoutes';
 import addressRouter from './routes/addressRoutes';
 import deliveryMethodRouter from './routes/deliveryMethodRoutes';
-import collectionTimeRoutes from './routes/collectionTimeRoutes';
+import orderRouter from './routes/orderRoutes';
+import collectionTimeRouter from './routes/collectionTimeRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -102,7 +104,8 @@ app.use(FLAVOUR_ROUTE, flavourRouter);
 app.use(COLOUR_ROUTE, colourRouter);
 app.use(ADDRESS_ROUTE, addressRouter);
 app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
-app.use(COLLECTION_TIME_ROUTE, collectionTimeRoutes);
+app.use(COLLECTION_TIME_ROUTE, collectionTimeRouter);
+app.use(ORDER_ROUTE, orderRouter);
 
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
