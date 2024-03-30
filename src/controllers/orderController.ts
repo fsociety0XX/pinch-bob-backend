@@ -5,8 +5,10 @@ import catchAsync from '@src/utils/catchAsync';
 import Order from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
 import { StatusCode } from '@src/types/customTypes';
+import sendEmail from '@src/utils/sendEmail';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const CANCELLED = 'cancelled';
 
 // cron
 function cancelOrder(id: string) {
@@ -17,16 +19,22 @@ function cancelOrder(id: string) {
   const cronScheduleTime = `${thirtyMinutesAfterCurrentTime.getMinutes()} ${thirtyMinutesAfterCurrentTime.getHours()} * * *`;
   cron.schedule(cronScheduleTime, async () => {
     const order = await Order.findById(id);
-    if (!order?.paid && order?.orderStatus !== 'cancelled')
-      await Order.findByIdAndUpdate(id, { orderStatus: 'cancelled' });
+    if (!order?.paid && order?.orderStatus !== CANCELLED)
+      await Order.findByIdAndUpdate(id, { orderStatus: CANCELLED });
   });
 }
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response) => {
     req.body.user = req.user?._id;
-    const order = await Order.create(req.body);
-    const populatedOrder = await Order.findById(order.id);
+    let orderId;
+    if (req.body.orderId) {
+      orderId = req.body.orderId;
+    } else {
+      const order = await Order.create(req.body);
+      orderId = order.id;
+    }
+    const populatedOrder = await Order.findById(orderId);
     const productList = populatedOrder?.product.map(
       ({ product, price, quantity }) => ({
         quantity,
@@ -46,18 +54,18 @@ export const placeOrder = catchAsync(
       customer_email: req.user?.email,
       customer: req.user?._id,
       payment_method_types: ['paynow', 'card'],
-      success_url: `https://stg-pinch.netlify.com/order-confirm/${order.id}`, // Need to change URL later
-      cancel_url: `https://stg-pinch.netlify.com/checkout`, // Need to change URL later
+      success_url: `https://stg-pinch.netlify.com/order-confirm/${orderId}`, // Need to change URL later
+      cancel_url: `https://stg-pinch.netlify.com/checkout/${orderId}`, // Need to change URL later
       mode: 'payment',
       currency: 'sgd',
       line_items: productList,
       metadata: {
-        orderId: order.id,
+        orderId,
       },
     });
 
     // Cancel order after 30 mins if payment fails
-    cancelOrder(order.id);
+    cancelOrder(orderId);
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       session,
@@ -84,6 +92,12 @@ const updateOrderAfterPaymentSuccess = async (
     paymentStatus: object?.payment_status,
   };
   await Order.findByIdAndUpdate(orderId, { stripeDetails, paid: true });
+  // TODO: change email later
+  await sendEmail({
+    email: object.customer_email!,
+    subject: 'Congratulations! for you order',
+    message: 'You order has been placed successfully',
+  });
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
     message: 'Payment successfull',
@@ -108,10 +122,27 @@ async function handlePaymentFailure(
   };
   await Order.findByIdAndUpdate(orderId, {
     stripeDetails,
-    orderStatus: 'cancelled',
+    orderStatus: CANCELLED,
   });
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
+
+export const triggerOrderFailEmail = catchAsync(
+  async (req: IRequestWithUser, res: Response) => {
+    const email = req.user?.email;
+    const orderId = req.params.orderId!;
+    // TODO: change email later
+    await sendEmail({
+      email: email!,
+      subject: `Payment failed for your recent order ${orderId}`,
+      message: `We have placed your order but payment didn't succeed. You can retry payment within 20 minutes to avoid order cancellation.`,
+    });
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: 'Order failure email sent successfully.',
+    });
+  }
+);
 
 export const webhookCheckout = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';

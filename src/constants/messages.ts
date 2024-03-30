@@ -69,3 +69,9 @@ export const COLLECTION_TIME_VALIDATION = {
   startTime: 'A collection time must have start time',
   endTime: 'A collection time must have end time',
 };
+export const ORDER_SCHEMA_VALIDATION = {
+  product: 'An order must have a product details',
+  delivery: 'Delivery details are for the order',
+  pricingSummary: 'Pricing details in order summary is required',
+  paid: 'A payment confirmation status is required for an order',
+};
