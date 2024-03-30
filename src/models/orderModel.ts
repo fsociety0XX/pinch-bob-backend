@@ -1,6 +1,9 @@
 import Stripe from 'stripe';
 import mongoose, { model } from 'mongoose';
-import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
+import {
+  COMMON_SCHEMA_VALIDATION,
+  ORDER_SCHEMA_VALIDATION,
+} from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum } from '@src/types/customTypes';
 
 type StripeWebhookEvent = Stripe.Event;
@@ -129,7 +132,7 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     product: [
       {
         type: ProductSchema,
-        required: [true, 'An order must have a product details'],
+        required: [true, ORDER_SCHEMA_VALIDATION.product],
       },
     ],
     user: {
@@ -138,11 +141,11 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     },
     delivery: {
       type: DeliverySchema,
-      required: [true, 'Delivery details are for the order'],
+      required: [true, ORDER_SCHEMA_VALIDATION.delivery],
     },
     pricingSummary: {
       type: PricingSummarySchema,
-      required: [true, 'Pricing details in order summary is required'],
+      required: [true, ORDER_SCHEMA_VALIDATION.pricingSummary],
     },
     recipInfo: {
       sameAsSender: Boolean,
@@ -151,10 +154,7 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     },
     paid: {
       type: Boolean,
-      required: [
-        true,
-        'A payment confirmation status is required for an order',
-      ],
+      required: [true, ORDER_SCHEMA_VALIDATION.paid],
       default: false,
     },
     orderStatus: String,
@@ -176,7 +176,7 @@ orderSchema.pre('findOne', function (next) {
     path: 'product.product',
     select: 'name images',
   });
-  // this.find({ active: { $eq: true } });
+  this.find({ active: { $eq: true } });
   next();
 });
 
