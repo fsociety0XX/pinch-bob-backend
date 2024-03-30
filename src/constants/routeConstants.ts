@@ -25,3 +25,4 @@ export const CHANGE_PASSWORD = `/change-password`;
 
 // Checkout session
 export const PLACE_ORDER = '/place-order';
+export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
