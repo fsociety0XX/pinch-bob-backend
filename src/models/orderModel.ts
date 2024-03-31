@@ -48,6 +48,7 @@ export interface IProduct {
   size?: mongoose.Schema.Types.ObjectId;
   pieces?: mongoose.Schema.Types.ObjectId;
   flavour?: mongoose.Schema.Types.ObjectId;
+  colour?: mongoose.Schema.Types.ObjectId;
   refImage?: IPhoto;
   msg?: string;
   fondantInfo?: string;
@@ -58,7 +59,7 @@ interface IOrderSchema {
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
-  user: mongoose.Schema.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
   recipInfo?: IRecipInfo;
@@ -94,6 +95,10 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   flavour: {
     type: mongoose.Schema.ObjectId,
     ref: 'Flavour',
+  },
+  colour: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Colour',
   },
   refImage: ProductImageSchema,
   msg: String,
@@ -173,8 +178,12 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
 
 orderSchema.pre('findOne', function (next) {
   this.populate({
-    path: 'product.product',
+    path: 'product.product product.size product.colour product.pieces product.flavour',
     select: 'name images',
+  });
+  this.populate({
+    path: 'user',
+    select: 'firstName lastName email',
   });
   this.find({ active: { $eq: true } });
   next();

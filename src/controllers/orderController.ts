@@ -1,11 +1,20 @@
 import Stripe from 'stripe';
 import cron from 'node-cron';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import catchAsync from '@src/utils/catchAsync';
 import Order from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
-import { StatusCode } from '@src/types/customTypes';
+import { Role, StatusCode } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
+import {
+  createOne,
+  deleteOne,
+  getAll,
+  getOne,
+  updateOne,
+} from '@src/utils/factoryHandler';
+import AppError from '@src/utils/appError';
+import { ORDER_AUTH_ERR } from '@src/constants/messages';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
@@ -95,7 +104,7 @@ const updateOrderAfterPaymentSuccess = async (
   // TODO: change email later
   await sendEmail({
     email: object.customer_email!,
-    subject: 'Congratulations! for you order',
+    subject: `Congratulations! for you order ${orderId}`,
     message: 'You order has been placed successfully',
   });
   res.status(StatusCode.SUCCESS).send({
@@ -175,3 +184,24 @@ export const webhookCheckout = (req: Request, res: Response): void => {
     });
   }
 };
+
+// Used for GET One - Only allow user to get their respective order
+export const authenticateOrderAccess = catchAsync(
+  async (req: IRequestWithUser, _: Response, next: NextFunction) => {
+    const order = await Order.findById(req.params.id);
+
+    if (
+      req.user?.role === Role.CUSTOMER &&
+      String(order?.user?._id) !== String(req.user?._id)
+    ) {
+      return next(new AppError(ORDER_AUTH_ERR, StatusCode.BAD_REQUEST));
+    }
+    return next();
+  }
+);
+
+export const createOrder = createOne(Order);
+export const updateOrder = updateOne(Order);
+export const deleteOrder = deleteOne(Order);
+export const getOneOrder = getOne(Order);
+export const getAllOrder = getAll(Order);

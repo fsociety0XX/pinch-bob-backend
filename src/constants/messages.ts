@@ -75,3 +75,9 @@ export const ORDER_SCHEMA_VALIDATION = {
   pricingSummary: 'Pricing details in order summary is required',
   paid: 'A payment confirmation status is required for an order',
 };
+export const ORDER_AUTH_ERR =
+  'You are not authorised to make any changes to this order';
+export const OTP_SENT = 'OTP sent successfully';
+export const OTP_VERIFIED = 'OTP verified successfully';
+export const OTP_EXPIRED = 'OTP has expired';
+export const INVALID_OTP = 'OTP is invalid';
