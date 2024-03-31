@@ -44,6 +44,8 @@ export interface IUser {
   passwordChangedAt: Date;
   resetPasswordToken: string | undefined;
   resetPasswordTokenExpiresIn: Date | undefined;
+  otp: string;
+  otpTimestamp: Date;
   active: boolean;
 }
 
@@ -148,6 +150,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       default: true,
       select: false,
     },
+    otp: String,
+    otpTimestamp: Date,
   },
   {
     timestamps: true,

@@ -17,6 +17,8 @@ export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
 // AUTH
 export const SIGN_UP = `/signup`;
 export const SIGN_IN = `/signin`;
+export const SEND_OTP = `/send-otp`;
+export const VERIFY_OTP = `/verify-otp`;
 export const FORGOT_PASSWORD = `/forgot-password`;
 export const RESET_PASSWORD = `/reset-password/:token`;
 

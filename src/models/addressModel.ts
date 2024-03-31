@@ -90,6 +90,15 @@ const addressSchema = new mongoose.Schema<IAddress>(
   }
 );
 
+addressSchema.pre('findOne', function (next) {
+  this.populate({
+    path: 'user',
+    select: 'firstName lastName email',
+  });
+  this.find({ active: true });
+  next();
+});
+
 const Address = mongoose.model('Address', addressSchema);
 
 export default Address;

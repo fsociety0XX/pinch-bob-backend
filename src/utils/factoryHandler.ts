@@ -80,6 +80,18 @@ export const getOne = (
     });
   });
 
+/**
+ *
+ * @param model
+ * @param filterFields - when you have a query param which can have multiple value in comma separated form
+ * then pass that particular query param name in filterFields. This uses 'split' method and convert the
+ * multiple comma separated string into array.
+ * example: /api/v1/order?user=123,456,789
+ * pass user through filterFields and it will convert user = [123,456,789] and put it inside query object.
+ * So that mongodb can execute this query properly.
+ * NOTE - Only use if a query can have multiple comma separated string values
+ * @returns
+ */
 export const getAll = (
   model: Model<any>,
   filterFields = ['']
@@ -89,6 +101,8 @@ export const getAll = (
     const currentPage = +req.query.page!;
     let isExtraParam = false; // Any param which is not related to pagination
     const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
+
+    // Special case for category where we need to apply '$in' mongodb query
     if (req.query.category) {
       req.query.category = {
         in: (req.query.category as string).split(','),
