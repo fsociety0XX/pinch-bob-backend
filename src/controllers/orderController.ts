@@ -90,7 +90,9 @@ const createWoodeliveryTask = (order: IOrderSchema) => {
   const {
     delivery: { address, method, date },
   } = order;
-  const destinationAddress = `${address.address1}, ${address.address2}, ${address.company}, ${address.city}, ${address.country}, ${address.postalCode}`;
+  const destinationAddress = `${address.address1}, ${address.address2 || ''}, ${
+    address.company || ''
+  }, ${address.city}, ${address.country}, ${address.postalCode}`;
   const taskTypeId =
     String(method.id) === String(selfCollectDeliveryMethodId) ? 5 : 1;
   let taskDesc = '';
@@ -99,7 +101,7 @@ const createWoodeliveryTask = (order: IOrderSchema) => {
       { product, quantity, price, size, pieces, flavour, msg, fondantInfo },
       index
     ) => {
-      taskDesc += `${index && ','}${quantity} x ${product.name}`;
+      taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
       return {
         productId: product.id,
         orderId: order.id,
@@ -120,11 +122,11 @@ const createWoodeliveryTask = (order: IOrderSchema) => {
     // afterDateTime: '2024-04-03T10:27:49.401Z',
     beforeDateTime: new Date(date).toISOString(), // UTC
     requesterName: `${address.firstName} ${address.lastName}`,
-    requesterPhone: address.phone,
+    requesterPhone: String(address.phone),
     destinationAddress,
     recipientName: order.recipInfo?.name,
-    recipientPhone: order.recipInfo?.contact,
-    brand: 'pinch',
+    recipientPhone: String(order.recipInfo?.contact),
+    tag1: 'pinch',
     packages,
   };
 
@@ -137,21 +139,23 @@ const createDelivery = async (id: string) => {
     delivery: { address, method, date, collectionTime },
     recipInfo,
   } = order!;
-  createWoodeliveryTask(order!).then(async (response) => {
-    const task = await response.json();
-    const data = {
-      brand: 'pinch', // TODO: change when rewriting bob
-      order: order?.id,
-      deliveryDate: date,
-      method: method.id,
-      collectionTime,
-      address: address.id,
-      recipientEmail: recipInfo?.name,
-      recipientPhone: recipInfo?.contact,
-      woodeliveryTaskId: task.id,
-    };
-    await Delivery.create(data);
-  });
+  createWoodeliveryTask(order!)
+    .then(async (response) => {
+      const task = await response.json();
+      const data = {
+        brand: 'pinch', // TODO: change when rewriting bob
+        order: order?.id,
+        deliveryDate: date,
+        method: method.id,
+        collectionTime,
+        address: address.id,
+        recipientEmail: recipInfo?.name,
+        recipientPhone: recipInfo?.contact,
+        woodeliveryTaskId: task.data.guid,
+      };
+      await Delivery.create(data);
+    })
+    .catch((err) => console.error(err, 'Error in creating delivery'));
 };
 
 const updateOrderAfterPaymentSuccess = async (
