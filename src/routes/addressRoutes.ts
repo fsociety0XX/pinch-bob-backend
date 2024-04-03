@@ -1,8 +1,6 @@
 import express from 'express';
 import { protect } from '@src/controllers/authController';
 import {
-  appendUserIdInReqBody,
-  appendUserIdInReqQuery,
   authenticateAddressAccess,
   createAddress,
   deleteAddress,
@@ -10,6 +8,10 @@ import {
   getOneAddress,
   updateAddress,
 } from '@src/controllers/addressController';
+import {
+  appendUserIdInReqBody,
+  appendUserIdInReqQuery,
+} from '@src/utils/middlewares';
 
 const addressRouter = express.Router();
 addressRouter.use(protect);

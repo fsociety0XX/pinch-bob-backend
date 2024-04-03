@@ -11,37 +11,21 @@ import {
 import { IRequestWithUser } from './authController';
 import AppError from '@src/utils/appError';
 import { ADDRESS_AUTH_ERR } from '@src/constants/messages';
-import { StatusCode } from '@src/types/customTypes';
+import { Role, StatusCode } from '@src/types/customTypes';
 
 // Used for GET One, PATCH & DELETE APIs - Only allow user to delete/update their respective addresses
 export const authenticateAddressAccess = catchAsync(
   async (req: IRequestWithUser, _: Response, next: NextFunction) => {
     const address = await Address.findById(req.params.id);
-    if (String(address?.user) !== String(req.user?._id)) {
+    if (
+      req.user?.role === Role.CUSTOMER &&
+      String(address?.user?._id) !== String(req.user?._id)
+    ) {
       return next(new AppError(ADDRESS_AUTH_ERR, StatusCode.BAD_REQUEST));
     }
     return next();
   }
 );
-
-// Usefull for filtering out of address based on current logged in user
-export const appendUserIdInReqQuery = (
-  req: IRequestWithUser,
-  _: Response,
-  next: NextFunction
-): void => {
-  req.query = { ...req.query, user: String(req.user?._id) };
-  return next();
-};
-
-export const appendUserIdInReqBody = (
-  req: IRequestWithUser,
-  _: Response,
-  next: NextFunction
-): void => {
-  req.body = { ...req.body, user: req.user?._id };
-  return next();
-};
 
 export const createAddress = createOne(Address);
 export const updateAddress = updateOne(Address);

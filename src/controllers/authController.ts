@@ -1,6 +1,7 @@
 /* eslint-disable consistent-return */
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import otpGenerator from 'otp-generator';
 import { Express, NextFunction, Request, Response } from 'express';
 import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
@@ -12,9 +13,12 @@ import {
   CURRENT_PASSWORD_INCORRECT,
   EMAIL_FAILED,
   INVALID_CREDENTIALS,
+  INVALID_OTP,
   INVALID_TOKEN,
   LOGIN_AGAIN,
   NO_USER,
+  OTP_EXPIRED,
+  OTP_SENT,
   REGISTER_ERROR,
   TOKEN_SENT,
   UNAUTHORISED,
@@ -124,6 +128,14 @@ export const roleRistriction =
     next();
   };
 
+const sendWelcomeEmail = async (newUser: IUser) => {
+  // TODO: change email later
+  await sendEmail({
+    email: newUser.email,
+    subject: 'Congrats! Welcome to Pinchbakehouse',
+    message: 'So glad to see you here.',
+  });
+};
 export const signup = catchAsync(
   async (req: MulterRequest, res: Response, next: NextFunction) => {
     if (!req.body || !Object.keys(req.body).length) {
@@ -137,12 +149,7 @@ export const signup = catchAsync(
       return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
     }
     createAndSendToken(newUser, StatusCode.CREATE, res);
-    // TODO: change email later
-    await sendEmail({
-      email: newUser.email,
-      subject: 'Congrats! Welcome to Pinchbakehouse',
-      message: 'So glad to see you here.',
-    });
+    sendWelcomeEmail(newUser);
   }
 );
 
@@ -252,5 +259,54 @@ export const changePassword = catchAsync(
 
     // 4. send back token
     createAndSendToken(user, 200, res);
+  }
+);
+
+export const sendOtp = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+  const otp = otpGenerator.generate(6, {
+    upperCaseAlphabets: false,
+    specialChars: false,
+  });
+  const otpTimestamp = new Date();
+  await User.findOneAndUpdate(
+    { email },
+    { otp, otpTimestamp },
+    { upsert: true }
+  );
+  await sendEmail({
+    email,
+    subject: 'Your OTP for Pinchbakehouse',
+    message: `OTP valid for 10 minutes - ${otp}`,
+  });
+  res.status(StatusCode.SUCCESS).json({
+    status: 'success',
+    message: OTP_SENT,
+  });
+});
+
+export const verifyOtp = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { otp, email } = req.body;
+    const user = await User.findOne({ email, otp });
+    if (user) {
+      // Check if OTP is still valid (within 10 minutes)
+      const currentTime = new Date();
+      const otpTimestamp = user?.otpTimestamp;
+      const timeDifference = currentTime.getTime() - otpTimestamp!.getTime();
+      const tenMinutesInMillis = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+      if (timeDifference <= tenMinutesInMillis) {
+        // Clear the OTP after successful verification
+        const currentUser = await User.findOneAndUpdate(
+          { email },
+          { $unset: { otp: 1, otpTimestamp: 1 } },
+          { new: true }
+        );
+        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res);
+      }
+      return next(new AppError(OTP_EXPIRED, StatusCode.BAD_REQUEST));
+    }
+    return next(new AppError(INVALID_OTP, StatusCode.BAD_REQUEST));
   }
 );

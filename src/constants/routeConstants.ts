@@ -1,4 +1,5 @@
 const VERSION1 = '/api/v1';
+const WOODELIVERY_BASEURL = 'https://api.woodelivery.com';
 
 // MASTER ROUTES
 export const USER_ROUTE = `${VERSION1}/users`;
@@ -17,6 +18,8 @@ export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
 // AUTH
 export const SIGN_UP = `/signup`;
 export const SIGN_IN = `/signin`;
+export const SEND_OTP = `/send-otp`;
+export const VERIFY_OTP = `/verify-otp`;
 export const FORGOT_PASSWORD = `/forgot-password`;
 export const RESET_PASSWORD = `/reset-password/:token`;
 
@@ -26,3 +29,4 @@ export const CHANGE_PASSWORD = `/change-password`;
 // Checkout session
 export const PLACE_ORDER = '/place-order';
 export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
+export const CREATE_WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/api/form/createtask`;
