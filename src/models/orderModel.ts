@@ -32,9 +32,23 @@ interface IPricingSummary {
 
 interface IDelivery {
   date: string;
-  method: mongoose.Schema.Types.ObjectId;
-  collectionTime: mongoose.Schema.Types.ObjectId;
-  address: mongoose.Schema.Types.ObjectId;
+  method: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  collectionTime: string;
+  address: {
+    id: mongoose.Schema.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+    city: string;
+    country: string;
+    company?: string;
+    address1: string;
+    address2?: string;
+    postalCode: string;
+    phone: number;
+  };
 }
 
 export interface IProduct {
@@ -45,17 +59,30 @@ export interface IProduct {
   };
   price: number;
   quantity?: number;
-  size?: mongoose.Schema.Types.ObjectId;
-  pieces?: mongoose.Schema.Types.ObjectId;
-  flavour?: mongoose.Schema.Types.ObjectId;
-  colour?: mongoose.Schema.Types.ObjectId;
+  size?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  pieces?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  flavour?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  colour?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
   refImage?: IPhoto;
   msg?: string;
   fondantInfo?: string;
   address?: string; // will be used if delivery type - multi location delivery
 }
 
-interface IOrderSchema {
+export interface IOrderSchema {
+  id: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
@@ -64,7 +91,7 @@ interface IOrderSchema {
   pricingSummary: IPricingSummary;
   recipInfo?: IRecipInfo;
   paid: boolean;
-  orderStatus: string;
+  status: string;
   stripeDetails: StripeWebhookEvent;
   active: boolean;
 }
@@ -108,9 +135,15 @@ const ProductSchema = new mongoose.Schema<IProduct>({
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
   date: String,
-  method: mongoose.Schema.ObjectId,
-  collectionTime: mongoose.Schema.ObjectId,
-  address: mongoose.Schema.ObjectId,
+  method: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'DeliveryMethod',
+  },
+  collectionTime: String,
+  address: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Address',
+  },
 });
 
 const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
@@ -162,7 +195,7 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
       required: [true, ORDER_SCHEMA_VALIDATION.paid],
       default: false,
     },
-    orderStatus: String,
+    status: String,
     stripeDetails: Object,
     active: {
       type: Boolean,
@@ -178,12 +211,17 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
 
 orderSchema.pre('findOne', function (next) {
   this.populate({
-    path: 'product.product product.size product.colour product.pieces product.flavour',
+    path: 'product.product product.size product.colour product.pieces product.flavour delivery.method',
     select: 'name images',
   });
   this.populate({
     path: 'user',
     select: 'firstName lastName email',
+  });
+  this.populate({
+    path: 'delivery.address',
+    select:
+      'firstName lastName email city country company address1 address2 postalCode phone',
   });
   this.find({ active: { $eq: true } });
   next();

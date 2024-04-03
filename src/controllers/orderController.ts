@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import { Request, Response, NextFunction } from 'express';
 import catchAsync from '@src/utils/catchAsync';
-import Order from '@src/models/orderModel';
+import Order, { IOrderSchema } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
 import { Role, StatusCode } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
@@ -15,6 +15,9 @@ import {
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import { ORDER_AUTH_ERR } from '@src/constants/messages';
+import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { fetchAPI } from '@src/utils/functions';
+import Delivery from '@src/models/deliveryModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
@@ -28,8 +31,8 @@ function cancelOrder(id: string) {
   const cronScheduleTime = `${thirtyMinutesAfterCurrentTime.getMinutes()} ${thirtyMinutesAfterCurrentTime.getHours()} * * *`;
   cron.schedule(cronScheduleTime, async () => {
     const order = await Order.findById(id);
-    if (!order?.paid && order?.orderStatus !== CANCELLED)
-      await Order.findByIdAndUpdate(id, { orderStatus: CANCELLED });
+    if (!order?.paid && order?.status !== CANCELLED)
+      await Order.findByIdAndUpdate(id, { status: CANCELLED });
   });
 }
 
@@ -82,6 +85,75 @@ export const placeOrder = catchAsync(
   }
 );
 
+const createWoodeliveryTask = (order: IOrderSchema) => {
+  const selfCollectDeliveryMethodId = '65e6bed4e40a1c39bc88b706';
+  const {
+    delivery: { address, method, date },
+  } = order;
+  const destinationAddress = `${address.address1}, ${address.address2}, ${address.company}, ${address.city}, ${address.country}, ${address.postalCode}`;
+  const taskTypeId =
+    String(method.id) === String(selfCollectDeliveryMethodId) ? 5 : 1;
+  let taskDesc = '';
+  const packages = order.product.map(
+    (
+      { product, quantity, price, size, pieces, flavour, msg, fondantInfo },
+      index
+    ) => {
+      taskDesc += `${index && ','}${quantity} x ${product.name}`;
+      return {
+        productId: product.id,
+        orderId: order.id,
+        quantity,
+        price,
+        size: size?.name,
+        pieces: pieces?.name,
+        flavour: flavour?.name,
+        msg,
+        fondantInfo,
+      };
+    }
+  );
+  const task = {
+    taskTypeId,
+    taskDesc,
+    externalKey: order.id,
+    // afterDateTime: '2024-04-03T10:27:49.401Z',
+    beforeDateTime: new Date(date).toISOString(), // UTC
+    requesterName: `${address.firstName} ${address.lastName}`,
+    requesterPhone: address.phone,
+    destinationAddress,
+    recipientName: order.recipInfo?.name,
+    recipientPhone: order.recipInfo?.contact,
+    brand: 'pinch',
+    packages,
+  };
+
+  return fetchAPI(CREATE_WOODELIVERY_TASK, 'POST', task);
+};
+
+const createDelivery = async (id: string) => {
+  const order = await Order.findById(id);
+  const {
+    delivery: { address, method, date, collectionTime },
+    recipInfo,
+  } = order!;
+  createWoodeliveryTask(order!).then(async (response) => {
+    const task = await response.json();
+    const data = {
+      brand: 'pinch', // TODO: change when rewriting bob
+      order: order?.id,
+      deliveryDate: date,
+      method: method.id,
+      collectionTime,
+      address: address.id,
+      recipientEmail: recipInfo?.name,
+      recipientPhone: recipInfo?.contact,
+      woodeliveryTaskId: task.id,
+    };
+    await Delivery.create(data);
+  });
+};
+
 const updateOrderAfterPaymentSuccess = async (
   session: Stripe.CheckoutSessionCompletedEvent,
   res: Response
@@ -101,6 +173,7 @@ const updateOrderAfterPaymentSuccess = async (
     paymentStatus: object?.payment_status,
   };
   await Order.findByIdAndUpdate(orderId, { stripeDetails, paid: true });
+  await createDelivery(orderId);
   // TODO: change email later
   await sendEmail({
     email: object.customer_email!,
@@ -131,7 +204,7 @@ async function handlePaymentFailure(
   };
   await Order.findByIdAndUpdate(orderId, {
     stripeDetails,
-    orderStatus: CANCELLED,
+    status: CANCELLED,
   });
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
