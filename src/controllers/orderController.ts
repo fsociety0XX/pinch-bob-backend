@@ -107,11 +107,11 @@ const createWoodeliveryTask = (order: IOrderSchema) => {
         orderId: order.id,
         quantity,
         price,
-        size: size?.name,
-        pieces: pieces?.name,
-        flavour: flavour?.name,
-        msg,
-        fondantInfo,
+        field1: size?.name,
+        field2: pieces?.name,
+        field3: flavour?.name,
+        field4: msg,
+        field5: fondantInfo,
       };
     }
   );
