@@ -55,11 +55,11 @@ export const updateOrderStatus = catchAsync(
       await Delivery.findOneAndUpdate(
         { order: orderId },
         {
-          status: WOODELIVERY_STATUS[req.body.taskTypeId],
+          status: WOODELIVERY_STATUS[req.body.StatusId],
         }
       );
       await Order.findByIdAndUpdate(orderId, {
-        status: WOODELIVERY_STATUS[req.body.taskTypeId],
+        status: WOODELIVERY_STATUS[req.body.StatusId],
       });
     }
     res.send(StatusCode.SUCCESS);
