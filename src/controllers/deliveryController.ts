@@ -48,24 +48,20 @@ export const assignOrderToDriver = catchAsync(
 
 export const updateOrderStatus = catchAsync(
   async (req: Request, res: Response) => {
-    const paramData = req.params.id;
-    console.log(
-      paramData,
-      'paramData',
-      paramData.split('-')[0],
-      'taskTypeId',
-      req.body.taskTypeId
-    );
-    const orderId = paramData.split('-')[0];
-    await Delivery.findOneAndUpdate(
-      { order: orderId },
-      {
+    const orderId = req.params.id;
+    const { brand } = req.query;
+
+    if (brand === 'pinch') {
+      await Delivery.findOneAndUpdate(
+        { order: orderId },
+        {
+          status: WOODELIVERY_STATUS[req.body.taskTypeId],
+        }
+      );
+      await Order.findByIdAndUpdate(orderId, {
         status: WOODELIVERY_STATUS[req.body.taskTypeId],
-      }
-    );
-    await Order.findByIdAndUpdate(orderId, {
-      status: WOODELIVERY_STATUS[req.body.taskTypeId],
-    });
+      });
+    }
     res.send(StatusCode.SUCCESS);
   }
 );
