@@ -23,6 +23,7 @@ import {
   COLLECTION_TIME_ROUTE,
   COLOUR_ROUTE,
   DELIVERY_METHOD_ROUTE,
+  DELIVERY_ROUTE,
   FLAVOUR_ROUTE,
   ORDER_ROUTE,
   PIECES_ROUTE,
@@ -43,6 +44,7 @@ import deliveryMethodRouter from './routes/deliveryMethodRoutes';
 import orderRouter from './routes/orderRoutes';
 import collectionTimeRouter from './routes/collectionTimeRoutes';
 import { webhookCheckout } from './controllers/orderController';
+import deliveryRouter from './routes/deliveryRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -114,6 +116,7 @@ app.use(ADDRESS_ROUTE, addressRouter);
 app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
 app.use(COLLECTION_TIME_ROUTE, collectionTimeRouter);
 app.use(ORDER_ROUTE, orderRouter);
+app.use(DELIVERY_ROUTE, deliveryRouter);
 
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {

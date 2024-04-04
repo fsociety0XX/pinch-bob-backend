@@ -14,3 +14,13 @@ export const RATE_LIMIT = {
 };
 export const BODY_PARSER_LIMIT = '10kb';
 export const IMAGE_SIZE_LIMIT = 1024 * 1024 * 10; // 10mb file size
+export const WOODELIVERY_STATUS = [
+  'Unassigned',
+  'Delivery',
+  'Pickup',
+  'Appointment',
+  'Field Workforce',
+  'In-store Pickup',
+  'Curbside Pickup',
+  'Drive-thru Pickup',
+];

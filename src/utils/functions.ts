@@ -9,7 +9,7 @@ interface FetchOptions {
 export const fetchAPI = (
   url: string,
   method: string,
-  body?: object
+  body?: object | []
 ): Promise<Response> => {
   const options: FetchOptions = {
     method,
