@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
+export interface IDriver {
+  id: 'string';
+  email: 'string';
+  phoneNumber: 'string';
+  firstName: 'string';
+  lastName: 'string';
+}
 export interface IDelivery {
   brand: string;
   order: mongoose.Schema.Types.ObjectId;
@@ -12,10 +19,18 @@ export interface IDelivery {
   recipientName: string;
   recipientPhone: string;
   woodeliveryTaskId: string;
-  driverDetails?: string;
+  driverDetails?: IDriver;
   status?: string;
   active: boolean;
 }
+
+const DriverSchema = new mongoose.Schema<IDriver>({
+  id: String,
+  email: String,
+  firstName: String,
+  lastName: String,
+  phoneNumber: String,
+});
 
 const deliverySchema = new mongoose.Schema<IDelivery>(
   {
@@ -41,7 +56,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     recipientName: String,
     recipientPhone: String,
     woodeliveryTaskId: String,
-    driverDetails: String,
+    driverDetails: DriverSchema,
     status: String,
     active: {
       type: Boolean,
