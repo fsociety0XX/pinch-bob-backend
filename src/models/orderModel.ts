@@ -93,6 +93,7 @@ export interface IOrderSchema {
   paid: boolean;
   status: string;
   stripeDetails: StripeWebhookEvent;
+  woodeliveryTaskId: string;
   active: boolean;
 }
 
@@ -197,6 +198,7 @@ const orderSchema = new mongoose.Schema<IOrderSchema>(
     },
     status: String,
     stripeDetails: Object,
+    woodeliveryTaskId: String,
     active: {
       type: Boolean,
       default: true,
