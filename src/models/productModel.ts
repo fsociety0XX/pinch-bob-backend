@@ -36,7 +36,6 @@ interface IProduct {
   currency: string;
   brand: string;
   ratingsAvg: number;
-  sold: number;
   totalRatings: number;
   piecesDetails?: IPieces[];
   sizeDetails?: ISize[];
@@ -46,8 +45,12 @@ interface IProduct {
   type: string; // cake or bake ?
   details: IProductDetails;
   maxQty?: number;
+  customise?: boolean;
+  preparationDays: number;
+  available: boolean; // will be used to show 'sold out' tags
   recommended: boolean;
   active: boolean;
+  superCategory: Types.ObjectId;
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
 }
@@ -96,7 +99,6 @@ const productSchema = new mongoose.Schema<IProduct>(
       max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
       set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
     },
-    sold: Number, // TODO: work on this after order module
     totalRatings: {
       type: Number,
       default: 0,
@@ -151,6 +153,18 @@ const productSchema = new mongoose.Schema<IProduct>(
       required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
     },
     maxQty: Number,
+    customise: {
+      type: Boolean,
+      default: false,
+    },
+    preparationDays: {
+      type: Number,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.preparationDays],
+    },
+    available: {
+      type: Boolean,
+      default: true,
+    },
     recommended: {
       type: Boolean,
       default: false,
@@ -160,6 +174,13 @@ const productSchema = new mongoose.Schema<IProduct>(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',
         required: [true, PRODUCT_SCHEMA_VALIDATION.category],
+      },
+    ],
+    superCategory: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SuperCategory',
+        required: [true, PRODUCT_SCHEMA_VALIDATION.superCategory],
       },
     ],
     fbt: [
