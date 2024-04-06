@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -31,6 +31,14 @@ const superCategorySchema = new mongoose.Schema<ISuperCategory>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+  }
+);
+
+superCategorySchema.pre<Query<ISuperCategory, ISuperCategory>>(
+  /^find/,
+  function (next) {
+    this.where({ active: true });
+    next();
   }
 );
 

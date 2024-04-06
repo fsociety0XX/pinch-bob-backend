@@ -126,7 +126,7 @@ export const getAll = (
       delete req.query.limit;
       delete req.query.page;
       const featuresWithoutLimit = new APIFeatures(
-        model.find(),
+        model.find({ active: true }),
         req.query as QueryString
       )
         .filter(filterFields)
@@ -137,7 +137,7 @@ export const getAll = (
         .find(featuresWithoutLimit.query)
         .countDocuments();
     } else {
-      totalDocsCount = await model.countDocuments();
+      totalDocsCount = await model.find({ active: true }).countDocuments();
     }
 
     if (!allDocs) {

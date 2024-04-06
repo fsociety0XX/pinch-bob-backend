@@ -14,11 +14,11 @@ import {
   RATE_LIMIT,
 } from './constants/static';
 import { TOO_MANY_REQUEST, routeNotFound } from './constants/messages';
-import userRouter from './routes/userRoutes';
 import AppError from './utils/appError';
 import { StatusCode } from './types/customTypes';
 import {
   ADDRESS_ROUTE,
+  AUTH_ROUTE,
   CATEGORY_ROUTE,
   COLLECTION_TIME_ROUTE,
   COLOUR_ROUTE,
@@ -47,6 +47,8 @@ import collectionTimeRouter from './routes/collectionTimeRoutes';
 import { webhookCheckout } from './controllers/orderController';
 import deliveryRouter from './routes/deliveryRoutes';
 import superCategoryRouter from './routes/superCategoryRoutes';
+import authRouter from './routes/authRoutes';
+import userRouter from './routes/userRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -107,6 +109,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // 3) ROUTES
+app.use(AUTH_ROUTE, authRouter);
 app.use(USER_ROUTE, userRouter);
 app.use(CATEGORY_ROUTE, categoryRouter);
 app.use(SUPER_CATEGORY_ROUTE, superCategoryRouter);

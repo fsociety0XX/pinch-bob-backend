@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import {
   COLLECTION_TIME_VALIDATION,
@@ -37,6 +37,14 @@ const collectionTimeSchema = new mongoose.Schema<ICollectionTime>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+  }
+);
+
+collectionTimeSchema.pre<Query<ICollectionTime, ICollectionTime>>(
+  /^find/,
+  function (next) {
+    this.where({ active: true });
+    next();
   }
 );
 
