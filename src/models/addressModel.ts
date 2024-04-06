@@ -1,9 +1,10 @@
-import mongoose from 'mongoose';
-import { brandEnum } from '@src/types/customTypes';
+import mongoose, { Query } from 'mongoose';
+import { StatusCode, brandEnum } from '@src/types/customTypes';
 import {
   ADDRESS_SCHEMA_VALIDATION,
   COMMON_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
+import AppError from '@src/utils/appError';
 
 export interface IAddress {
   brand: string;
@@ -95,8 +96,34 @@ addressSchema.pre('findOne', function (next) {
     path: 'user',
     select: 'firstName lastName email',
   });
-  this.find({ active: true });
   next();
+});
+
+addressSchema.pre<Query<IAddress, IAddress>>(/^find/, function (next) {
+  this.where({ active: true });
+  next();
+});
+
+// Middleware to ensure only 1 default address per user
+addressSchema.pre('save', async function (next) {
+  if (this.default && this.isNew && this.isModified('default')) {
+    try {
+      await this.model('Address').updateMany(
+        {
+          user: this.user,
+          _id: { $ne: this.id },
+        },
+        { $set: { default: false } }
+      );
+      next();
+    } catch (err) {
+      next(
+        new AppError(ADDRESS_SCHEMA_VALIDATION.default, StatusCode.BAD_REQUEST)
+      );
+    }
+  } else {
+    next();
+  }
 });
 
 const Address = mongoose.model('Address', addressSchema);

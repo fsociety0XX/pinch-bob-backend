@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -33,6 +33,11 @@ const flavourSchema = new mongoose.Schema<IFlavour>(
     toObject: { virtuals: true },
   }
 );
+
+flavourSchema.pre<Query<IFlavour, IFlavour>>(/^find/, function (next) {
+  this.where({ active: true });
+  next();
+});
 
 const Flavour = mongoose.model('Flavour', flavourSchema);
 
