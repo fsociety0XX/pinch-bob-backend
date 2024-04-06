@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import mongoose, { model } from 'mongoose';
+import mongoose, { Query, model } from 'mongoose';
 import {
   COMMON_SCHEMA_VALIDATION,
   ORDER_SCHEMA_VALIDATION,
@@ -81,7 +81,7 @@ export interface IProduct {
   address?: string; // will be used if delivery type - multi location delivery
 }
 
-export interface IOrderSchema {
+export interface IOrder {
   id: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
@@ -156,7 +156,7 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const orderSchema = new mongoose.Schema<IOrderSchema>(
+const orderSchema = new mongoose.Schema<IOrder>(
   {
     brand: {
       type: String,
@@ -225,10 +225,14 @@ orderSchema.pre('findOne', function (next) {
     select:
       'firstName lastName email city country company address1 address2 postalCode phone',
   });
-  this.find({ active: { $eq: true } });
   next();
 });
 
-const Order = model<IOrderSchema>('Order', orderSchema);
+orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
+  this.where({ active: true });
+  next();
+});
+
+const Order = model<IOrder>('Order', orderSchema);
 
 export default Order;

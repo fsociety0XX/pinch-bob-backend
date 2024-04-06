@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -81,6 +81,11 @@ deliverySchema.pre('findOne', function (next) {
     select:
       'firstName lastName email city country company address1 address2 postalCode phone',
   });
+  next();
+});
+
+deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
+  this.where({ active: true });
   next();
 });
 

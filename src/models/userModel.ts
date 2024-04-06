@@ -161,7 +161,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 );
 
 userSchema.pre<Query<IUser, IUser>>(/^find/, function (next) {
-  this.find({ active: true });
+  this.where({ active: true });
   next();
 });
 

@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import { Request, Response, NextFunction } from 'express';
 import catchAsync from '@src/utils/catchAsync';
-import Order, { IOrderSchema } from '@src/models/orderModel';
+import Order, { IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
 import { Role, StatusCode } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
@@ -85,7 +85,7 @@ export const placeOrder = catchAsync(
   }
 );
 
-const createWoodeliveryTask = (order: IOrderSchema) => {
+const createWoodeliveryTask = (order: IOrder) => {
   const selfCollectDeliveryMethodId = '65e6bed4e40a1c39bc88b706';
   const {
     delivery: { address, method, date },
