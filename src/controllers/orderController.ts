@@ -154,6 +154,7 @@ const createDelivery = async (id: string) => {
         woodeliveryTaskId: task.data.guid,
       };
       await Delivery.create(data);
+      await Order.findByIdAndUpdate(id, { woodeliveryTaskId: task.data.guid });
     })
     .catch((err) => console.error(err, 'Error in creating delivery'));
 };
