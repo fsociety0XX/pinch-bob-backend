@@ -40,8 +40,10 @@ export const PRODUCT_SCHEMA_VALIDATION = {
   type: 'A product must have a type',
   detail: 'A product detail is required',
   category: 'A category is required.',
+  superCategory: 'A super category is required.',
   minRatingsAvg: 'Rating must be greater than 1',
   maxRatingsAvg: 'Rating must be less than 5',
+  preparationDays: 'A product must have preparation days mentioned',
 };
 export const COMMON_SCHEMA_VALIDATION = {
   brand: 'A brand is required',
