@@ -8,7 +8,7 @@ import {
 export interface IDeliveryMethod {
   brand: string;
   name: string;
-  price: string;
+  price: number;
   info: string;
   active: boolean;
 }
@@ -27,7 +27,7 @@ const deliveryMethodSchema = new mongoose.Schema<IDeliveryMethod>(
       trim: true,
     },
     price: {
-      type: String,
+      type: Number,
       required: [true, DELIVERY_METHOD_VALIDATION.price],
     },
     info: {
