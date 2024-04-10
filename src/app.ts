@@ -20,7 +20,6 @@ import {
   ADDRESS_ROUTE,
   AUTH_ROUTE,
   CATEGORY_ROUTE,
-  COLLECTION_TIME_ROUTE,
   COLOUR_ROUTE,
   DELIVERY_METHOD_ROUTE,
   DELIVERY_ROUTE,
@@ -43,7 +42,6 @@ import colourRouter from './routes/colourRoutes';
 import addressRouter from './routes/addressRoutes';
 import deliveryMethodRouter from './routes/deliveryMethodRoutes';
 import orderRouter from './routes/orderRoutes';
-import collectionTimeRouter from './routes/collectionTimeRoutes';
 import { webhookCheckout } from './controllers/orderController';
 import deliveryRouter from './routes/deliveryRoutes';
 import superCategoryRouter from './routes/superCategoryRoutes';
@@ -120,7 +118,6 @@ app.use(FLAVOUR_ROUTE, flavourRouter);
 app.use(COLOUR_ROUTE, colourRouter);
 app.use(ADDRESS_ROUTE, addressRouter);
 app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
-app.use(COLLECTION_TIME_ROUTE, collectionTimeRouter);
 app.use(ORDER_ROUTE, orderRouter);
 app.use(DELIVERY_ROUTE, deliveryRouter);
 

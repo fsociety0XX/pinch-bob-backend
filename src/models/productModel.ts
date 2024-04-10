@@ -53,6 +53,7 @@ interface IProduct {
   superCategory: Types.ObjectId;
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
+  tag: string; // can be used to less sweet/ vegan labels to show in product
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -189,6 +190,7 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Product',
       },
     ],
+    tag: String,
     active: {
       type: Boolean,
       default: true,

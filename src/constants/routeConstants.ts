@@ -13,7 +13,6 @@ export const FLAVOUR_ROUTE = `${VERSION1}/flavour`;
 export const COLOUR_ROUTE = `${VERSION1}/colour`;
 export const ADDRESS_ROUTE = `${VERSION1}/address`;
 export const DELIVERY_METHOD_ROUTE = `${VERSION1}/deliveryMethod`;
-export const COLLECTION_TIME_ROUTE = `${VERSION1}/collectionTime`;
 export const ORDER_ROUTE = `${VERSION1}/order`;
 export const DELIVERY_ROUTE = `${VERSION1}/delivery`;
 export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
