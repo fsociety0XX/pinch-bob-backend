@@ -14,7 +14,7 @@ import {
   updateOne,
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
-import { ORDER_AUTH_ERR } from '@src/constants/messages';
+import { ORDER_AUTH_ERR, ORDER_NOT_FOUND } from '@src/constants/messages';
 import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { fetchAPI } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -37,7 +37,8 @@ function cancelOrder(id: string) {
 }
 
 export const placeOrder = catchAsync(
-  async (req: IRequestWithUser, res: Response) => {
+  // eslint-disable-next-line consistent-return
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
@@ -47,6 +48,10 @@ export const placeOrder = catchAsync(
       orderId = order.id;
     }
     const populatedOrder = await Order.findById(orderId);
+    if (!populatedOrder) {
+      return next(new AppError(ORDER_NOT_FOUND, StatusCode.BAD_REQUEST));
+    }
+
     const productList = populatedOrder?.product.map(
       ({ product, price, quantity }) => ({
         quantity,
