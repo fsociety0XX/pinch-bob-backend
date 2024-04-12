@@ -2,7 +2,7 @@ import path from 'path';
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
+// import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
@@ -10,10 +10,10 @@ import {
   BODY_PARSER_LIMIT,
   DEVELOPMENT,
   PREVENT_PARAMETER_POLLUTION,
-  PRODUCTION,
-  RATE_LIMIT,
+  // PRODUCTION,
+  // RATE_LIMIT,
 } from './constants/static';
-import { TOO_MANY_REQUEST, routeNotFound } from './constants/messages';
+import { routeNotFound } from './constants/messages';
 import AppError from './utils/appError';
 import { StatusCode } from './types/customTypes';
 import {
@@ -75,14 +75,14 @@ if (process.env.NODE_ENV === DEVELOPMENT) {
 }
 
 // Limit requests from same API
-if (process.env.NODE_ENV === PRODUCTION) {
-  const limiter = rateLimit({
-    max: RATE_LIMIT.max,
-    windowMs: RATE_LIMIT.windowMs,
-    message: TOO_MANY_REQUEST,
-  });
-  app.use('/api', limiter);
-}
+// if (process.env.NODE_ENV === PRODUCTION) {
+//   const limiter = rateLimit({
+//     max: RATE_LIMIT.max,
+//     windowMs: RATE_LIMIT.windowMs,
+//     message: TOO_MANY_REQUEST,
+//   });
+//   app.use('/api', limiter);
+// }
 
 // Body parser -> Reading data from body into req.body
 app.use(express.json({ limit: BODY_PARSER_LIMIT }));
