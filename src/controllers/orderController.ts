@@ -16,7 +16,10 @@ import {
 import AppError from '@src/utils/appError';
 import { ORDER_AUTH_ERR, ORDER_NOT_FOUND } from '@src/constants/messages';
 import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
-import { fetchAPI } from '@src/utils/functions';
+import {
+  calculateBeforeAndAfterDateTime,
+  fetchAPI,
+} from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -71,8 +74,12 @@ export const placeOrder = catchAsync(
       customer_email: req.user?.email,
       customer: req.user?._id,
       payment_method_types: ['paynow', 'card'],
-      success_url: `https://stg-pinch.netlify.com/order-confirm/${orderId}`, // Need to change URL later
-      cancel_url: `https://stg-pinch.netlify.com/checkout/${orderId}`, // Need to change URL later
+      success_url: `${req.protocol}://${req.get(
+        'host'
+      )}/order-confirm/${orderId}`,
+      cancel_url: `${req.protocol}://${req.get(
+        'host'
+      )}/retry-payment/${orderId}`,
       mode: 'payment',
       currency: 'sgd',
       line_items: productList,
@@ -93,7 +100,7 @@ export const placeOrder = catchAsync(
 const createWoodeliveryTask = (order: IOrder) => {
   const selfCollectDeliveryMethodId = '65e6bed4e40a1c39bc88b706';
   const {
-    delivery: { address, method, date },
+    delivery: { address, method, date, collectionTime },
   } = order;
   const destinationAddress = `${address.address1}, ${address.address2 || ''}, ${
     address.company || ''
@@ -124,8 +131,10 @@ const createWoodeliveryTask = (order: IOrder) => {
     taskTypeId,
     taskDesc,
     externalKey: order.id,
-    // afterDateTime: '2024-04-03T10:27:49.401Z',
-    beforeDateTime: new Date(date).toISOString(), // UTC
+    afterDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
+      .afterDateTime, // UTC
+    beforeDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
+      .beforeDateTime, // UTC
     requesterName: `${address.firstName} ${address.lastName}`,
     requesterPhone: String(address.phone),
     destinationAddress,
