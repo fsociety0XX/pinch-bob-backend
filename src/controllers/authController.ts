@@ -265,7 +265,7 @@ export const changePassword = catchAsync(
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.body;
   const otp = otpGenerator.generate(6, {
-    upperCaseAlphabets: false,
+    upperCaseAlphabets: true,
     specialChars: false,
   });
   const otpTimestamp = new Date();

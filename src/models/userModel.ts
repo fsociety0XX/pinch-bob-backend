@@ -33,7 +33,7 @@ export interface IUser {
   lastName: string;
   email: string;
   password: string;
-  phone: string;
+  phone?: string;
   photo: IPhoto;
   brand: string;
   role: string;
@@ -89,7 +89,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     phone: {
       type: String,
       unique: true,
-      required: [true, USER_SCHEMA_VALIDATION.phone],
+      sparse: true,
     },
     photo: {
       key: String,
