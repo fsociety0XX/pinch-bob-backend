@@ -202,6 +202,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     active: {
       type: Boolean,
       default: true,
+      select: false,
     },
   },
   {

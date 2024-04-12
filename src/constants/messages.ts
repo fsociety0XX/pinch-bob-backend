@@ -84,3 +84,4 @@ export const OTP_SENT = 'OTP sent successfully';
 export const OTP_VERIFIED = 'OTP verified successfully';
 export const OTP_EXPIRED = 'OTP has expired';
 export const INVALID_OTP = 'OTP is invalid';
+export const ORDER_NOT_FOUND = 'Order not found.';
