@@ -9,7 +9,7 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-dotenv.config({ path: './.env' });
+dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 
 mongoose
   .connect(process.env.DB)
