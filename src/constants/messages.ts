@@ -60,7 +60,7 @@ export const ADDRESS_SCHEMA_VALIDATION = {
   address2: 'A address2 is required',
   postalCode: 'A postal code is required',
   phone: 'A phone number is required',
-  default: 'Problem is marking address as default',
+  default: 'Problem in marking address as default',
 };
 export const ADDRESS_AUTH_ERR =
   'You are not authorised to make any changes to this address';

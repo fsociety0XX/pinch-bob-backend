@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose, { Query, UpdateQuery } from 'mongoose';
 import { StatusCode, brandEnum } from '@src/types/customTypes';
 import {
   ADDRESS_SCHEMA_VALIDATION,
@@ -104,7 +104,7 @@ addressSchema.pre<Query<IAddress, IAddress>>(/^find/, function (next) {
   next();
 });
 
-// Middleware to ensure only 1 default address per user
+// Middleware to ensure only 1 default address per user when new doc is created
 addressSchema.pre('save', async function (next) {
   if (this.default && this.isNew && this.isModified('default')) {
     try {
@@ -125,6 +125,39 @@ addressSchema.pre('save', async function (next) {
     next();
   }
 });
+
+// Middleware to ensure only 1 default address per user when a doc is updated
+addressSchema.pre(
+  'findOneAndUpdate',
+  async function (this: UpdateQuery<IAddress>, next) {
+    // Check if the 'default' field is being modified
+    if (this.getUpdate().default) {
+      try {
+        const updateQuery = this.getQuery();
+        const addressId = updateQuery._id;
+        const doc = await this.model.findOne({ _id: addressId });
+        // Update all other documents for the same user to set 'default' to false
+        await this.model.updateMany(
+          {
+            user: doc.user.id,
+            _id: { $ne: addressId },
+          },
+          { $set: { default: false } }
+        );
+        next();
+      } catch (err) {
+        next(
+          new AppError(
+            ADDRESS_SCHEMA_VALIDATION.default,
+            StatusCode.BAD_REQUEST
+          )
+        );
+      }
+    } else {
+      next();
+    }
+  }
+);
 
 const Address = mongoose.model('Address', addressSchema);
 
