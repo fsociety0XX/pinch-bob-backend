@@ -8,7 +8,7 @@ import AppError from './appError';
 import { StatusCode } from '@src/types/customTypes';
 import { IMAGE_SIZE_LIMIT } from '@src/constants/static';
 
-dotenv.config({ path: './.env' });
+dotenv.config({ path: `.env.${process.env.NODE_ENV}`, allowEmptyValues: true });
 
 // s3 instance using S3Client
 const s3 = new S3Client({
