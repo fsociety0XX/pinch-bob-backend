@@ -183,7 +183,7 @@ const createDelivery = async (id: string) => {
 const createProductListForTemplate = (order: IOrder) => {
   const productList = order?.product?.map((p) => ({
     name: p.product.name,
-    image: p.product.images[0].location,
+    image: p?.product?.images?.[0]?.location,
     flavour: p.flavour?.name,
     size: p.size?.name,
     quantity: p.quantity,
@@ -218,7 +218,12 @@ const updateOrderAfterPaymentSuccess = async (
     orderId,
     { stripeDetails, paid: true },
     { new: true }
-  );
+  )
+    .lean()
+    .populate({
+      path: 'product.product product.size product.colour product.pieces product.flavour',
+      select: 'name images',
+    });
   await createDelivery(orderId);
   await sendEmail({
     email: object.customer_email!,
@@ -270,7 +275,6 @@ export const triggerOrderFailEmail = catchAsync(
     const email = req.user?.email;
     const orderId = req.params.orderId!;
     const order = await Order.findById(orderId).lean();
-
     await sendEmail({
       email: email!,
       subject,
