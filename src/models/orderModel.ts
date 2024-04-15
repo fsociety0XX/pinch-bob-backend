@@ -95,6 +95,7 @@ export interface IOrder {
   stripeDetails: StripeWebhookEvent;
   woodeliveryTaskId: string;
   active: boolean;
+  createdAt: string;
 }
 
 const ProductImageSchema = new mongoose.Schema<IPhoto>({

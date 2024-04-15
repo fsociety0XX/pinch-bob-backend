@@ -1,3 +1,5 @@
+import path from 'path';
+
 export const TOO_MANY_REQUEST =
   'Too many requests from this IP, Please try after sometime';
 export const DB_CONNECT_SUCCESS = 'DB connection successful';
@@ -85,3 +87,31 @@ export const OTP_VERIFIED = 'OTP verified successfully';
 export const OTP_EXPIRED = 'OTP has expired';
 export const INVALID_OTP = 'OTP is invalid';
 export const ORDER_NOT_FOUND = 'Order not found.';
+export const TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
+export const EMAILS = {
+  welcomeEmail: {
+    subject: 'Congrats! Welcome to Pinchbakehouse',
+    template: 'welcomeEmail',
+    previewText: 'Hey! So glad to see you',
+  },
+  forgotPassword: {
+    subject: 'Reset password - valid for 10 minutes',
+    template: 'forgetPassword',
+    previewText: 'Reset password - valid for 10 minutes',
+  },
+  sendOtp: {
+    subject: 'Your OTP for Pinchbakehouse',
+    template: 'sendOtp',
+    previewText: 'Your OTP for Pinchbakehouse',
+  },
+  orderConfirm: {
+    subject: 'Thank you for your order',
+    template: 'orderConfirmation',
+    previewText: 'Thank you for your order',
+  },
+  orderFail: {
+    subject: 'Payment failed for your recent order',
+    template: 'orderFailure',
+    previewText: 'Attention required',
+  },
+};
