@@ -67,7 +67,7 @@ export const placeOrder = catchAsync(
         quantity,
         price_data: {
           currency: 'sgd',
-          unit_amount: price * 100,
+          unit_amount: price * 100, // Stripe expects amount in cents
           product_data: {
             name: product.name,
             images: [product?.images?.[0]?.location],
@@ -75,6 +75,19 @@ export const placeOrder = catchAsync(
         },
       })
     );
+
+    // Add delivery fee as a line item
+    productList.push({
+      quantity: 1,
+      price_data: {
+        currency: 'sgd',
+        unit_amount: populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
+        product_data: {
+          name: 'Delivery Fee',
+          description: populatedOrder?.delivery?.method?.name,
+        },
+      },
+    });
 
     // create checkout session
     const session = await stripe.checkout.sessions.create({
