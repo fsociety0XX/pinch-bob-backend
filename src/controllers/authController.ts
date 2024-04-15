@@ -11,6 +11,7 @@ import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
 import {
   CURRENT_PASSWORD_INCORRECT,
+  EMAILS,
   EMAIL_FAILED,
   INVALID_CREDENTIALS,
   INVALID_OTP,
@@ -129,11 +130,14 @@ export const roleRistriction =
   };
 
 const sendWelcomeEmail = async (newUser: IUser) => {
-  // TODO: change email later
+  const {
+    welcomeEmail: { subject, template, previewText },
+  } = EMAILS;
   await sendEmail({
     email: newUser.email,
-    subject: 'Congrats! Welcome to Pinchbakehouse',
-    message: 'So glad to see you here.',
+    subject,
+    template,
+    context: { previewText },
   });
 };
 export const signup = catchAsync(
@@ -182,18 +186,15 @@ export const forgotPassword = catchAsync(
     const resetToken = user.generateResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${req.protocol}://${req.get(
-      'host'
-    )}/reset-password/${resetToken}`;
-
-    // TODO: change email later
-    const message = `Forgot your password ? Don't worry, you can reset it here - ${resetUrl}. \nIf you remember the password then ignore the email.`;
-
     try {
+      const {
+        forgotPassword: { subject, template, previewText },
+      } = EMAILS;
       await sendEmail({
         email: user.email,
-        subject: 'Reset password - valid for 10 minutes',
-        message,
+        subject,
+        template,
+        context: { previewText, token: resetToken },
       });
       res.status(200).json({
         status: 'success',
@@ -264,6 +265,9 @@ export const changePassword = catchAsync(
 
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.body;
+  const {
+    sendOtp: { subject, template, previewText },
+  } = EMAILS;
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
@@ -278,8 +282,9 @@ export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   );
   await sendEmail({
     email,
-    subject: 'Your OTP for Pinchbakehouse',
-    message: `OTP valid for 10 minutes - ${otp}`,
+    subject,
+    template,
+    context: { previewText, otp },
   });
   res.status(StatusCode.SUCCESS).json({
     status: 'success',

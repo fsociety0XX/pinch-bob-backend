@@ -1,15 +1,20 @@
 import nodemailer from 'nodemailer';
+import hbs from 'nodemailer-express-handlebars';
+import path from 'path';
+import { TEMPLATES_DIR } from '@src/constants/messages';
 
 interface IEmail {
   email: string;
   subject: string;
-  message: string;
+  template?: string;
+  context?: { [key: string]: string };
 }
 
 const sendEmail = async ({
   email,
   subject,
-  message,
+  template,
+  context,
 }: IEmail): Promise<void> => {
   const transport = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -20,13 +25,26 @@ const sendEmail = async ({
     },
   });
 
+  transport.use(
+    'compile',
+    hbs({
+      viewEngine: {
+        extname: '.hbs',
+        layoutsDir: path.resolve(TEMPLATES_DIR),
+        defaultLayout: false,
+      },
+      viewPath: path.resolve(TEMPLATES_DIR),
+      extName: '.hbs',
+    })
+  );
+
   const mailOptions = {
     from: process.env.EMAIL_USERNAME,
     to: email,
     subject,
-    text: message,
+    template,
+    context,
   };
-
   await transport.sendMail(mailOptions);
 };
 
