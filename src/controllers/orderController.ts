@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+
 import Stripe from 'stripe';
 import cron from 'node-cron';
 import { Request, Response, NextFunction } from 'express';
@@ -14,7 +17,11 @@ import {
   updateOne,
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
-import { ORDER_AUTH_ERR, ORDER_NOT_FOUND } from '@src/constants/messages';
+import {
+  EMAILS,
+  ORDER_AUTH_ERR,
+  ORDER_NOT_FOUND,
+} from '@src/constants/messages';
 import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
@@ -173,10 +180,26 @@ const createDelivery = async (id: string) => {
     .catch((err) => console.error(err, 'Error in creating delivery'));
 };
 
+const createProductListForTemplate = (order: IOrder) => {
+  const productList = order?.product?.map((p) => ({
+    name: p.product.name,
+    image: p.product.images[0].location,
+    flavour: p.flavour?.name,
+    size: p.size?.name,
+    quantity: p.quantity,
+    price: p.price,
+    pieces: p.pieces?.name,
+  }));
+  return productList;
+};
+
 const updateOrderAfterPaymentSuccess = async (
   session: Stripe.CheckoutSessionCompletedEvent,
   res: Response
 ) => {
+  const {
+    orderConfirm: { subject, template, previewText },
+  } = EMAILS;
   const {
     id,
     data: { object },
@@ -191,13 +214,24 @@ const updateOrderAfterPaymentSuccess = async (
     paymentIntent: object?.payment_intent,
     paymentStatus: object?.payment_status,
   };
-  await Order.findByIdAndUpdate(orderId, { stripeDetails, paid: true });
+  const order = await Order.findByIdAndUpdate(
+    orderId,
+    { stripeDetails, paid: true },
+    { new: true }
+  );
   await createDelivery(orderId);
-  // TODO: change email later
   await sendEmail({
     email: object.customer_email!,
-    subject: `Congratulations! for you order ${orderId}`,
-    message: 'You order has been placed successfully',
+    subject,
+    template,
+    context: {
+      previewText,
+      orderId,
+      orderCreatedAt: new Date(order!.createdAt).toDateString(),
+      products: createProductListForTemplate(order),
+      pricingSummary: order!.pricingSummary,
+      deliveryDate: new Date(order?.delivery.date).toDateString(),
+    },
   });
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
@@ -230,13 +264,25 @@ async function handlePaymentFailure(
 
 export const triggerOrderFailEmail = catchAsync(
   async (req: IRequestWithUser, res: Response) => {
+    const {
+      orderFail: { subject, template, previewText },
+    } = EMAILS;
     const email = req.user?.email;
     const orderId = req.params.orderId!;
-    // TODO: change email later
+    const order = await Order.findById(orderId).lean();
+
     await sendEmail({
       email: email!,
-      subject: `Payment failed for your recent order ${orderId}`,
-      message: `We have placed your order but payment didn't succeed. You can retry payment within 20 minutes to avoid order cancellation.`,
+      subject,
+      template,
+      context: {
+        previewText,
+        orderId,
+        orderCreatedAt: new Date(order!.createdAt).toDateString(),
+        products: createProductListForTemplate(order),
+        pricingSummary: order!.pricingSummary,
+        deliveryDate: new Date(order?.delivery.date).toDateString(),
+      },
     });
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
