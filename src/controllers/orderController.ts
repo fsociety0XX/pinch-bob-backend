@@ -78,6 +78,7 @@ export const placeOrder = catchAsync(
 
     // Add delivery fee as a line item
     productList.push({
+      quantity: 1,
       price_data: {
         currency: 'sgd',
         unit_amount: populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
