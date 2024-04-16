@@ -1,9 +1,11 @@
+/* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
 import Stripe from 'stripe';
 import cron from 'node-cron';
 import { Request, Response, NextFunction } from 'express';
+import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -19,6 +21,7 @@ import {
 import AppError from '@src/utils/appError';
 import {
   EMAILS,
+  NO_DATA_FOUND,
   ORDER_AUTH_ERR,
   ORDER_NOT_FOUND,
 } from '@src/constants/messages';
@@ -31,6 +34,48 @@ import Delivery from '@src/models/deliveryModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
+
+interface IWoodeliveryPackage {
+  productId: ObjectId;
+  orderId: string;
+  quantity: number | undefined;
+  price: number;
+  field1: string | undefined;
+  field2: string | undefined;
+  field3: string | undefined;
+  field4: string;
+  field5: string;
+}
+
+interface IWoodeliveryTask {
+  taskTypeId: number;
+  taskDesc: string;
+  externalKey: string;
+  afterDateTime: Date;
+  beforeDateTime: Date;
+  requesterName?: string;
+  requesterPhone?: string;
+  requesterEmail: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientEmail?: string;
+  tag1: string;
+  destinationAddress?: string;
+  packages: IWoodeliveryPackage[];
+}
+
+interface IDeliveryData {
+  brand: string;
+  order: string;
+  deliveryDate: string;
+  method: ObjectId | string;
+  collectionTime: string;
+  recipientName: string | undefined;
+  recipientPhone: number | undefined;
+  recipientEmail?: string;
+  woodeliveryTaskId: string;
+  address?: ObjectId;
+}
 
 // cron
 function cancelOrder(id: string) {
@@ -81,7 +126,7 @@ export const placeOrder = catchAsync(
       quantity: 1,
       price_data: {
         currency: 'sgd',
-        unit_amount: populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
+        unit_amount: +populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
         product_data: {
           name: 'Delivery Fee',
           description: populatedOrder?.delivery?.method?.name,
@@ -148,7 +193,7 @@ const createWoodeliveryTask = (order: IOrder) => {
       };
     }
   );
-  const task = {
+  const task: IWoodeliveryTask = {
     taskTypeId,
     taskDesc,
     externalKey: id,
@@ -162,7 +207,7 @@ const createWoodeliveryTask = (order: IOrder) => {
     tag1: 'pinch',
     packages,
   };
-  if (address.id) {
+  if (address?.id) {
     task.destinationAddress = `${address.address1}, ${
       address.address2 || ''
     }, ${address.company || ''}, ${address.city}, ${address.country}, ${
@@ -182,15 +227,18 @@ const createWoodeliveryTask = (order: IOrder) => {
 
 const createDelivery = async (id: string) => {
   const order = await Order.findById(id);
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
   const {
     delivery: { address, method, date, collectionTime },
     recipInfo,
     user,
-  } = order!;
-  createWoodeliveryTask(order!)
+  } = order;
+  createWoodeliveryTask(order)
     .then(async (response) => {
       const task = await response.json();
-      const data = {
+      const data: IDeliveryData = {
         brand: 'pinch', // TODO: change when rewriting bob
         order: order?.id,
         deliveryDate: date,
@@ -265,9 +313,9 @@ const updateOrderAfterPaymentSuccess = async (
       previewText,
       orderId,
       orderCreatedAt: new Date(order!.createdAt).toDateString(),
-      products: createProductListForTemplate(order),
+      products: createProductListForTemplate(order!),
       pricingSummary: order!.pricingSummary,
-      deliveryDate: new Date(order?.delivery.date).toDateString(),
+      deliveryDate: new Date(order!.delivery?.date).toDateString(),
     },
   });
   res.status(StatusCode.SUCCESS).send({
@@ -307,6 +355,9 @@ export const triggerOrderFailEmail = catchAsync(
     const email = req.user?.email;
     const orderId = req.params.orderId!;
     const order = await Order.findById(orderId).lean();
+    if (!order) {
+      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+    }
     await sendEmail({
       email: email!,
       subject,
@@ -314,10 +365,10 @@ export const triggerOrderFailEmail = catchAsync(
       context: {
         previewText,
         orderId,
-        orderCreatedAt: new Date(order!.createdAt).toDateString(),
+        orderCreatedAt: new Date(order.createdAt).toDateString(),
         products: createProductListForTemplate(order),
-        pricingSummary: order!.pricingSummary,
-        deliveryDate: new Date(order?.delivery.date).toDateString(),
+        pricingSummary: order.pricingSummary,
+        deliveryDate: new Date(order?.delivery?.date).toDateString(),
       },
     });
     res.status(StatusCode.SUCCESS).json({
