@@ -15,9 +15,10 @@ export interface IDelivery {
   deliveryDate: string;
   method: mongoose.Schema.Types.ObjectId;
   collectionTime: string;
-  address: mongoose.Schema.Types.ObjectId;
-  recipientName: string;
-  recipientPhone: string;
+  address?: mongoose.Schema.Types.ObjectId;
+  recipientName?: string;
+  recipientPhone?: string;
+  recipientEmail?: string;
   woodeliveryTaskId: string;
   driverDetails?: IDriver;
   status?: string;
@@ -55,6 +56,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     },
     recipientName: String,
     recipientPhone: String,
+    recipientEmail: String,
     woodeliveryTaskId: String,
     driverDetails: DriverSchema,
     status: String,
