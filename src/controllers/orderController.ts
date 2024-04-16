@@ -120,13 +120,14 @@ export const placeOrder = catchAsync(
 const createWoodeliveryTask = (order: IOrder) => {
   const selfCollectDeliveryMethodId = '65e6bed4e40a1c39bc88b706';
   const {
+    id,
     delivery: { address, method, date, collectionTime },
+    recipInfo,
+    user,
   } = order;
-  const destinationAddress = `${address.address1}, ${address.address2 || ''}, ${
-    address.company || ''
-  }, ${address.city}, ${address.country}, ${address.postalCode}`;
+
   const taskTypeId =
-    String(method.id) === String(selfCollectDeliveryMethodId) ? 5 : 1;
+    String(method.id) === String(selfCollectDeliveryMethodId) ? 5 : 1; // Refer to woodelivery swagger
   let taskDesc = '';
   const packages = order.product.map(
     (
@@ -150,19 +151,31 @@ const createWoodeliveryTask = (order: IOrder) => {
   const task = {
     taskTypeId,
     taskDesc,
-    externalKey: order.id,
+    externalKey: id,
     afterDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
       .afterDateTime, // UTC
     beforeDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
       .beforeDateTime, // UTC
-    requesterName: `${address.firstName} ${address.lastName}`,
-    requesterPhone: String(address.phone),
-    destinationAddress,
-    recipientName: order.recipInfo?.name,
-    recipientPhone: String(order.recipInfo?.contact),
+    requesterEmail: user?.email,
+    recipientName: recipInfo?.name || '',
+    recipientPhone: String(recipInfo?.contact || ''),
     tag1: 'pinch',
     packages,
   };
+  if (address.id) {
+    task.destinationAddress = `${address.address1}, ${
+      address.address2 || ''
+    }, ${address.company || ''}, ${address.city}, ${address.country}, ${
+      address.postalCode
+    }`;
+    task.requesterName = `${address.firstName} ${address.lastName}`;
+    task.requesterPhone = String(address.phone);
+  } else {
+    task.destinationAddress = 'In Store';
+  }
+  if (!recipInfo || recipInfo.sameAsSender) {
+    task.recipientEmail = user?.email;
+  }
 
   return fetchAPI(CREATE_WOODELIVERY_TASK, 'POST', task);
 };
@@ -172,6 +185,7 @@ const createDelivery = async (id: string) => {
   const {
     delivery: { address, method, date, collectionTime },
     recipInfo,
+    user,
   } = order!;
   createWoodeliveryTask(order!)
     .then(async (response) => {
@@ -182,11 +196,16 @@ const createDelivery = async (id: string) => {
         deliveryDate: date,
         method: method.id,
         collectionTime,
-        address: address.id,
-        recipientEmail: recipInfo?.name,
+        recipientName: recipInfo?.name,
         recipientPhone: recipInfo?.contact,
         woodeliveryTaskId: task.data.guid,
       };
+      if (address?.id) {
+        data.address = address.id;
+      }
+      if (!recipInfo || recipInfo?.sameAsSender) {
+        data.recipientEmail = user?.email;
+      }
       await Delivery.create(data);
       await Order.findByIdAndUpdate(id, { woodeliveryTaskId: task.data.guid });
     })
