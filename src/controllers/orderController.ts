@@ -112,7 +112,9 @@ export const placeOrder = catchAsync(
         quantity,
         price_data: {
           currency: 'sgd',
-          unit_amount: price * 100, // Stripe expects amount in cents
+          unit_amount: (price / quantity) * 100, // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
+          // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
+          // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
           product_data: {
             name: product.name,
             images: [product?.images?.[0]?.location],
@@ -170,9 +172,9 @@ const createWoodeliveryTask = (order: IOrder) => {
     recipInfo,
     user,
   } = order;
-
-  const taskTypeId =
-    String(method.id) === String(selfCollectDeliveryMethodId) ? 5 : 1; // Refer to woodelivery swagger
+  const isSelfCollect =
+    String(method.id) === String(selfCollectDeliveryMethodId);
+  const taskTypeId = isSelfCollect ? 5 : 1; // Refer to woodelivery swagger
   let taskDesc = '';
   const packages = order.product.map(
     (
@@ -218,7 +220,7 @@ const createWoodeliveryTask = (order: IOrder) => {
   } else {
     task.destinationAddress = 'In Store';
   }
-  if (!recipInfo || recipInfo.sameAsSender) {
+  if (isSelfCollect || recipInfo.sameAsSender) {
     task.recipientEmail = user?.email;
   }
 
