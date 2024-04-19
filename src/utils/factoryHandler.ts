@@ -33,6 +33,9 @@ export const updateOne = (
   model: Model<any>
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    if (req.files?.length) {
+      req.body.images = req.files;
+    }
     const doc = await model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
