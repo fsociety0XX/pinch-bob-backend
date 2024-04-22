@@ -24,12 +24,25 @@ export const fetchAPI = (
   return fetch(url, options);
 };
 
+export function convertUTCToSGT(utcDateString: string): Date {
+  // Create a Date object from the UTC string
+  const utcDate = new Date(utcDateString);
+
+  // Get the SGT time zone offset in minutes (UTC+08:00)
+  const sgtOffsetMinutes = 8 * 60;
+
+  // Create a new Date object adjusted for SGT
+  const sgtDate = new Date(utcDate.getTime() + sgtOffsetMinutes * 60 * 1000);
+
+  return sgtDate;
+}
+
 export function calculateBeforeAndAfterDateTime(
   dateString: string,
   timeString: string
 ): { beforeDateTime: Date; afterDateTime: Date } {
   // Parse the date string into a Date object
-  const dateTime = new Date(dateString);
+  const dateTime = convertUTCToSGT(dateString);
 
   // Extract start time from the time string
   const [startTime] = timeString.split(' - ');
