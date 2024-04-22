@@ -199,14 +199,10 @@ const createWoodeliveryTask = (order: IOrder) => {
     taskTypeId,
     taskDesc,
     externalKey: id,
-    afterDateTime: calculateBeforeAndAfterDateTime(
-      new Date(date)?.toLocaleString('en-US'),
-      collectionTime
-    ).afterDateTime, // UTC
-    beforeDateTime: calculateBeforeAndAfterDateTime(
-      new Date(date)?.toLocaleString('en-US'),
-      collectionTime
-    ).beforeDateTime, // UTC
+    afterDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
+      .afterDateTime, // UTC
+    beforeDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
+      .beforeDateTime, // UTC
     requesterEmail: user?.email,
     recipientName: recipInfo?.name || '',
     recipientPhone: String(recipInfo?.contact || ''),
