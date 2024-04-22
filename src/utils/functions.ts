@@ -37,14 +37,14 @@ export function calculateBeforeAndAfterDateTime(
   // Parse the start time
   const [startHours, startMinutes] = startTime.match(/\d+/g)!.map(Number);
   const afterDateTime = new Date(dateTime);
-  afterDateTime.setHours(startHours, startMinutes, 0, 0);
+  afterDateTime.setUTCHours(startHours, startMinutes, 0, 0);
 
   // Set beforeDateTime to the end of the event
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, endTime] = timeString.split(' - ');
   const [endHours, endMinutes] = endTime.match(/\d+/g)!.map(Number);
   const beforeDateTime = new Date(dateTime);
-  beforeDateTime.setHours(endHours, endMinutes, 0, 0);
+  beforeDateTime.setUTCHours(endHours, endMinutes, 0, 0);
 
   return { beforeDateTime, afterDateTime };
 }
