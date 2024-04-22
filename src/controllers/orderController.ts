@@ -165,7 +165,6 @@ export const placeOrder = catchAsync(
 );
 
 const createWoodeliveryTask = (order: IOrder) => {
-  const selfCollectDeliveryMethodId = '65e6bed4e40a1c39bc88b706';
   const {
     id,
     delivery: { address, method, date, collectionTime },
@@ -173,7 +172,7 @@ const createWoodeliveryTask = (order: IOrder) => {
     user,
   } = order;
   const isSelfCollect =
-    String(method.id) === String(selfCollectDeliveryMethodId);
+    String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
   const taskTypeId = isSelfCollect ? 5 : 1; // Refer to woodelivery swagger
   let taskDesc = '';
   const packages = order.product.map(
