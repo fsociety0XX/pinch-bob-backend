@@ -112,7 +112,7 @@ export const placeOrder = catchAsync(
         quantity,
         price_data: {
           currency: 'sgd',
-          unit_amount: ((price / quantity) * 100)?.toFixed(2), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
+          unit_amount: (price?.toFixed(2) / quantity) * 100, // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
           // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
           // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
           product_data: {
