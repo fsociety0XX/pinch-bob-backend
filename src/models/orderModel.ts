@@ -215,12 +215,8 @@ const orderSchema = new mongoose.Schema<IOrder>(
 
 orderSchema.pre('findOne', function (next) {
   this.populate({
-    path: 'product.product product.size product.colour product.pieces product.flavour delivery.method',
+    path: 'product.size product.colour product.pieces product.flavour',
     select: 'name images',
-  });
-  this.populate({
-    path: 'user',
-    select: 'firstName lastName email',
   });
   this.populate({
     path: 'delivery.address',
@@ -231,6 +227,14 @@ orderSchema.pre('findOne', function (next) {
 });
 
 orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
+  this.populate({
+    path: 'product.product delivery.method',
+    select: 'name images',
+  });
+  this.populate({
+    path: 'user',
+    select: 'firstName lastName email',
+  });
   this.where({ active: true });
   next();
 });
