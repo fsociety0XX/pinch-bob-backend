@@ -2,6 +2,7 @@ import express from 'express';
 import {
   authenticateOrderAccess,
   createOrder,
+  deleteManyOrder,
   deleteOrder,
   getAllOrder,
   getOneOrder,
@@ -28,6 +29,7 @@ orderRouter.route('/:id').get(authenticateOrderAccess, getOneOrder);
 
 orderRouter.use(roleRistriction(Role.ADMIN));
 orderRouter.route('/').post(createOrder);
+orderRouter.route('/').patch(deleteManyOrder);
 orderRouter.route('/:id').patch(updateOrder).delete(deleteOrder);
 
 export default orderRouter;
