@@ -21,9 +21,11 @@ import {
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import {
+  DELIVERY_CREATE_ERROR,
   EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
+  ORDER_FAIL_EMAIL,
   ORDER_NOT_FOUND,
 } from '@src/constants/messages';
 import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
@@ -74,7 +76,7 @@ interface IDeliveryData {
   recipientName: string | undefined;
   recipientPhone: number | undefined;
   recipientEmail?: string;
-  woodeliveryTaskId: string;
+  woodeliveryTaskId?: string;
   address?: ObjectId;
 }
 
@@ -113,7 +115,7 @@ export const placeOrder = catchAsync(
         quantity,
         price_data: {
           currency: 'sgd',
-          unit_amount: ((price?.toFixed(2) / quantity) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
+          unit_amount: ((+price?.toFixed(2) / quantity!) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
           // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
           // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
           product_data: {
@@ -123,7 +125,7 @@ export const placeOrder = catchAsync(
         },
       })
     );
-    console.log(productList, 'productList');
+
     // Add delivery fee as a line item
     productList.push({
       quantity: 1,
@@ -168,13 +170,11 @@ export const placeOrder = catchAsync(
 const createWoodeliveryTask = (order: IOrder) => {
   const {
     id,
-    delivery: { address, method, date, collectionTime },
+    delivery: { address, date, collectionTime },
     recipInfo,
     user,
   } = order;
-  const isSelfCollect =
-    String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
-  const taskTypeId = isSelfCollect ? 5 : 1; // Refer to woodelivery swagger
+
   let taskDesc = '';
   const packages = order.product.map(
     (
@@ -196,7 +196,7 @@ const createWoodeliveryTask = (order: IOrder) => {
     }
   );
   const task: IWoodeliveryTask = {
-    taskTypeId,
+    taskTypeId: 1, // Refer to woodelivery swagger
     taskDesc,
     externalKey: id,
     afterDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
@@ -217,14 +217,39 @@ const createWoodeliveryTask = (order: IOrder) => {
     }`;
     task.requesterName = `${address.firstName} ${address.lastName}`;
     task.requesterPhone = String(address.phone);
-  } else {
-    task.destinationAddress = 'In Store';
   }
-  if (isSelfCollect || recipInfo.sameAsSender) {
+  if (recipInfo?.sameAsSender) {
     task.recipientEmail = user?.email;
   }
 
   return fetchAPI(CREATE_WOODELIVERY_TASK, 'POST', task);
+};
+
+const createDeliveryDocument = async (order: IOrder, task?: Response) => {
+  const {
+    delivery: { address, method, date, collectionTime },
+    recipInfo,
+    user,
+  } = order;
+  const data: IDeliveryData = {
+    brand: 'pinch', // TODO: change when rewriting bob
+    order: order?.id,
+    deliveryDate: date,
+    method: method.id,
+    collectionTime,
+    recipientName: recipInfo?.name,
+    recipientPhone: recipInfo?.contact,
+  };
+  if (task) {
+    data.woodeliveryTaskId = task?.data?.guid;
+  }
+  if (address?.id) {
+    data.address = address.id;
+  }
+  if (!recipInfo || recipInfo?.sameAsSender) {
+    data.recipientEmail = user?.email;
+  }
+  await Delivery.create(data);
 };
 
 const createDelivery = async (id: string) => {
@@ -233,33 +258,23 @@ const createDelivery = async (id: string) => {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
   const {
-    delivery: { address, method, date, collectionTime },
-    recipInfo,
-    user,
+    delivery: { method },
   } = order;
-  createWoodeliveryTask(order)
-    .then(async (response) => {
-      const task = await response.json();
-      const data: IDeliveryData = {
-        brand: 'pinch', // TODO: change when rewriting bob
-        order: order?.id,
-        deliveryDate: date,
-        method: method.id,
-        collectionTime,
-        recipientName: recipInfo?.name,
-        recipientPhone: recipInfo?.contact,
-        woodeliveryTaskId: task.data.guid,
-      };
-      if (address?.id) {
-        data.address = address.id;
-      }
-      if (!recipInfo || recipInfo?.sameAsSender) {
-        data.recipientEmail = user?.email;
-      }
-      await Delivery.create(data);
-      await Order.findByIdAndUpdate(id, { woodeliveryTaskId: task.data.guid });
-    })
-    .catch((err) => console.error(err, 'Error in creating delivery'));
+  const isSelfCollect =
+    String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
+
+  if (isSelfCollect) {
+    createDeliveryDocument(order);
+  } else
+    createWoodeliveryTask(order)
+      .then(async (response) => {
+        const task = await response.json();
+        createDeliveryDocument(order, task);
+        await Order.findByIdAndUpdate(id, {
+          woodeliveryTaskId: task.data.guid,
+        });
+      })
+      .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
 };
 
 const createProductListForTemplate = (order: IOrder) => {
@@ -375,7 +390,7 @@ export const triggerOrderFailEmail = catchAsync(
     });
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
-      message: 'Order failure email sent successfully.',
+      message: ORDER_FAIL_EMAIL,
     });
   }
 );
