@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable consistent-return */
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { NextFunction, Request, Response } from 'express';
 import { StatusCode } from '@src/types/customTypes';
 import catchAsync from './catchAsync';
@@ -48,6 +48,46 @@ export const updateOne = (
       data: {
         data: doc,
       },
+    });
+  });
+
+export const softDeleteOne = (
+  model: Model<any>
+): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const doc = await model.findByIdAndUpdate(
+      req.params.id,
+      { active: false },
+      {
+        new: true,
+      }
+    );
+    if (!doc) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+    });
+  });
+
+export const softDeleteMany = (
+  model: Model<any>
+): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+    const { orderIds } = req.body;
+    const filter = {
+      _id: {
+        $in: orderIds?.map((id: string) => new mongoose.Types.ObjectId(id)),
+      },
+    };
+    const update = { $set: { active: false } };
+
+    const doc = await model.updateMany(filter, update);
+    if (!doc) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
     });
   });
 
