@@ -19,7 +19,7 @@ export interface IDelivery {
   recipientName?: string;
   recipientPhone?: string;
   recipientEmail?: string;
-  woodeliveryTaskId: string;
+  woodeliveryTaskId?: string;
   driverDetails?: IDriver;
   status?: string;
   active: boolean;
