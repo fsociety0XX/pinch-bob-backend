@@ -74,10 +74,10 @@ export const softDeleteMany = (
   model: Model<any>
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const { orderIds } = req.body;
+    const { ids } = req.body;
     const filter = {
       _id: {
-        $in: orderIds?.map((id: string) => new mongoose.Types.ObjectId(id)),
+        $in: ids?.map((id: string) => new mongoose.Types.ObjectId(id)),
       },
     };
     const update = { $set: { active: false } };
