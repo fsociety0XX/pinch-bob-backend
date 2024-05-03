@@ -13,9 +13,10 @@ import { Role, StatusCode } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import {
   createOne,
-  deleteOne,
   getAll,
   getOne,
+  softDeleteMany,
+  softDeleteOne,
   updateOne,
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
@@ -428,6 +429,7 @@ export const authenticateOrderAccess = catchAsync(
 
 export const createOrder = createOne(Order);
 export const updateOrder = updateOne(Order);
-export const deleteOrder = deleteOne(Order);
+export const deleteOrder = softDeleteOne(Order);
+export const deleteManyOrder = softDeleteMany(Order);
 export const getOneOrder = getOne(Order);
 export const getAllOrder = getAll(Order);
