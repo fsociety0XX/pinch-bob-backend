@@ -18,5 +18,5 @@ export interface errorObject {
 }
 
 export const brandEnum = ['pinch', 'bob'];
-export const typeEnum = ['cake', 'bake'];
+export const typeEnum = ['cake', 'bake', 'others'];
 export const deliveryTypeEnum = ['single', 'multiple'];
