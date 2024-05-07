@@ -102,6 +102,7 @@ app.use(express.static(`${dirname}/public`));
 
 // Test middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
+  req.body.brand = req.headers.brand;
   req.requestTime = new Date().toISOString();
   next();
 });

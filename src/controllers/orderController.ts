@@ -12,7 +12,6 @@ import { IRequestWithUser } from './authController';
 import { Role, StatusCode } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import {
-  createOne,
   getAll,
   getOne,
   softDeleteMany,
@@ -34,6 +33,8 @@ import {
   fetchAPI,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
+import User from '@src/models/userModel';
+import Address from '@src/models/addressModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
@@ -442,7 +443,62 @@ export const authenticateOrderAccess = catchAsync(
   }
 );
 
-export const createOrder = createOne(Order);
+export const createOrder = catchAsync(async (req: Request, res: Response) => {
+  const {
+    orderConfirm: { subject, template, previewText },
+  } = EMAILS;
+  const {
+    brand,
+    delivery: { address },
+  } = req?.body;
+  const { email, firstName, lastName, phone } = req?.body?.user;
+
+  let user;
+  const customer = await User.find({ email });
+  [user] = customer;
+  if (!customer.length) {
+    const userDetails = {
+      firstName,
+      lastName,
+      email,
+      phone,
+    };
+    user = new User(userDetails);
+    await user.save({ validateBeforeSave: false });
+  }
+  req.body.user = user?.id; // IMP for assigning order to this user
+  const newAddress = {
+    brand,
+    user: user?.id,
+    ...address,
+  };
+  const createdAddress = await Address.create(newAddress);
+  req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
+  const newOrder = await Order.create(req.body);
+  const order = await Order.findById(newOrder?.id).lean();
+
+  await createDelivery(order.id);
+  await sendEmail({
+    email: user?.email,
+    subject,
+    template,
+    context: {
+      previewText,
+      orderId: order.id,
+      orderCreatedAt: new Date(order!.createdAt).toDateString(),
+      products: createProductListForTemplate(order!),
+      pricingSummary: order!.pricingSummary,
+      deliveryDate: new Date(order!.delivery?.date).toDateString(),
+    },
+  });
+  res.status(StatusCode.CREATE).json({
+    status: 'success',
+    data: {
+      data: order,
+    },
+  });
+});
+
 export const updateOrder = updateOne(Order);
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);
