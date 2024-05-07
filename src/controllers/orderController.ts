@@ -477,7 +477,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
-  await createDelivery(order.id);
+  await createDelivery(order?._id);
   await sendEmail({
     email: user?.email,
     subject,
