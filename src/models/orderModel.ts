@@ -218,15 +218,15 @@ orderSchema.pre('findOne', function (next) {
     path: 'product.size product.colour product.pieces product.flavour',
     select: 'name images',
   });
+  next();
+});
+
+orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
     path: 'delivery.address',
     select:
       'firstName lastName email city country company address1 address2 postalCode phone',
   });
-  next();
-});
-
-orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
     path: 'product.product delivery.method',
     select: 'name images',
