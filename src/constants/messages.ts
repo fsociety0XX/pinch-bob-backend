@@ -75,6 +75,7 @@ export const COLLECTION_TIME_VALIDATION = {
   endTime: 'A collection time must have end time',
 };
 export const ORDER_SCHEMA_VALIDATION = {
+  orderNumber: 'Order number is required.',
   product: 'An order must have a product details',
   delivery: 'Delivery details are for the order',
   pricingSummary: 'Pricing details in order summary is required',

@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable import/prefer-default-export */
+import { customAlphabet } from 'nanoid';
+
 interface FetchOptions {
   method: string;
   headers?: { [key: string]: string };
@@ -61,3 +63,9 @@ export function calculateBeforeAndAfterDateTime(
 
   return { beforeDateTime, afterDateTime };
 }
+
+export const generateOrderId = (): string => {
+  const alphabet = '0123456789';
+  const nanoid = customAlphabet(alphabet, 6);
+  return nanoid();
+};
