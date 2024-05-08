@@ -31,6 +31,7 @@ import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
+  generateOrderId,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
@@ -71,7 +72,7 @@ interface IWoodeliveryTask {
 interface IDeliveryData {
   brand: string;
   order: string;
-  deliveryDate: string;
+  deliveryDate: Date;
   method: ObjectId | string;
   collectionTime: string;
   recipientName: string | undefined;
@@ -170,7 +171,7 @@ export const placeOrder = catchAsync(
 
 const createWoodeliveryTask = (order: IOrder) => {
   const {
-    id,
+    orderNumber,
     delivery: { address, date, collectionTime },
     recipInfo,
     user,
@@ -185,7 +186,7 @@ const createWoodeliveryTask = (order: IOrder) => {
       taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
       return {
         productId: product.id,
-        orderId: order.id,
+        orderId: order.orderNumber,
         quantity,
         price,
         field1: size?.name,
@@ -199,7 +200,7 @@ const createWoodeliveryTask = (order: IOrder) => {
   const task: IWoodeliveryTask = {
     taskTypeId: 1, // Refer to woodelivery swagger
     taskDesc,
-    externalKey: id,
+    externalKey: orderNumber,
     afterDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
       .afterDateTime, // UTC
     beforeDateTime: calculateBeforeAndAfterDateTime(date, collectionTime)
@@ -235,7 +236,7 @@ const createDeliveryDocument = async (order: IOrder, task?: Response) => {
   const data: IDeliveryData = {
     brand: 'pinch', // TODO: change when rewriting bob
     order: order?.id,
-    deliveryDate: date,
+    deliveryDate: new Date(date),
     method: method.id,
     collectionTime,
     recipientName: recipInfo?.name,
@@ -329,7 +330,7 @@ const updateOrderAfterPaymentSuccess = async (
     template,
     context: {
       previewText,
-      orderId,
+      orderId: order?.orderNumber,
       orderCreatedAt: new Date(order!.createdAt).toDateString(),
       products: createProductListForTemplate(order!),
       pricingSummary: order!.pricingSummary,
@@ -382,7 +383,7 @@ export const triggerOrderFailEmail = catchAsync(
       template,
       context: {
         previewText,
-        orderId,
+        orderId: order?.orderNumber,
         orderCreatedAt: new Date(order.createdAt).toDateString(),
         products: createProductListForTemplate(order),
         pricingSummary: order.pricingSummary,
@@ -474,6 +475,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
+  req.body.orderNumber = generateOrderId();
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -484,7 +486,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     template,
     context: {
       previewText,
-      orderId: order.id,
+      orderId: order?.orderNumber,
       orderCreatedAt: new Date(order!.createdAt).toDateString(),
       products: createProductListForTemplate(order!),
       pricingSummary: order!.pricingSummary,

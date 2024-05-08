@@ -12,7 +12,7 @@ export interface IDriver {
 export interface IDelivery {
   brand: string;
   order: mongoose.Schema.Types.ObjectId;
-  deliveryDate: string;
+  deliveryDate: Date;
   method: mongoose.Schema.Types.ObjectId;
   collectionTime: string;
   address?: mongoose.Schema.Types.ObjectId;
@@ -44,7 +44,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
       type: mongoose.Schema.ObjectId,
       ref: 'Order',
     },
-    deliveryDate: String,
+    deliveryDate: Date,
     method: {
       type: mongoose.Schema.ObjectId,
       ref: 'DeliveryMethod',

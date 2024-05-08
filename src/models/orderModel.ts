@@ -5,6 +5,7 @@ import {
   ORDER_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum } from '@src/types/customTypes';
+import { generateOrderId } from '@src/utils/functions';
 
 type StripeWebhookEvent = Stripe.Event;
 
@@ -83,6 +84,7 @@ export interface IProduct {
 
 export interface IOrder {
   id: string;
+  orderNumber: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
@@ -159,6 +161,10 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const orderSchema = new mongoose.Schema<IOrder>(
   {
+    orderNumber: {
+      type: String,
+      required: [true, ORDER_SCHEMA_VALIDATION.orderNumber],
+    },
     brand: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.brand],
@@ -212,6 +218,11 @@ const orderSchema = new mongoose.Schema<IOrder>(
     toObject: { virtuals: true },
   }
 );
+
+orderSchema.pre('save', function (next) {
+  this.orderNumber = generateOrderId();
+  next();
+});
 
 orderSchema.pre('findOne', function (next) {
   this.populate({
