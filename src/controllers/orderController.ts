@@ -72,7 +72,7 @@ interface IWoodeliveryTask {
 interface IDeliveryData {
   brand: string;
   order: string;
-  deliveryDate: string;
+  deliveryDate: Date;
   method: ObjectId | string;
   collectionTime: string;
   recipientName: string | undefined;
@@ -236,7 +236,7 @@ const createDeliveryDocument = async (order: IOrder, task?: Response) => {
   const data: IDeliveryData = {
     brand: 'pinch', // TODO: change when rewriting bob
     order: order?.id,
-    deliveryDate: date,
+    deliveryDate: new Date(date),
     method: method.id,
     collectionTime,
     recipientName: recipInfo?.name,
