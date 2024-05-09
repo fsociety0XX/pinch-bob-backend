@@ -8,7 +8,11 @@ import {
 } from '@src/constants/routeConstants';
 import {
   assignOrderToDriver,
+  deleteDelivery,
+  getAllDelivery,
   getAllDrivers,
+  getOneDelivery,
+  updateDelivery,
   updateOrderStatus,
 } from '@src/controllers/deliveryController';
 
@@ -18,5 +22,11 @@ deliveryRouter.route(UPDATE_ORDER_STATUS).post(updateOrderStatus);
 deliveryRouter.use(protect, roleRistriction(Role.ADMIN));
 deliveryRouter.route(GET_DRIVERS).get(getAllDrivers);
 deliveryRouter.route(ASSIGN_ORDER_TO_DRIVER).post(assignOrderToDriver);
+deliveryRouter.route('/').get(getAllDelivery);
+deliveryRouter
+  .route('/:id')
+  .get(getOneDelivery)
+  .patch(updateDelivery)
+  .delete(deleteDelivery);
 
 export default deliveryRouter;
