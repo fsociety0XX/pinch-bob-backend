@@ -73,7 +73,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
   }
 );
 
-deliverySchema.pre('findOne', function (next) {
+deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   this.populate({
     path: 'method',
     select: 'name',
@@ -82,6 +82,10 @@ deliverySchema.pre('findOne', function (next) {
     path: 'address',
     select:
       'firstName lastName email city country company address1 address2 postalCode phone',
+  });
+  this.populate({
+    path: 'order',
+    select: 'orderNumber',
   });
   next();
 });

@@ -9,6 +9,12 @@ import { fetchAPI } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
 import Order from '@src/models/orderModel';
 import { WOODELIVERY_STATUS } from '@src/constants/static';
+import {
+  deleteOne,
+  getAll,
+  getOne,
+  updateOne,
+} from '@src/utils/factoryHandler';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'POST');
@@ -65,3 +71,8 @@ export const updateOrderStatus = catchAsync(
     res.send(StatusCode.SUCCESS);
   }
 );
+
+export const getAllDelivery = getAll(Delivery);
+export const getOneDelivery = getOne(Delivery);
+export const deleteDelivery = deleteOne(Delivery);
+export const updateDelivery = updateOne(Delivery);
