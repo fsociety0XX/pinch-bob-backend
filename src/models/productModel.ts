@@ -54,6 +54,7 @@ interface IProduct {
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
   tag: string; // can be used to less sweet/ vegan labels to show in product
+  sold: number;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -100,6 +101,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       max: [5, PRODUCT_SCHEMA_VALIDATION.maxRatingsAvg],
       set: (val: number) => Math.round(val * 10) / 10, // 4.666666 -> 46.66666 -> 47 -> 4.7
     },
+    sold: Number,
     totalRatings: {
       type: Number,
       default: 0,
