@@ -36,6 +36,7 @@ import {
 import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
+import Product from '@src/models/productModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
@@ -292,6 +293,16 @@ const createProductListForTemplate = (order: IOrder) => {
   return productList;
 };
 
+async function updateProductSold(order: IOrder) {
+  const updates = order.product.map((p) => ({
+    updateOne: {
+      filter: { _id: p.product._id }, // Filter by product ID
+      update: { $inc: { sold: p.quantity } }, // Increment by ordered quantity
+    },
+  }));
+  await Product.bulkWrite(updates); // Perform bulk updates
+}
+
 const updateOrderAfterPaymentSuccess = async (
   session: Stripe.CheckoutSessionCompletedEvent,
   res: Response
@@ -323,6 +334,7 @@ const updateOrderAfterPaymentSuccess = async (
       path: 'product.product product.size product.colour product.pieces product.flavour',
       select: 'name images',
     });
+  await updateProductSold(order);
   await createDelivery(orderId);
   await sendEmail({
     email: object.customer_email!,
@@ -479,6 +491,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
+  await updateProductSold(order);
   await createDelivery(order?._id);
   await sendEmail({
     email: user?.email,
