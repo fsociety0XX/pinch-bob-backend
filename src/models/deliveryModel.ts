@@ -85,7 +85,7 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   });
   this.populate({
     path: 'order',
-    select: 'orderNumber',
+    select: 'orderNumber product',
   });
   next();
 });
