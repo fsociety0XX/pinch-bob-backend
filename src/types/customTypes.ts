@@ -19,4 +19,5 @@ export interface errorObject {
 
 export const brandEnum = ['pinch', 'bob'];
 export const typeEnum = ['cake', 'bake', 'others'];
+export const refImageType = ['customise', 'edible'];
 export const deliveryTypeEnum = ['single', 'multiple'];

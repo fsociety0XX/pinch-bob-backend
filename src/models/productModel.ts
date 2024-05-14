@@ -1,6 +1,6 @@
 import mongoose, { Query, Types, model } from 'mongoose';
 import slugify from 'slugify';
-import { brandEnum, typeEnum } from '@src/types/customTypes';
+import { brandEnum, refImageType, typeEnum } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 interface ISize {
@@ -42,10 +42,10 @@ interface IProduct {
   images: IPhoto[];
   flavour?: mongoose.Types.ObjectId[];
   colour?: mongoose.Types.ObjectId[];
-  type: string; // cake or bake ?
+  type: string; // cake, bake or others
   details: IProductDetails;
   maxQty?: number;
-  customise?: boolean;
+  refImageType?: string; // edible or customise
   preparationDays: number;
   available: boolean; // will be used to show 'sold out' tags
   recommended: boolean;
@@ -55,6 +55,7 @@ interface IProduct {
   fbt: string[]; // frequently bought together
   tag: string; // can be used to less sweet/ vegan labels to show in product
   sold: number;
+  fondant: boolean;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -156,9 +157,9 @@ const productSchema = new mongoose.Schema<IProduct>(
       required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
     },
     maxQty: Number,
-    customise: {
-      type: Boolean,
-      default: false,
+    refImageType: {
+      type: String,
+      enum: refImageType,
     },
     preparationDays: {
       type: Number,
@@ -169,6 +170,10 @@ const productSchema = new mongoose.Schema<IProduct>(
       default: true,
     },
     recommended: {
+      type: Boolean,
+      default: false,
+    },
+    fondant: {
       type: Boolean,
       default: false,
     },
