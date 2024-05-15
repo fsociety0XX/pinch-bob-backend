@@ -54,17 +54,18 @@ export const assignOrderToDriver = catchAsync(
 
 export const updateOrderStatus = catchAsync(
   async (req: Request, res: Response) => {
-    const orderId = req.params.id;
+    const orderNumber = req.params.id;
     const { brand } = req.query;
 
     if (brand === 'pinch') {
+      const order = await Order.findOne({ orderNumber });
       await Delivery.findOneAndUpdate(
-        { order: orderId },
+        { order: order?._id },
         {
           status: WOODELIVERY_STATUS[req.body.StatusId],
         }
       );
-      await Order.findByIdAndUpdate(orderId, {
+      await Order.findByIdAndUpdate(order?._id, {
         status: WOODELIVERY_STATUS[req.body.StatusId],
       });
     }
