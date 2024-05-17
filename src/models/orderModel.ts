@@ -84,7 +84,7 @@ export interface IProduct {
 
 export interface IOrder {
   id: string;
-  orderNumber: string;
+  orderNumber?: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
@@ -161,10 +161,7 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const orderSchema = new mongoose.Schema<IOrder>(
   {
-    orderNumber: {
-      type: String,
-      required: [true, ORDER_SCHEMA_VALIDATION.orderNumber],
-    },
+    orderNumber: String,
     brand: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.brand],
