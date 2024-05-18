@@ -63,6 +63,7 @@ export const createSearchQuery = (
             { 'user.firstName': s },
             { 'user.lastName': s },
             { 'user.email': s },
+            { 'user.phone': s },
             { 'recipInfo.name': s },
             { woodeliveryTaskId: s },
             {
@@ -115,6 +116,7 @@ export const createSearchQuery = (
             { 'user.firstName': s },
             { 'user.lastName': s },
             { 'user.email': s },
+            { 'user.phone': s },
             { recipientName: s },
             { recipientPhone: s },
             { woodeliveryTaskId: s },
