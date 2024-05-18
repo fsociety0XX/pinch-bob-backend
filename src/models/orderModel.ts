@@ -158,7 +158,6 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
   total: String,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const orderSchema = new mongoose.Schema<IOrder>(
   {
     orderNumber: String,
@@ -241,7 +240,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'user',
-    select: 'firstName lastName email',
+    select: 'firstName lastName email phone',
   });
   this.where({ active: true });
   next();

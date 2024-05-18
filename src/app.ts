@@ -15,7 +15,7 @@ import {
 } from './constants/static';
 import { routeNotFound } from './constants/messages';
 import AppError from './utils/appError';
-import { StatusCode } from './types/customTypes';
+import { Role, StatusCode } from './types/customTypes';
 import {
   ADDRESS_ROUTE,
   AUTH_ROUTE,
@@ -27,6 +27,7 @@ import {
   ORDER_ROUTE,
   PIECES_ROUTE,
   PRODUCT_ROUTE,
+  SEARCH,
   SIZE_ROUTE,
   SUPER_CATEGORY_ROUTE,
   USER_ROUTE,
@@ -47,6 +48,8 @@ import deliveryRouter from './routes/deliveryRoutes';
 import superCategoryRouter from './routes/superCategoryRoutes';
 import authRouter from './routes/authRoutes';
 import userRouter from './routes/userRoutes';
+import { protect, roleRistriction } from './controllers/authController';
+import { globalTableSearch } from './controllers/globalSearchController';
 
 const app = express();
 const dirname = path.resolve();
@@ -123,6 +126,10 @@ app.use(ADDRESS_ROUTE, addressRouter);
 app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
 app.use(ORDER_ROUTE, orderRouter);
 app.use(DELIVERY_ROUTE, deliveryRouter);
+app
+  .use(protect, roleRistriction(Role.ADMIN))
+  .route(SEARCH)
+  .get(globalTableSearch); // Global middleware for searcing data inside tabels
 
 // When no route found
 app.all('*', (req: Request, _, next: NextFunction) => {
