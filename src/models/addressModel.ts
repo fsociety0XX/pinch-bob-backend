@@ -1,4 +1,4 @@
-import mongoose, { Query, UpdateQuery } from 'mongoose';
+import mongoose, { UpdateQuery } from 'mongoose';
 import { StatusCode, brandEnum } from '@src/types/customTypes';
 import {
   ADDRESS_SCHEMA_VALIDATION,
@@ -99,10 +99,10 @@ addressSchema.pre('findOne', function (next) {
   next();
 });
 
-addressSchema.pre<Query<IAddress, IAddress>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
+// addressSchema.pre<Query<IAddress, IAddress>>(/^find/, function (next) {
+//   this.where({ active: true });
+//   next();
+// });
 
 // Middleware to ensure only 1 default address per user when new doc is created
 addressSchema.pre('save', async function (next) {

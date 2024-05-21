@@ -90,11 +90,6 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   next();
 });
 
-deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
-
 const Delivery = mongoose.model('Delivery', deliverySchema);
 
 export default Delivery;

@@ -2,11 +2,12 @@
 /* eslint-disable consistent-return */
 import mongoose, { Model } from 'mongoose';
 import { NextFunction, Request, Response } from 'express';
-import { StatusCode } from '@src/types/customTypes';
+import { Role, StatusCode } from '@src/types/customTypes';
 import catchAsync from './catchAsync';
 import AppError from './appError';
 import { NO_DATA_FOUND } from '@src/constants/messages';
 import APIFeatures, { QueryString } from './apiFeatures';
+import { IRequestWithUser } from '@src/controllers/authController';
 
 interface IPopulateOptions {
   path: string;
@@ -139,61 +140,71 @@ export const getAll = (
   model: Model<any>,
   filterFields = ['']
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
-  catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    let totalDocsCount = 0;
-    const currentPage = +req.query.page!;
-    let isExtraParam = false; // Any param which is not related to pagination
-    const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
+  catchAsync(
+    async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+      const currentPage = +req.query.page!;
+      let isExtraParam = false; // Any param which is not related to pagination
+      const pageParams = ['page', 'sort', 'limit', 'fields', 'active'];
 
-    // Special case for category where we need to apply '$in' mongodb query
-    if (req.query.category) {
-      req.query.category = {
-        in: (req.query.category as string).split(','),
-      };
-    }
-    const features = new APIFeatures(model.find(), req.query as QueryString)
-      .filter(filterFields)
-      .sort()
-      .limit()
-      .pagination();
-    const allDocs = await features.query.exec();
+      // If customer calls GET APIs then show only active records
+      if (req.user?.role === Role.CUSTOMER) req.query.active = 'true';
 
-    // Calculate total docs count
-    Object.keys(req.query).forEach((params) => {
-      if (!pageParams.includes(params)) {
-        isExtraParam = true;
+      // Special case for category where we need to apply '$in' mongodb query
+      if (req.query.category) {
+        req.query.category = {
+          in: (req.query.category as string).split(','),
+        };
       }
-    });
 
-    if (isExtraParam) {
-      delete req.query.limit;
-      delete req.query.page;
-      const featuresWithoutLimit = new APIFeatures(
-        model.find({ active: true }),
-        req.query as QueryString
-      )
+      const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter(filterFields)
         .sort()
         .limit()
         .pagination();
-      totalDocsCount = await model
-        .find(featuresWithoutLimit.query)
-        .countDocuments();
-    } else {
-      totalDocsCount = await model.find({ active: true }).countDocuments();
-    }
+      const allDocs = await features.query.exec();
 
-    if (!allDocs) {
-      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+      if (!allDocs) {
+        return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+      }
+
+      // Calculate total docs count
+      Object.keys(req.query).forEach((params) => {
+        if (!pageParams.includes(params)) {
+          isExtraParam = true;
+        }
+      });
+
+      let totalDocsCount = 0;
+
+      if (isExtraParam) {
+        delete req.query.limit;
+        delete req.query.page;
+        const featuresWithoutLimit = new APIFeatures(
+          model.find(),
+          req.query as QueryString
+        )
+          .filter(filterFields)
+          .sort()
+          .limit()
+          .pagination();
+        totalDocsCount = await model
+          .find(featuresWithoutLimit.query)
+          .countDocuments();
+      } else {
+        const queryParams =
+          req.user?.role === Role.CUSTOMER ? { active: true } : {};
+        totalDocsCount = await model.find(queryParams).countDocuments();
+      }
+
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        data: {
+          data: allDocs,
+        },
+        meta: {
+          totalDataCount: totalDocsCount,
+          currentPage: +currentPage || 1,
+        },
+      });
     }
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      data: {
-        data: allDocs,
-      },
-      meta: {
-        totalDataCount: totalDocsCount,
-        currentPage: +currentPage || 1,
-      },
-    });
-  });
+  );
