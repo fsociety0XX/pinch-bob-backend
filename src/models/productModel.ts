@@ -1,4 +1,4 @@
-import mongoose, { Query, Types, model } from 'mongoose';
+import mongoose, { Types, model } from 'mongoose';
 import slugify from 'slugify';
 import { brandEnum, refImageType, typeEnum } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
@@ -238,11 +238,6 @@ productSchema.pre('findOne', function (next) {
     });
     alreadyPopulated = true;
   }
-  next();
-});
-
-productSchema.pre<Query<IProduct, IProduct>>(/^find/, function (next) {
-  this.where({ active: true });
   next();
 });
 

@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -33,11 +33,6 @@ const sizeSchema = new mongoose.Schema<ISize>(
     toObject: { virtuals: true },
   }
 );
-
-sizeSchema.pre<Query<ISize, ISize>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
 
 const Size = mongoose.model('Size', sizeSchema);
 

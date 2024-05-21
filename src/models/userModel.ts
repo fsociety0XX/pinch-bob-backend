@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { Schema, model, Query, Types, Model } from 'mongoose';
+import { Schema, model, Types, Model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
 import { USER_SCHEMA_VALIDATION } from '@src/constants/messages';
@@ -159,11 +159,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     toObject: { virtuals: true },
   }
 );
-
-userSchema.pre<Query<IUser, IUser>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

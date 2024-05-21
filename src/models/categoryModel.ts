@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -33,11 +33,6 @@ const categorySchema = new mongoose.Schema<ICategory>(
     toObject: { virtuals: true },
   }
 );
-
-categorySchema.pre<Query<ICategory, ICategory>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
 
 const Category = mongoose.model('Category', categorySchema);
 
