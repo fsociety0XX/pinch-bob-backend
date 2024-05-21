@@ -242,7 +242,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     path: 'user',
     select: 'firstName lastName email phone',
   });
-  this.where({ active: true });
+
   next();
 });
 

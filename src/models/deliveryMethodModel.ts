@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import {
   COMMON_SCHEMA_VALIDATION,
@@ -44,14 +44,6 @@ const deliveryMethodSchema = new mongoose.Schema<IDeliveryMethod>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
-);
-
-deliveryMethodSchema.pre<Query<IDeliveryMethod, IDeliveryMethod>>(
-  /^find/,
-  function (next) {
-    this.where({ active: true });
-    next();
   }
 );
 

@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -33,11 +33,6 @@ const piecesSchema = new mongoose.Schema<IPieces>(
     toObject: { virtuals: true },
   }
 );
-
-piecesSchema.pre<Query<IPieces, IPieces>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
 
 const Pieces = mongoose.model('Pieces', piecesSchema);
 

@@ -1,4 +1,4 @@
-import mongoose, { Query } from 'mongoose';
+import mongoose from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -33,11 +33,6 @@ const colourSchema = new mongoose.Schema<IColour>(
     toObject: { virtuals: true },
   }
 );
-
-colourSchema.pre<Query<IColour, IColour>>(/^find/, function (next) {
-  this.where({ active: true });
-  next();
-});
 
 const Colour = mongoose.model('Colour', colourSchema);
 
