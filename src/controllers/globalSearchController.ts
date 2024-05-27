@@ -50,6 +50,17 @@ export const createSearchQuery = (
         },
       },
       {
+        $lookup: {
+          from: 'deliverymethods',
+          localField: 'delivery.method',
+          foreignField: '_id',
+          as: 'delivery.method',
+        },
+      },
+      {
+        $unwind: '$delivery.method',
+      },
+      {
         $addFields: {
           user: {
             $arrayElemAt: ['$user', 0],
@@ -98,6 +109,28 @@ export const createSearchQuery = (
           foreignField: '_id',
           as: 'user',
         },
+      },
+      {
+        $lookup: {
+          from: 'deliverymethods',
+          localField: 'method',
+          foreignField: '_id',
+          as: 'method',
+        },
+      },
+      {
+        $lookup: {
+          from: 'addresses',
+          localField: 'address',
+          foreignField: '_id',
+          as: 'address',
+        },
+      },
+      {
+        $unwind: '$method',
+      },
+      {
+        $unwind: '$address',
       },
       {
         $addFields: {
