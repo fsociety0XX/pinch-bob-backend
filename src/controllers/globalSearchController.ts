@@ -128,6 +128,7 @@ export const createSearchQuery = (
           // Group back to original document structure
           _id: '$_id',
           brand: { $first: '$brand' },
+          orderNumber: { $first: '$orderNumber' },
           deliveryType: { $first: '$deliveryType' },
           product: { $push: '$product' },
           user: { $first: '$user' },
@@ -227,6 +228,20 @@ export const createSearchQuery = (
         },
       },
       {
+        $match: {
+          $or: [
+            { 'order.orderNumber': s },
+            { 'user.firstName': s },
+            { 'user.lastName': s },
+            { 'user.email': s },
+            { 'user.phone': s },
+            { recipientName: s },
+            { recipientPhone: s },
+            { woodeliveryTaskId: s },
+          ],
+        },
+      },
+      {
         $group: {
           // Group back to original document structure
           _id: '$_id',
@@ -251,20 +266,6 @@ export const createSearchQuery = (
       },
       {
         $sort: { createdAt: -1 }, // Sort documents by createdAt in descending order
-      },
-      {
-        $match: {
-          $or: [
-            { 'order.orderNumber': s },
-            { 'user.firstName': s },
-            { 'user.lastName': s },
-            { 'user.email': s },
-            { 'user.phone': s },
-            { recipientName: s },
-            { recipientPhone: s },
-            { woodeliveryTaskId: s },
-          ],
-        },
       },
       {
         $project: {
