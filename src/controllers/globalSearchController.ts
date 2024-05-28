@@ -233,6 +233,9 @@ export const createSearchQuery = (
           _id: '$_id',
           brand: { $first: '$brand' },
           order: { $first: '$order' },
+          product: {
+            $push: '$order.product',
+          },
           deliveryDate: { $first: '$deliveryDate' },
           method: { $first: '$method' },
           collectionTime: { $first: '$collectionTime' },
@@ -269,6 +272,8 @@ export const createSearchQuery = (
       },
       {
         $project: {
+          'order.product': 0,
+          'order.productDetails': 0,
           ...userFieldsToRemove,
           ...orderFieldsToRemove,
           ...productFieldsToRemove,
