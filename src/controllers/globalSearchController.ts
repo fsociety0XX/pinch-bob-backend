@@ -17,6 +17,25 @@ const userFieldsToRemove = {
   'user.__v': 0,
 };
 
+const productFieldsToRemove = {
+  'product.product.brand': 0,
+  'product.product.ratingsAvg': 0,
+  'product.product.totalRatings': 0,
+  'product.product.type': 0,
+  'product.product.details': 0,
+  'product.product.preparationDays': 0,
+  'product.product.available': 0,
+  'product.product.recommended': 0,
+  'product.product.category': 0,
+  'product.product.superCategory': 0,
+  'product.product.fbt': 0,
+  'product.product.active': 0,
+  'product.product.createdAt': 0,
+  'product.product.updatedAt': 0,
+  'product.product.__v': 0,
+  'product.product.sold': 0,
+};
+
 const orderFieldsToRemove = {
   'order.brand': 0,
   'order.deliveryType': 0,
@@ -42,6 +61,17 @@ export const createSearchQuery = (
   if (mode === 'order') {
     pipeline = [
       {
+        $unwind: '$product', // Deconstruct the product array
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'product.product',
+          foreignField: '_id',
+          as: 'productDetails',
+        },
+      },
+      {
         $lookup: {
           from: 'users',
           localField: 'user',
@@ -59,6 +89,14 @@ export const createSearchQuery = (
       },
       {
         $unwind: '$delivery.method',
+      },
+      {
+        $unwind: '$productDetails',
+      },
+      {
+        $addFields: {
+          'product.product': '$productDetails',
+        },
       },
       {
         $addFields: {
@@ -86,7 +124,34 @@ export const createSearchQuery = (
         },
       },
       {
-        $project: userFieldsToRemove,
+        $group: {
+          // Group back to original document structure
+          _id: '$_id',
+          brand: { $first: '$brand' },
+          deliveryType: { $first: '$deliveryType' },
+          product: { $push: '$product' },
+          user: { $first: '$user' },
+          delivery: { $first: '$delivery' },
+          pricingSummary: {
+            $first: '$pricingSummary',
+          },
+          recipInfo: { $first: '$recipInfo' },
+          paid: { $first: '$paid' },
+          active: { $first: '$active' },
+          createdAt: { $first: '$createdAt' },
+          updatedAt: { $first: '$updatedAt' },
+          __v: { $first: '$__v' },
+          woodeliveryTaskId: {
+            $first: '$woodeliveryTaskId',
+          },
+          status: { $first: '$status' },
+        },
+      },
+      {
+        $sort: { createdAt: -1 }, // Sort documents by createdAt in descending order
+      },
+      {
+        $project: { ...userFieldsToRemove, ...productFieldsToRemove },
       },
     ];
 
@@ -143,6 +208,51 @@ export const createSearchQuery = (
         },
       },
       {
+        $unwind: '$order.product',
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'order.product.product',
+          foreignField: '_id',
+          as: 'order.productDetails',
+        },
+      },
+      {
+        $unwind: '$order.productDetails',
+      },
+      {
+        $addFields: {
+          'order.product.product': '$order.productDetails',
+        },
+      },
+      {
+        $group: {
+          // Group back to original document structure
+          _id: '$_id',
+          brand: { $first: '$brand' },
+          order: { $first: '$order' },
+          deliveryDate: { $first: '$deliveryDate' },
+          method: { $first: '$method' },
+          collectionTime: { $first: '$collectionTime' },
+          address: { $first: '$address' },
+          recipientName: { $first: '$recipientName' },
+          recipientPhone: { $first: '$recipientPhone' },
+          recipientEmail: { $first: '$recipientEmail' },
+          woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
+          active: { $first: '$active' },
+          createdAt: { $first: '$createdAt' },
+          updatedAt: { $first: '$updatedAt' },
+          __v: { $first: '$__v' },
+          status: { $first: '$status' },
+          driverDetails: { $first: '$driverDetails' },
+          user: { $first: '$user' },
+        },
+      },
+      {
+        $sort: { createdAt: -1 }, // Sort documents by createdAt in descending order
+      },
+      {
         $match: {
           $or: [
             { 'order.orderNumber': s },
@@ -160,6 +270,7 @@ export const createSearchQuery = (
         $project: {
           ...userFieldsToRemove,
           ...orderFieldsToRemove,
+          ...productFieldsToRemove,
         },
       },
     ];
