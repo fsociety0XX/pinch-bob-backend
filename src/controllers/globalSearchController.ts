@@ -228,20 +228,6 @@ export const createSearchQuery = (
         },
       },
       {
-        $match: {
-          $or: [
-            { 'order.orderNumber': s },
-            { 'user.firstName': s },
-            { 'user.lastName': s },
-            { 'user.email': s },
-            { 'user.phone': s },
-            { recipientName: s },
-            { recipientPhone: s },
-            { woodeliveryTaskId: s },
-          ],
-        },
-      },
-      {
         $group: {
           // Group back to original document structure
           _id: '$_id',
@@ -262,6 +248,20 @@ export const createSearchQuery = (
           status: { $first: '$status' },
           driverDetails: { $first: '$driverDetails' },
           user: { $first: '$user' },
+        },
+      },
+      {
+        $match: {
+          $or: [
+            { 'order.orderNumber': s },
+            { 'user.firstName': s },
+            { 'user.lastName': s },
+            { 'user.email': s },
+            { 'user.phone': s },
+            { recipientName: s },
+            { recipientPhone: s },
+            { woodeliveryTaskId: s },
+          ],
         },
       },
       {
