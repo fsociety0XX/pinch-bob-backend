@@ -17,7 +17,6 @@ class APIFeatures<T extends Document> {
     const queryObj = { ...this.queryString };
     const paramsToExclude = ['page', 'sort', 'limit', 'fields'];
     paramsToExclude.forEach((el) => delete queryObj[el]);
-    console.log(queryObj, 'queryObj');
     fieldName.forEach((field: string) => {
       if (queryObj[field]) {
         if (field === 'size') {
