@@ -17,13 +17,19 @@ class APIFeatures<T extends Document> {
     const queryObj = { ...this.queryString };
     const paramsToExclude = ['page', 'sort', 'limit', 'fields'];
     paramsToExclude.forEach((el) => delete queryObj[el]);
-
     fieldName.forEach((field: string) => {
       if (queryObj[field]) {
         if (field === 'size') {
+          // PRODUCT CONTROLLER
           // Special case to handle size filter in get all product API
           queryObj['sizeDetails.size'] = (queryObj[field] as string).split(',');
           delete queryObj.size;
+        }
+        if (field === 'driverId') {
+          // DELIVERY CONTROLLER
+          // Special case to handle size filter in get all product API
+          queryObj['driverDetails.id'] = (queryObj[field] as string).split(',');
+          delete queryObj.driverId;
         } else queryObj[field] = (queryObj[field] as string).split(',');
       }
     });
