@@ -73,7 +73,7 @@ export const updateOrderStatus = catchAsync(
   }
 );
 
-export const getAllDelivery = getAll(Delivery);
+export const getAllDelivery = getAll(Delivery, ['driverId']);
 export const getOneDelivery = getOne(Delivery);
 export const deleteDelivery = deleteOne(Delivery);
 export const updateDelivery = updateOne(Delivery);
