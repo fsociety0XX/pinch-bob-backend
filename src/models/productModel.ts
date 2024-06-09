@@ -228,7 +228,6 @@ productSchema.pre('save', function (next) {
 });
 
 // Query middleware
-// TODO: check if we can access user role and change active condition just for admins
 productSchema.pre('findOne', function (next) {
   let alreadyPopulated = false;
   if (!alreadyPopulated) {

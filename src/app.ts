@@ -21,6 +21,7 @@ import {
   AUTH_ROUTE,
   CATEGORY_ROUTE,
   COLOUR_ROUTE,
+  COUPON_ROUTE,
   DELIVERY_METHOD_ROUTE,
   DELIVERY_ROUTE,
   FLAVOUR_ROUTE,
@@ -50,6 +51,7 @@ import authRouter from './routes/authRoutes';
 import userRouter from './routes/userRoutes';
 import { protect, roleRistriction } from './controllers/authController';
 import { globalTableSearch } from './controllers/globalSearchController';
+import couponRouter from './routes/couponRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -126,6 +128,7 @@ app.use(ADDRESS_ROUTE, addressRouter);
 app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
 app.use(ORDER_ROUTE, orderRouter);
 app.use(DELIVERY_ROUTE, deliveryRouter);
+app.use(COUPON_ROUTE, couponRouter);
 app
   .use(protect, roleRistriction(Role.ADMIN))
   .route(SEARCH)

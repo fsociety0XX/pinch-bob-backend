@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { Schema, model, Types, Model } from 'mongoose';
+import mongoose, { Schema, model, Types, Model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
 import { USER_SCHEMA_VALIDATION } from '@src/constants/messages';
@@ -46,6 +46,7 @@ export interface IUser {
   resetPasswordTokenExpiresIn: Date | undefined;
   otp: string;
   otpTimestamp: Date;
+  usedCoupons?: mongoose.Schema.Types.ObjectId[];
   active: boolean;
 }
 
@@ -145,6 +146,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     resetPasswordToken: String,
     resetPasswordTokenExpiresIn: Date,
+    usedCoupons: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
     active: {
       type: Boolean,
       default: true,

@@ -21,3 +21,9 @@ export const brandEnum = ['pinch', 'bob'];
 export const typeEnum = ['cake', 'bake', 'others'];
 export const refImageType = ['customise', 'edible'];
 export const deliveryTypeEnum = ['single', 'multiple'];
+export const couponTypeEnum = [
+  'Unlimited use',
+  'One time use',
+  'Free delivery',
+];
+export const couponApplicableEnum = ['Product', 'Category', 'All'];
