@@ -27,7 +27,7 @@ class APIFeatures<T extends Document> {
         }
         if (field === 'driverId') {
           // DELIVERY CONTROLLER
-          // Special case to handle size filter in get all product API
+          // Special case to handle driver filter in get all delivery API
           queryObj['driverDetails.id'] = (queryObj[field] as string).split(',');
           delete queryObj.driverId;
         } else queryObj[field] = (queryObj[field] as string).split(',');

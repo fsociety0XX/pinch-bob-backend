@@ -220,14 +220,6 @@ orderSchema.pre('save', function (next) {
   next();
 });
 
-orderSchema.pre('findOne', function (next) {
-  this.populate({
-    path: 'product.size product.colour product.pieces product.flavour',
-    select: 'name images',
-  });
-  next();
-});
-
 orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
     path: 'delivery.address',
@@ -235,7 +227,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
       'firstName lastName email city country company address1 address2 postalCode phone',
   });
   this.populate({
-    path: 'product.product delivery.method',
+    path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
     select: 'name images',
   });
   this.populate({

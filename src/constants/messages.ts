@@ -118,3 +118,14 @@ export const EMAILS = {
     previewText: 'Attention required',
   },
 };
+export const COUPON_SCHEMA_VALIDATION = {
+  code: 'Coupon name is required',
+  type: 'A coupon must have a type',
+  applicableOn: 'Please specify where this coupon can be applied',
+  discountType:
+    'Please specify the type of discount to be applied for this coupon',
+  discount: 'A coupon must have discount value',
+  invalid: 'Invalid or Expired Coupon',
+  alreadyUsed: 'You have reached limit of using this coupon',
+  notAvailable: 'This coupon is no longer available.',
+};
