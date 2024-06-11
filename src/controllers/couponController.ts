@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { NextFunction, Response } from 'express';
 import Coupon from '@src/models/couponModel';
 import catchAsync from '@src/utils/catchAsync';
 import {
@@ -18,57 +18,60 @@ import {
 import { COUPON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 export const applyCoupon = catchAsync(
-  async (req: IRequestWithUser, res: Response) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { code, ids } = req.body;
-    const usedCoupons = req.user?.usedCoupons;
+    const usedCoupons = req.user?.usedCoupons || [];
     const coupon = await Coupon.findOne({ code });
-    console.log(coupon, 'coupon22', usedCoupons);
 
     // 1. check if coupon is valid and active
     if (
-      !coupon ||
+      !coupon?.id ||
       !coupon.active ||
       coupon.endDate < new Date() ||
       coupon.startDate > new Date()
     ) {
-      return new AppError(
-        COUPON_SCHEMA_VALIDATION.invalid,
-        StatusCode.BAD_REQUEST
+      return next(
+        new AppError(COUPON_SCHEMA_VALIDATION.invalid, StatusCode.BAD_REQUEST)
       );
     }
-
     // 2. check if coupon is for 1 time use only
     if (
       coupon?.type === couponTypeEnum[1] &&
       usedCoupons?.includes(coupon.id)
     ) {
-      return new AppError(
-        COUPON_SCHEMA_VALIDATION.alreadyUsed,
-        StatusCode.BAD_REQUEST
+      return next(
+        new AppError(
+          COUPON_SCHEMA_VALIDATION.alreadyUsed,
+          StatusCode.BAD_REQUEST
+        )
       );
     }
 
     // 3. Check if coupon is applicable on specific product/category when coupon.applicableOn is !== 'All'
     if (coupon.applicableOn !== couponApplicableEnum[2]) {
       const hasSameElement = coupon?.ids?.some((element) =>
-        ids.includes(element)
+        ids.includes(element.toString())
       );
       if (!hasSameElement)
-        return new AppError(
-          COUPON_SCHEMA_VALIDATION.invalid,
-          StatusCode.BAD_REQUEST
+        return next(
+          new AppError(
+            COUPON_SCHEMA_VALIDATION.notForYourCart,
+            StatusCode.BAD_REQUEST
+          )
         );
     }
 
     // 4. check if limit still exist
     if (coupon?.limit && coupon?.limit === coupon?.used) {
-      return new AppError(
-        COUPON_SCHEMA_VALIDATION.notAvailable,
-        StatusCode.BAD_REQUEST
+      return next(
+        new AppError(
+          COUPON_SCHEMA_VALIDATION.notAvailable,
+          StatusCode.BAD_REQUEST
+        )
       );
     }
 
-    res.send(StatusCode.SUCCESS).json({
+    res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: coupon,
     });

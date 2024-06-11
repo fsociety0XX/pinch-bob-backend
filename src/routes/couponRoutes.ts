@@ -11,9 +11,10 @@ import {
 } from '@src/controllers/couponController';
 
 const couponRouter = express.Router();
-
+couponRouter.use(protect);
 couponRouter.route('/apply').post(applyCoupon);
-couponRouter.use(protect, roleRistriction(Role.ADMIN));
+
+couponRouter.use(roleRistriction(Role.ADMIN));
 couponRouter.route('/').get(getAllCoupon);
 couponRouter.route('/').post(createCoupon);
 
