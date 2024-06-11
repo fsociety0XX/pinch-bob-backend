@@ -67,7 +67,6 @@ const couponSchema = new mongoose.Schema<ICoupon>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
