@@ -336,18 +336,25 @@ const updateOrderAfterPaymentSuccess = async (
       select: 'name images',
     });
 
-  // Append coupon details in user model when customer apply a coupon successfully
-  const user = await User.findById(order?.user);
-  if (!user?.usedCoupons?.includes(order?.pricingSummary.coupon)) {
-    user.usedCoupons.push(order?.pricingSummary.coupon);
+  // If customer has applied coupon
+  if (order!.pricingSummary.coupon) {
+    // Append coupon details in user model when customer apply a coupon successfully
+    const user = await User.findById(order?.user);
+    if (
+      user?.usedCoupons &&
+      !user.usedCoupons?.includes(order!.pricingSummary.coupon)
+    ) {
+      user.usedCoupons!.push(order!.pricingSummary.coupon);
+    }
+    // Increment the coupon's used count atomically
+    await Coupon.updateOne(
+      { _id: order?.pricingSummary.coupon },
+      { $inc: { used: 1 } }
+    );
+    await user!.save();
   }
-  // Increment the coupon's used count atomically
-  await Coupon.updateOne(
-    { _id: order?.pricingSummary.coupon },
-    { $inc: { used: 1 } }
-  );
-  await user.save();
-  await updateProductSold(order);
+
+  await updateProductSold(order!);
   await createDelivery(orderId);
   await sendEmail({
     email: object.customer_email!,
@@ -504,17 +511,24 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
-  // Append coupon details in user model when customer apply a coupon successfully
-  const cUser = await User.findById(order?.user);
-  if (!cUser?.usedCoupons?.includes(order?.pricingSummary.coupon)) {
-    cUser.usedCoupons.push(order?.pricingSummary.coupon);
+  // If customer has applied coupon
+  if (order!.pricingSummary.coupon) {
+    // Append coupon details in user model when customer apply a coupon successfully
+    const cUser = await User.findById(order?.user);
+    if (
+      cUser?.usedCoupons &&
+      !cUser.usedCoupons?.includes(order!.pricingSummary.coupon)
+    ) {
+      cUser.usedCoupons!.push(order!.pricingSummary.coupon);
+    }
+    // Increment the coupon's used count atomically
+    await Coupon.updateOne(
+      { _id: order?.pricingSummary.coupon },
+      { $inc: { used: 1 } }
+    );
+    await cUser.save();
   }
-  // Increment the coupon's used count atomically
-  await Coupon.updateOne(
-    { _id: order?.pricingSummary.coupon },
-    { $inc: { used: 1 } }
-  );
-  await cUser.save();
+
   await updateProductSold(order);
   await createDelivery(order?._id);
   await sendEmail({
