@@ -146,7 +146,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     resetPasswordToken: String,
     resetPasswordTokenExpiresIn: Date,
-    usedCoupons: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
+    usedCoupons: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
+      default: [],
+    },
     active: {
       type: Boolean,
       default: true,
