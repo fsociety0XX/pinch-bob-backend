@@ -99,7 +99,7 @@ export const EMAILS = {
   },
   forgotPassword: {
     subject: 'Reset password - valid for 10 minutes',
-    template: 'forgetPassword',
+    template: 'forgotPassword',
     previewText: 'Reset password - valid for 10 minutes',
   },
   sendOtp: {
