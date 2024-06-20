@@ -27,8 +27,8 @@ export const applyCoupon = catchAsync(
     if (
       !coupon?.id ||
       !coupon.active ||
-      coupon.endDate < new Date() ||
-      coupon.startDate > new Date()
+      coupon.endDate <= new Date() ||
+      coupon.startDate >= new Date()
     ) {
       return next(
         new AppError(COUPON_SCHEMA_VALIDATION.invalid, StatusCode.BAD_REQUEST)
