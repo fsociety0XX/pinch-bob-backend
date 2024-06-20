@@ -234,7 +234,7 @@ export const resetPassword = catchAsync(
     user.resetPasswordTokenExpiresIn = undefined;
     user.resetPasswordToken = undefined;
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
     createAndSendToken(user, 200, res);
   }
 );
