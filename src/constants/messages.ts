@@ -102,6 +102,16 @@ export const EMAILS = {
     template: 'forgotPassword',
     previewText: 'Reset password - valid for 10 minutes',
   },
+  paymentLink: {
+    subject: 'Thank you for your order',
+    template: 'paymentLink',
+    previewText: 'Pay Now - link valid for 24 hrs',
+  },
+  customiseCakeOrderConfirm: {
+    subject: 'Thank you for your order',
+    template: 'customiseCakeOrderConfirmation',
+    previewText: 'Thank you for your order',
+  },
   sendOtp: {
     subject: 'Your OTP for Pinchbakehouse',
     template: 'sendOtp',

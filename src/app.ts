@@ -22,6 +22,7 @@ import {
   CATEGORY_ROUTE,
   COLOUR_ROUTE,
   COUPON_ROUTE,
+  CUSTOMISE_CAKE_ROUTE,
   DELIVERY_METHOD_ROUTE,
   DELIVERY_ROUTE,
   FLAVOUR_ROUTE,
@@ -52,6 +53,7 @@ import userRouter from './routes/userRoutes';
 import { protect, roleRistriction } from './controllers/authController';
 import { globalTableSearch } from './controllers/globalSearchController';
 import couponRouter from './routes/couponRoutes';
+import customiseCakeRouter from './routes/customiseCakeRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -129,6 +131,7 @@ app.use(DELIVERY_METHOD_ROUTE, deliveryMethodRouter);
 app.use(ORDER_ROUTE, orderRouter);
 app.use(DELIVERY_ROUTE, deliveryRouter);
 app.use(COUPON_ROUTE, couponRouter);
+app.use(CUSTOMISE_CAKE_ROUTE, customiseCakeRouter);
 app
   .use(protect, roleRistriction(Role.ADMIN))
   .route(SEARCH)

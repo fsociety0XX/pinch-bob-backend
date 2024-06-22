@@ -16,6 +16,7 @@ export const DELIVERY_METHOD_ROUTE = `${VERSION1}/deliveryMethod`;
 export const ORDER_ROUTE = `${VERSION1}/order`;
 export const DELIVERY_ROUTE = `${VERSION1}/delivery`;
 export const COUPON_ROUTE = `${VERSION1}/coupon`;
+export const CUSTOMISE_CAKE_ROUTE = `${VERSION1}/customiseCake`;
 export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
 export const SEARCH = `${VERSION1}/search`;
 
