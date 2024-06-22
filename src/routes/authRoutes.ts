@@ -19,6 +19,7 @@ import {
   SIGN_UP,
   VERIFY_OTP,
 } from '@src/constants/routeConstants';
+import { appendDefaultUserRoleInReq } from '@src/utils/middlewares';
 
 const authRouter = express.Router();
 
@@ -29,6 +30,7 @@ authRouter.post(VERIFY_OTP, verifyOtp);
 authRouter.post(
   SIGN_UP,
   uploadImage(process.env.AWS_BUCKET_PROFILE_PATH!).single('photo'),
+  appendDefaultUserRoleInReq,
   signup
 );
 authRouter.post(SIGN_IN, signin);

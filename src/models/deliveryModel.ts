@@ -11,7 +11,8 @@ export interface IDriver {
 }
 export interface IDelivery {
   brand: string;
-  order: mongoose.Schema.Types.ObjectId;
+  order?: mongoose.Schema.Types.ObjectId;
+  customiseCakeOrder?: mongoose.Schema.Types.ObjectId;
   deliveryDate: Date;
   method: mongoose.Schema.Types.ObjectId;
   collectionTime: string;
@@ -43,6 +44,10 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     order: {
       type: mongoose.Schema.ObjectId,
       ref: 'Order',
+    },
+    customiseCakeOrder: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'CustomiseCake',
     },
     deliveryDate: Date,
     method: {
@@ -84,7 +89,7 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
       'firstName lastName email city country company address1 address2 postalCode phone',
   });
   this.populate({
-    path: 'order',
+    path: 'order customiseCakeOrder',
     select: 'orderNumber product',
   });
   next();

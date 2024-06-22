@@ -9,7 +9,7 @@ import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
-import { Role, StatusCode } from '@src/types/customTypes';
+import { Role, StatusCode, checkoutSessionFor } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import {
   getAll,
@@ -38,6 +38,7 @@ import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
+import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const CANCELLED = 'cancelled';
@@ -158,6 +159,7 @@ export const placeOrder = catchAsync(
       currency: 'sgd',
       line_items: productList,
       metadata: {
+        sessionFor: checkoutSessionFor.website,
         orderId,
       },
     });
@@ -362,7 +364,8 @@ const updateOrderAfterPaymentSuccess = async (
     template,
     context: {
       previewText,
-      orderId: order?.orderNumber,
+      orderId: order?.id,
+      orderNo: order?.orderNumber,
       orderCreatedAt: new Date(order!.createdAt).toDateString(),
       products: createProductListForTemplate(order!),
       pricingSummary: order!.pricingSummary,
@@ -438,14 +441,17 @@ export const webhookCheckout = (req: Request, res: Response): void => {
       sig,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-
+    const sessionMetadata = event.data.object?.metadata || {};
     switch (event.type) {
       case 'payment_intent.payment_failed':
         handlePaymentFailure(event, res);
         break;
 
       case 'checkout.session.completed':
-        updateOrderAfterPaymentSuccess(event, res);
+        // eslint-disable-next-line no-unused-expressions
+        sessionMetadata?.sessionFor === checkoutSessionFor.website
+          ? updateOrderAfterPaymentSuccess(event, res)
+          : updateCustomiseCakeOrderAfterPaymentSuccess(event, res);
         break;
 
       default:
