@@ -156,6 +156,6 @@ export const customiseOrderEnums = {
 };
 
 export const checkoutSessionFor = {
-  customiseCake: 1,
-  website: 2,
+  customiseCake: '1',
+  website: '2',
 };
