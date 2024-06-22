@@ -151,6 +151,11 @@ export const customiseOrderEnums = {
     'Red Shou (Wall)',
   ],
   formStatusEnum: ['New', 'Completed', 'Dismissed'],
-  enquiryTypeEnum: ['Regular, Business'],
+  enquiryTypeEnum: ['Regular', 'Business'],
   qtyType: ['Pieces', 'Dozen'],
+};
+
+export const checkoutSessionFor = {
+  customiseCake: 1,
+  website: 2,
 };

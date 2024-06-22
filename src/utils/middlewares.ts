@@ -1,4 +1,4 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { IRequestWithUser } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 
@@ -19,5 +19,16 @@ export const appendUserIdInReqBody = (
   next: NextFunction
 ): void => {
   req.body = { ...req.body, user: req.user?._id };
+  return next();
+};
+
+// This middleware protects sign up route. Any user created from this route
+// can only have role as 'customer'
+export const appendDefaultUserRoleInReq = (
+  req: Request,
+  _: Response,
+  next: NextFunction
+): void => {
+  req.body = { ...req.body, role: Role.CUSTOMER };
   return next();
 };

@@ -154,7 +154,10 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
   subTotal: String,
   gst: String,
   deliveryCharge: String,
-  coupon: mongoose.Schema.ObjectId,
+  coupon: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Coupon',
+  },
   total: String,
 });
 
@@ -233,6 +236,10 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
     path: 'user',
     select: 'firstName lastName email phone',
+  });
+  this.populate({
+    path: 'pricingSummary.coupon',
+    select: 'code type applicableOn ids discountType discount',
   });
 
   next();

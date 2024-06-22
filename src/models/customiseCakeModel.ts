@@ -1,6 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose, { Query, model } from 'mongoose';
+import Stripe from 'stripe';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, customiseOrderEnums } from '@src/types/customTypes';
+import { generateOrderId } from '@src/utils/functions';
+
+type StripeWebhookEvent = Stripe.Event;
 
 interface IPhoto {
   key: string;
@@ -15,7 +19,18 @@ interface IDelivery {
   date: Date;
   time: string;
   specificTimeSlot: boolean;
-  address: mongoose.Schema.Types.ObjectId;
+  address: {
+    id: mongoose.Schema.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+    city: string;
+    country: string;
+    company?: string;
+    address1: string;
+    address2?: string;
+    postalCode: string;
+    phone: number;
+  };
 }
 
 interface IBakes {
@@ -41,7 +56,8 @@ interface IFondant {
   details: string;
 }
 
-interface ICustomiseCake {
+export interface ICustomiseCake {
+  _id: string;
   brand: string;
   orderNumber: string;
   user: mongoose.Schema.Types.ObjectId;
@@ -87,7 +103,12 @@ interface ICustomiseCake {
   enquiryType: string;
   companyName?: string;
   paid: boolean;
-  paymentLink: string;
+  stripeDetails: StripeWebhookEvent;
+  checkoutSession: {
+    id: string;
+    link: string;
+  };
+  woodeliveryTaskId: string;
   active: boolean;
 }
 
@@ -103,7 +124,10 @@ const DeliverySchema = new mongoose.Schema<IDelivery>({
     type: Boolean,
     default: false,
   },
-  address: mongoose.Schema.ObjectId,
+  address: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Address',
+  },
 });
 
 const ImageSchema = new mongoose.Schema<IPhoto>({
@@ -115,7 +139,10 @@ const ImageSchema = new mongoose.Schema<IPhoto>({
 });
 
 const BakesSchema = new mongoose.Schema<IBakes>({
-  product: mongoose.Schema.ObjectId,
+  product: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Product',
+  },
   quantity: Number,
   qtyType: {
     type: String,
@@ -157,7 +184,10 @@ const FondantNumberSchema = new mongoose.Schema<IFondant>({
 });
 
 const CandleSchema = new mongoose.Schema<ICandles>({
-  product: mongoose.Schema.ObjectId,
+  product: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Product',
+  },
   quantity: Number,
 });
 
@@ -187,6 +217,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     flavour: {
       type: mongoose.Schema.ObjectId,
+      ref: 'Flavour',
       required: [true, 'A flavour is required'],
     },
     message: String,
@@ -238,9 +269,15 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     deliveryFee: Number,
     price: Number,
     quantity: Number,
-    size: mongoose.Schema.ObjectId,
+    size: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Size',
+    },
     instructions: String,
-    coupon: mongoose.Schema.ObjectId,
+    coupon: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Coupon',
+    },
     formStatus: {
       type: String,
       enum: customiseOrderEnums.formStatusEnum,
@@ -255,7 +292,12 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       type: Boolean,
       default: false,
     },
-    paymentLink: String,
+    stripeDetails: Object,
+    checkoutSession: {
+      id: String,
+      link: String,
+    },
+    woodeliveryTaskId: String,
     active: {
       type: Boolean,
       default: true,
@@ -269,6 +311,39 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
   }
 );
 
-const CustomiseCake = mongoose.model('CustomiseCake', customiseCakeSchema);
+customiseCakeSchema.pre('save', function (next) {
+  this.orderNumber = generateOrderId();
+  next();
+});
+
+customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
+  /^find/,
+  function (next) {
+    this.populate({
+      path: 'delivery.address',
+      select:
+        'firstName lastName email city country company address1 address2 postalCode phone',
+    });
+    this.populate({
+      path: 'user',
+      select: 'firstName lastName email phone',
+    });
+    this.populate({
+      path: 'bakes.product candlesAndSparklers.product flavour size',
+      select: 'name images',
+    });
+    this.populate({
+      path: 'coupon',
+      select: 'code type applicableOn ids discountType discount',
+    });
+
+    next();
+  }
+);
+
+const CustomiseCake = model<ICustomiseCake>(
+  'CustomiseCake',
+  customiseCakeSchema
+);
 
 export default CustomiseCake;
