@@ -20,6 +20,7 @@ interface ICoupon {
   endDate: Date;
   discountType: string;
   discount: number;
+  minPurchase: number;
   used?: number;
   active: boolean;
 }
@@ -51,6 +52,7 @@ const couponSchema = new mongoose.Schema<ICoupon>(
     limit: Number,
     startDate: Date,
     endDate: Date,
+    minPurchase: Number,
     discountType: {
       type: String,
       required: [true, COUPON_SCHEMA_VALIDATION.discountType],
