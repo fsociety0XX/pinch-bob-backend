@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import {
+  sendPaymentLink,
   submitAdminForm,
   submitCustomerForm,
 } from '@src/controllers/customiseCakeController';
@@ -30,5 +31,7 @@ customiseCakeRouter
     ),
     submitAdminForm
   );
+
+customiseCakeRouter.route('/send/:id').get(sendPaymentLink);
 
 export default customiseCakeRouter;

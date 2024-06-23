@@ -138,5 +138,7 @@ export const COUPON_SCHEMA_VALIDATION = {
   invalid: 'Invalid or Expired Coupon',
   alreadyUsed: 'You have reached limit of using this coupon',
   notAvailable: 'This coupon is no longer available.',
+  minPurchaseValue: 'Your cart value is low for this coupon',
   notForYourCart: 'This coupon is not applicable on the products in your cart.',
+  paymentLinkSent: 'An email has been sent to the customer with payment link',
 };

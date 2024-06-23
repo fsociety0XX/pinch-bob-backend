@@ -19,7 +19,7 @@ import { COUPON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 export const applyCoupon = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const { code, ids } = req.body;
+    const { code, ids, subTotal } = req.body;
     const usedCoupons = req.user?.usedCoupons || [];
     const coupon = await Coupon.findOne({ code });
 
@@ -71,6 +71,17 @@ export const applyCoupon = catchAsync(
       );
     }
 
+    // 5. check if subTotal is greater or equal to minPurchase value of coupon
+    if (coupon?.minPurchase && +subTotal < coupon?.minPurchase) {
+      return next(
+        new AppError(
+          COUPON_SCHEMA_VALIDATION.minPurchaseValue,
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
+    delete coupon.used; // hide this property from customers
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: coupon,

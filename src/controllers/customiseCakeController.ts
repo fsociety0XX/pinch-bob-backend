@@ -18,6 +18,7 @@ import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
 import AppError from '@src/utils/appError';
 import {
+  COUPON_SCHEMA_VALIDATION,
   DELIVERY_CREATE_ERROR,
   EMAILS,
   NO_DATA_FOUND,
@@ -377,3 +378,13 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
     },
   });
 };
+
+export const sendPaymentLink = catchAsync(
+  async (req: Request, res: Response) => {
+    await generatePaymentLink(req, req.params.id);
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: COUPON_SCHEMA_VALIDATION.paymentLinkSent,
+    });
+  }
+);
