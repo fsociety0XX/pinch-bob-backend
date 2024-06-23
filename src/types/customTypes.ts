@@ -26,7 +26,12 @@ export const couponTypeEnum = [
   'One time use',
   'Free delivery',
 ];
-export const couponApplicableEnum = ['Product', 'Category', 'All'];
+export const couponApplicableEnum = [
+  'Product',
+  'Category',
+  'All',
+  'Supercategory',
+];
 export const customiseOrderEnums = {
   deliveryType: ['Self-Collect', 'Delivery'],
   messagePlacement: [
