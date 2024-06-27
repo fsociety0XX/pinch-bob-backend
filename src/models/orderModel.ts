@@ -28,6 +28,7 @@ interface IPricingSummary {
   gst: string;
   deliveryCharge: string;
   coupon: mongoose.Schema.Types.ObjectId;
+  discountedAmt: string;
   total: string;
 }
 
@@ -158,6 +159,7 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
     type: mongoose.Schema.ObjectId,
     ref: 'Coupon',
   },
+  discountedAmt: String,
   total: String,
 });
 
