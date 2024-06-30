@@ -115,34 +115,50 @@ export const placeOrder = catchAsync(
       return next(new AppError(ORDER_NOT_FOUND, StatusCode.BAD_REQUEST));
     }
 
-    const productList = populatedOrder?.product.map(
-      ({ product, price, quantity }) => ({
-        quantity,
-        price_data: {
-          currency: 'sgd',
-          unit_amount: ((+price?.toFixed(2) / quantity!) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
-          // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
-          // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
-          product_data: {
-            name: product.name,
-            images: [product?.images?.[0]?.location],
+    let productList = [];
+    if (populatedOrder!.pricingSummary.coupon?.code) {
+      productList = [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'sgd',
+            unit_amount: +populatedOrder.pricingSummary.total * 100, // Stripe expects amount in cents
+            product_data: {
+              name: 'All Products (including discount)',
+            },
           },
         },
-      })
-    );
-
-    // Add delivery fee as a line item
-    productList.push({
-      quantity: 1,
-      price_data: {
-        currency: 'sgd',
-        unit_amount: +populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
-        product_data: {
-          name: 'Delivery Fee',
-          description: populatedOrder?.delivery?.method?.name,
+      ];
+    } else {
+      productList = populatedOrder?.product.map(
+        ({ product, price, quantity }) => ({
+          quantity,
+          price_data: {
+            currency: 'sgd',
+            unit_amount: ((+price?.toFixed(2) / quantity!) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
+            // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
+            // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
+            product_data: {
+              name: product.name,
+              images: [product?.images?.[0]?.location],
+            },
+          },
+        })
+      );
+      // Add delivery fee as a line item
+      productList.push({
+        quantity: 1,
+        price_data: {
+          currency: 'sgd',
+          unit_amount:
+            +populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
+          product_data: {
+            name: 'Delivery Fee',
+            description: populatedOrder?.delivery?.method?.name,
+          },
         },
-      },
-    });
+      });
+    }
 
     // create checkout session
     const session = await stripe.checkout.sessions.create({
