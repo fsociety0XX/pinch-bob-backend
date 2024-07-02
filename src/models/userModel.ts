@@ -149,7 +149,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     usedCoupons: {
       type: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
       default: [],
-      select: false,
     },
     active: {
       type: Boolean,
