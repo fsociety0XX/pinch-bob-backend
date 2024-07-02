@@ -364,7 +364,7 @@ const updateOrderAfterPaymentSuccess = async (
       { _id: order?.pricingSummary.coupon?._id },
       { $inc: { used: 1 } }
     );
-    await user!.save();
+    await user!.save({ validateBeforeSave: false });
   }
 
   await updateProductSold(order!);
@@ -529,21 +529,21 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const order = await Order.findById(newOrder?.id).lean();
 
   // If customer has applied coupon
-  if (order!.pricingSummary.coupon) {
+  if (Object.keys(order!.pricingSummary.coupon).length) {
     // Append coupon details in user model when customer apply a coupon successfully
-    const cUser = await User.findById(order?.user);
+    const cUser = await User.findById(order?.user?._id);
     if (
       cUser?.usedCoupons &&
-      !cUser.usedCoupons?.includes(order!.pricingSummary.coupon)
+      !cUser.usedCoupons?.includes(order!.pricingSummary.coupon?._id)
     ) {
-      cUser.usedCoupons!.push(order!.pricingSummary.coupon);
+      cUser.usedCoupons!.push(order!.pricingSummary.coupon?._id);
     }
     // Increment the coupon's used count atomically
     await Coupon.updateOne(
-      { _id: order?.pricingSummary.coupon },
+      { _id: order?.pricingSummary.coupon?._id },
       { $inc: { used: 1 } }
     );
-    await cUser.save();
+    await cUser.save({ validateBeforeSave: false });
   }
 
   await updateProductSold(order);
