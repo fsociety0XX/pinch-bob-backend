@@ -347,26 +347,21 @@ const updateOrderAfterPaymentSuccess = async (
     orderId,
     { stripeDetails, paid: true },
     { new: true }
-  )
-    .lean()
-    .populate({
-      path: 'product.product product.size product.colour product.pieces product.flavour',
-      select: 'name images',
-    });
+  ).lean();
 
   // If customer has applied coupon
-  if (order!.pricingSummary.coupon) {
+  if (Object.keys(order!.pricingSummary.coupon).length) {
     // Append coupon details in user model when customer apply a coupon successfully
-    const user = await User.findById(order?.user);
+    const user = await User.findById(order?.user?._id);
     if (
       user?.usedCoupons &&
-      !user.usedCoupons?.includes(order!.pricingSummary.coupon)
+      !user.usedCoupons?.includes(order!.pricingSummary.coupon?._id)
     ) {
-      user.usedCoupons!.push(order!.pricingSummary.coupon);
+      user.usedCoupons!.push(order!.pricingSummary.coupon?._id);
     }
     // Increment the coupon's used count atomically
     await Coupon.updateOne(
-      { _id: order?.pricingSummary.coupon },
+      { _id: order?.pricingSummary.coupon?._id },
       { $inc: { used: 1 } }
     );
     await user!.save();
