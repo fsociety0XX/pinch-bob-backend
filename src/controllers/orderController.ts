@@ -122,9 +122,7 @@ export const placeOrder = catchAsync(
           quantity: 1,
           price_data: {
             currency: 'sgd',
-            unit_amount: (
-              +populatedOrder.pricingSummary.total?.toFixed(2) * 100
-            ).toFixed(0), // Stripe expects amount in cents
+            unit_amount: Math.floor(+populatedOrder.pricingSummary.total * 100), // Stripe expects amount in cents
             product_data: {
               name: 'All Products (including discount)',
             },
