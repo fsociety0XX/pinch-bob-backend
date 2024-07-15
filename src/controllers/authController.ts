@@ -5,13 +5,13 @@ import otpGenerator from 'otp-generator';
 import { Express, NextFunction, Request, Response } from 'express';
 import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
-import { StatusCode } from '@src/types/customTypes';
+import { StatusCode, brandEnum } from '@src/types/customTypes';
 import { PRODUCTION } from '@src/constants/static';
 import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
 import {
   CURRENT_PASSWORD_INCORRECT,
-  EMAILS,
+  PINCH_EMAILS,
   EMAIL_FAILED,
   INVALID_CREDENTIALS,
   INVALID_OTP,
@@ -24,6 +24,7 @@ import {
   TOKEN_SENT,
   UNAUTHORISED,
   UNAUTHORISED_ROLE,
+  BOB_EMAILS,
 } from '@src/constants/messages';
 
 interface ICookieOptions {
@@ -132,7 +133,7 @@ export const roleRistriction =
 const sendWelcomeEmail = async (newUser: IUser) => {
   const {
     welcomeEmail: { subject, template, previewText },
-  } = EMAILS;
+  } = newUser.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
   await sendEmail({
     email: newUser.email,
     subject,
@@ -159,12 +160,12 @@ export const signup = catchAsync(
 
 export const signin = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { email, password } = req.body;
+    const { email, password, brand } = req.body;
     // 1. Check if email and password exists in body
     if (!email || !password) {
       return next(new AppError(INVALID_CREDENTIALS, StatusCode.BAD_REQUEST));
     }
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email, brand }).select('+password');
 
     // 2. Check if email and password is valid
     if (!user || !(await user.comparePassword(password, user.password))) {
@@ -177,8 +178,8 @@ export const signin = catchAsync(
 
 export const forgotPassword = catchAsync(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+    const { email, brand } = req.body;
+    const user = await User.findOne({ email, brand });
 
     if (!user) {
       return next(new AppError(NO_USER, StatusCode.NOT_FOUND));
@@ -189,7 +190,7 @@ export const forgotPassword = catchAsync(
     try {
       const {
         forgotPassword: { subject, template, previewText },
-      } = EMAILS;
+      } = user.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
       await sendEmail({
         email: user.email,
         subject,
@@ -211,13 +212,14 @@ export const forgotPassword = catchAsync(
 
 export const resetPassword = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { password, confirmPassword } = req.body;
+    const { password, confirmPassword, brand } = req.body;
     const hashedToken = crypto
       .createHash('sha256')
       .update(req.params.token)
       .digest('hex');
     // 1. get user based on token
     const user = await User.findOne({
+      brand,
       resetPasswordToken: hashedToken,
       resetPasswordTokenExpiresIn: {
         $gt: Date.now(),
@@ -264,10 +266,10 @@ export const changePassword = catchAsync(
 );
 
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, brand } = req.body;
   const {
     sendOtp: { subject, template, previewText },
-  } = EMAILS;
+  } = brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
@@ -276,7 +278,7 @@ export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   });
   const otpTimestamp = new Date();
   await User.findOneAndUpdate(
-    { email },
+    { email, brand },
     { otp, otpTimestamp },
     { upsert: true }
   );
@@ -294,8 +296,8 @@ export const sendOtp = catchAsync(async (req: Request, res: Response) => {
 
 export const verifyOtp = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { otp, email } = req.body;
-    const user = await User.findOne({ email, otp });
+    const { otp, email, brand } = req.body;
+    const user = await User.findOne({ email, otp, brand });
     if (user) {
       // Check if OTP is still valid (within 10 minutes)
       const currentTime = new Date();

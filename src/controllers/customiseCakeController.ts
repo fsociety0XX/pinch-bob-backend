@@ -20,7 +20,7 @@ import AppError from '@src/utils/appError';
 import {
   COUPON_SCHEMA_VALIDATION,
   DELIVERY_CREATE_ERROR,
-  EMAILS,
+  PINCH_EMAILS,
   NO_DATA_FOUND,
 } from '@src/constants/messages';
 import sendEmail from '@src/utils/sendEmail';
@@ -69,7 +69,7 @@ const generatePaymentLink = async (req: Request, customiseCakeId: string) => {
   const user = await User.findById(customiseCake?.user);
   const {
     paymentLink: { subject, template, previewText },
-  } = EMAILS;
+  } = PINCH_EMAILS;
 
   // before creating a new checkout session check if old one is expired
   if (customiseCake?.checkoutSession.id) {
@@ -362,7 +362,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   // Send final confirmation email
   const {
     customiseCakeOrderConfirm: { subject, template, previewText },
-  } = EMAILS;
+  } = PINCH_EMAILS;
   await sendEmail({
     email: object.customer_email!,
     subject,

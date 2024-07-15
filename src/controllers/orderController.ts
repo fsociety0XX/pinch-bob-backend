@@ -21,7 +21,7 @@ import {
 import AppError from '@src/utils/appError';
 import {
   DELIVERY_CREATE_ERROR,
-  EMAILS,
+  PINCH_EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
   ORDER_FAIL_EMAIL,
@@ -328,7 +328,7 @@ const updateOrderAfterPaymentSuccess = async (
 ) => {
   const {
     orderConfirm: { subject, template, previewText },
-  } = EMAILS;
+  } = PINCH_EMAILS;
   const {
     id,
     data: { object },
@@ -416,7 +416,7 @@ export const triggerOrderFailEmail = catchAsync(
   async (req: IRequestWithUser, res: Response) => {
     const {
       orderFail: { subject, template, previewText },
-    } = EMAILS;
+    } = PINCH_EMAILS;
     const email = req.user?.email;
     const orderId = req.params.orderId!;
     const order = await Order.findById(orderId).lean();
@@ -496,7 +496,7 @@ export const authenticateOrderAccess = catchAsync(
 export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const {
     orderConfirm: { subject, template, previewText },
-  } = EMAILS;
+  } = PINCH_EMAILS;
   const {
     brand,
     delivery: { address },
