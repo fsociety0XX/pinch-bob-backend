@@ -350,7 +350,10 @@ const updateOrderAfterPaymentSuccess = async (
   ).lean();
 
   // If customer has applied coupon
-  if (Object.keys(order!.pricingSummary.coupon).length) {
+  if (
+    order!.pricingSummary.coupon &&
+    Object.keys(order!.pricingSummary.coupon).length
+  ) {
     // Append coupon details in user model when customer apply a coupon successfully
     const user = await User.findById(order?.user?._id);
     if (
@@ -529,7 +532,10 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const order = await Order.findById(newOrder?.id).lean();
 
   // If customer has applied coupon
-  if (Object.keys(order!.pricingSummary.coupon).length) {
+  if (
+    order!.pricingSummary.coupon &&
+    Object.keys(order!.pricingSummary.coupon).length
+  ) {
     // Append coupon details in user model when customer apply a coupon successfully
     const cUser = await User.findById(order?.user?._id);
     if (
