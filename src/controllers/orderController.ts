@@ -41,7 +41,7 @@ import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const CANCELLED = 'cancelled';
+const CANCELLED = 'Cancelled';
 
 interface IWoodeliveryPackage {
   productId: ObjectId;
