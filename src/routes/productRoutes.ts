@@ -5,6 +5,7 @@ import {
   deleteProduct,
   getAllProduct,
   getOneProduct,
+  getOneProductViaSlug,
   updateProduct,
 } from '@src/controllers/productController';
 import { Role } from '@src/types/customTypes';
@@ -32,5 +33,7 @@ productRouter
     updateProduct
   )
   .delete(protect, roleRistriction(Role.ADMIN), deleteProduct);
+
+productRouter.route('/slug/:slug').get(getOneProductViaSlug);
 
 export default productRouter;

@@ -107,7 +107,7 @@ app.use(
 // Serving static files
 app.use(express.static(`${dirname}/public`));
 
-// Test middleware
+// Brand middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!req.body.brand) {
     req.body.brand = req.headers.brand;
