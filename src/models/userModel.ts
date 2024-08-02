@@ -76,7 +76,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     email: {
       type: String,
-      unique: true,
       required: [true, USER_SCHEMA_VALIDATION.email],
       lowercase: true,
       validate: [validator.isEmail, USER_SCHEMA_VALIDATION.invalidEmail],
@@ -89,7 +88,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     phone: {
       type: String,
-      unique: true,
       sparse: true,
     },
     photo: {
@@ -164,6 +162,9 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     toObject: { virtuals: true },
   }
 );
+
+// This is a compound index which ensures that same email can exist in both brands but within specific brands emails should always be unique.
+userSchema.index({ email: 1, phone: 1, brand: 1 }, { unique: true });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
