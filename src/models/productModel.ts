@@ -212,7 +212,7 @@ const productSchema = new mongoose.Schema<IProduct>(
 );
 
 productSchema.index({ price: 1, ratingsAverage: -1 });
-productSchema.index({ slug: 1 });
+productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
 // When reviews are ready
 // productSchema.virtual('reviews', {
