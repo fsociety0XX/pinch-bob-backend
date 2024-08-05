@@ -1,4 +1,5 @@
 /* eslint-disable consistent-return */
+
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import otpGenerator from 'otp-generator';
@@ -25,6 +26,7 @@ import {
   UNAUTHORISED,
   UNAUTHORISED_ROLE,
   BOB_EMAILS,
+  GOOGLE_REVIEWS_ERROR,
 } from '@src/constants/messages';
 
 interface ICookieOptions {
@@ -317,5 +319,35 @@ export const verifyOtp = catchAsync(
       return next(new AppError(OTP_EXPIRED, StatusCode.BAD_REQUEST));
     }
     return next(new AppError(INVALID_OTP, StatusCode.BAD_REQUEST));
+  }
+);
+
+export const fetchReviews = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { brand } = req.body;
+    const placeId =
+      brand === brandEnum[0]
+        ? process.env.PINCH_GPLACE_ID
+        : process.env.BOB_GPLACE_ID;
+    const apiKey =
+      brand === brandEnum[0]
+        ? process.env.PINCH_GAPI_KEY
+        : process.env.BOB_GAPI_KEY;
+
+    const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?placeid=${placeId}&key=${apiKey}`;
+
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    const { reviews } = data.result;
+    console.log(data, 'data999');
+
+    if (data.status !== 'OK') {
+      return next(new AppError(GOOGLE_REVIEWS_ERROR, StatusCode.BAD_REQUEST));
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: reviews,
+    });
   }
 );

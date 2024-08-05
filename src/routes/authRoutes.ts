@@ -2,6 +2,7 @@ import express from 'express';
 import {
   changePassword,
   forgotPassword,
+  fetchReviews,
   protect,
   resetPassword,
   sendOtp,
@@ -24,7 +25,7 @@ import { appendDefaultUserRoleInReq } from '@src/utils/middlewares';
 const authRouter = express.Router();
 
 // Auth routes
-
+authRouter.route('/reviews').get(fetchReviews);
 authRouter.post(SEND_OTP, sendOtp);
 authRouter.post(VERIFY_OTP, verifyOtp);
 authRouter.post(
