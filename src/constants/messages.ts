@@ -27,6 +27,7 @@ export const NO_USER = 'User does not exist';
 export const LOGIN_AGAIN =
   'User recently changed the password, Please login again.';
 export const INVALID_TOKEN = 'Please provide a valid token.';
+export const GOOGLE_REVIEWS_ERROR = 'Error in fetching google reviews';
 export const UNAUTHORISED_ROLE = 'You are not authorised to access';
 export const TOKEN_SENT = 'Token sent to email';
 export const EMAIL_FAILED =
