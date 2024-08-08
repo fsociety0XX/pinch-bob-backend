@@ -21,6 +21,9 @@ export const createOne = (
     if (req.files?.length) {
       req.body.images = req.files;
     }
+    if (req.file) {
+      req.body.image = req.file;
+    }
     const doc = await model.create(req.body);
     res.status(StatusCode.CREATE).json({
       status: 'success',
@@ -36,6 +39,9 @@ export const updateOne = (
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     if (req.files?.length) {
       req.body.images = req.files;
+    }
+    if (req.file) {
+      req.body.image = req.file;
     }
     const doc = await model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
