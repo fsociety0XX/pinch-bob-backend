@@ -110,7 +110,7 @@ app.use(express.static(`${dirname}/public`));
 // Brand middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!req.body.brand) {
-    req.body.brand = req.headers.brand || req.headers.Brand;
+    req.body.brand = req.headers.brand;
   }
   req.requestTime = new Date().toISOString();
   next();
