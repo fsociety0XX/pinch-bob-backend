@@ -151,9 +151,9 @@ export const BOB_EMAILS = {
     previewText: 'Thank you for your order',
   },
   sendOtp: {
-    subject: 'Your OTP for Pinchbakehouse',
+    subject: 'Your OTP for Bob the Baker Boy',
     template: 'sendOtp',
-    previewText: 'Your OTP for Pinchbakehouse',
+    previewText: 'Your OTP for Bob the Baker Boy',
   },
   orderConfirm: {
     subject: 'Thank you for your order',
