@@ -324,8 +324,15 @@ export const verifyOtp = catchAsync(
 
 export const fetchReviews = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const placeId = process.env.GPLACE_ID;
-    const apiKey = process.env.GAPI_KEY;
+    const { brand } = req.body;
+    const placeId =
+      brand === brandEnum[0]
+        ? process.env.PINCH_GPLACE_ID
+        : process.env.BOB_GPLACE_ID;
+    const apiKey =
+      brand === brandEnum[0]
+        ? process.env.PINCH_GAPI_KEY
+        : process.env.BOB_GAPI_KEY;
 
     const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?placeid=${placeId}&key=${apiKey}`;
 
