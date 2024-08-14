@@ -26,6 +26,7 @@ export const fetchAPI = (
   return fetch(url, options);
 };
 
+// Function to convert UTC to SGT
 export function convertUTCToSGT(utcDateString: string): Date {
   // Create a Date object from the UTC string
   const utcDate = new Date(utcDateString);
@@ -43,23 +44,37 @@ export function calculateBeforeAndAfterDateTime(
   dateString: string,
   timeString: string
 ): { beforeDateTime: Date; afterDateTime: Date } {
-  // Parse the date string into a Date object
-  const dateTime = convertUTCToSGT(dateString);
+  // Convert the date string from UTC to SGT
+  const sgtDateTime = convertUTCToSGT(dateString);
 
-  // Extract start time from the time string
-  const [startTime] = timeString.split(' - ');
+  // Extract start and end times from the time string
+  const [startTime, endTime] = timeString.split(' - ');
 
-  // Parse the start time
-  const [startHours, startMinutes] = startTime.match(/\d+/g)!.map(Number);
-  const afterDateTime = new Date(dateTime);
-  afterDateTime.setUTCHours(startHours, startMinutes, 0, 0);
+  // Function to convert 12-hour time format to 24-hour format
+  function convertTo24Hour(time: string): [number, number] {
+    const [timePart, modifier] = time.split(/(am|pm)/i);
+    // eslint-disable-next-line prefer-const
+    let [hours, minutes] = timePart.split(':').map(Number);
 
-  // Set beforeDateTime to the end of the event
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, endTime] = timeString.split(' - ');
-  const [endHours, endMinutes] = endTime.match(/\d+/g)!.map(Number);
-  const beforeDateTime = new Date(dateTime);
-  beforeDateTime.setUTCHours(endHours, endMinutes, 0, 0);
+    if (modifier.toLowerCase() === 'pm' && hours < 12) {
+      hours += 12;
+    }
+    if (modifier.toLowerCase() === 'am' && hours === 12) {
+      hours = 0;
+    }
+
+    return [hours, minutes || 0];
+  }
+
+  // Parse the start time and set it in SGT
+  const [startHours, startMinutes] = convertTo24Hour(startTime.trim());
+  const afterDateTime = new Date(sgtDateTime);
+  afterDateTime.setHours(startHours, startMinutes, 0, 0);
+
+  // Parse the end time and set it in SGT
+  const [endHours, endMinutes] = convertTo24Hour(endTime.trim());
+  const beforeDateTime = new Date(sgtDateTime);
+  beforeDateTime.setHours(endHours, endMinutes, 0, 0);
 
   return { beforeDateTime, afterDateTime };
 }
