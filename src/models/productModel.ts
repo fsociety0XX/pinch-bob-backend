@@ -53,7 +53,7 @@ interface IProduct {
   superCategory: Types.ObjectId;
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
-  tag: string; // can be used to less sweet/ vegan labels to show in product
+  tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
   fondant: boolean;
 }
@@ -197,7 +197,7 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Product',
       },
     ],
-    tag: String,
+    tag: [String],
     active: {
       type: Boolean,
       default: true,
