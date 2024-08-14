@@ -191,8 +191,7 @@ export const getAll = (
         )
           .filter(filterFields)
           .sort()
-          .limit()
-          .pagination();
+          .limit();
         totalDocsCount = await model
           .find(featuresWithoutLimit.query)
           .countDocuments();
