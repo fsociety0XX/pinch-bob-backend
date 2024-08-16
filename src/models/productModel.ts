@@ -1,5 +1,5 @@
 import mongoose, { Types, model } from 'mongoose';
-import slugify from 'slugify';
+// import slugify from 'slugify';
 import { brandEnum, refImageType, typeEnum } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
@@ -55,7 +55,8 @@ interface IProduct {
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
-  fondant: boolean;
+  fondantName: boolean;
+  fondantNumber: boolean;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -80,7 +81,10 @@ const productSchema = new mongoose.Schema<IProduct>(
       trim: true,
       required: [true, PRODUCT_SCHEMA_VALIDATION.name],
     },
-    slug: String,
+    slug: {
+      type: String,
+      required: [true, PRODUCT_SCHEMA_VALIDATION.slug],
+    },
     price: {
       type: Number,
       required: [true, PRODUCT_SCHEMA_VALIDATION.price],
@@ -173,7 +177,11 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
-    fondant: {
+    fondantNumber: {
+      type: Boolean,
+      default: false,
+    },
+    fondantName: {
       type: Boolean,
       default: false,
     },
@@ -222,10 +230,10 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 // });
 
 // Document middleware
-productSchema.pre('save', function (next) {
-  this.slug = slugify(this.name);
-  next();
-});
+// productSchema.pre('save', function (next) {
+//   this.slug = slugify(this.name);
+//   next();
+// });
 
 // Query middleware
 productSchema.pre('findOne', function (next) {
