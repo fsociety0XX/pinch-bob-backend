@@ -200,7 +200,17 @@ const createWoodeliveryTask = (order: IOrder) => {
   let taskDesc = '';
   const packages = order.product.map(
     (
-      { product, quantity, price, size, pieces, flavour, msg, fondantInfo },
+      {
+        product,
+        quantity,
+        price,
+        size,
+        pieces,
+        flavour,
+        msg,
+        fondantName,
+        fondantNumber,
+      },
       index
     ) => {
       taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
@@ -213,7 +223,9 @@ const createWoodeliveryTask = (order: IOrder) => {
         field2: pieces?.name,
         field3: flavour?.name,
         field4: msg || '',
-        field5: fondantInfo || '',
+        field5: `Fondant Name: ${fondantName || ''} and Fondant Number: ${
+          fondantNumber || ''
+        }`,
       };
     }
   );

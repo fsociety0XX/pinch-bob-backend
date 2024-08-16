@@ -55,7 +55,8 @@ interface IProduct {
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
-  fondant: boolean;
+  fondantName: boolean;
+  fondantNumber: boolean;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -173,7 +174,11 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
-    fondant: {
+    fondantNumber: {
+      type: Boolean,
+      default: false,
+    },
+    fondantName: {
       type: Boolean,
       default: false,
     },

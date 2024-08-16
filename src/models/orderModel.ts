@@ -79,7 +79,8 @@ export interface IProduct {
   };
   refImage?: IPhoto;
   msg?: string;
-  fondantInfo?: string;
+  fondantName?: string;
+  fondantNumber?: string;
   address?: string; // will be used if delivery type - multi location delivery
 }
 
@@ -134,7 +135,8 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   },
   refImage: ProductImageSchema,
   msg: String,
-  fondantInfo: String,
+  fondantName: String,
+  fondantNumber: String,
   address: String,
 });
 
