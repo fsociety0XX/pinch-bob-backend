@@ -35,6 +35,7 @@ export const EMAIL_FAILED =
 export const CURRENT_PASSWORD_INCORRECT = 'Your current password is incorrect.';
 export const PRODUCT_SCHEMA_VALIDATION = {
   name: 'A product must have a name',
+  slug: 'A product must have a slug',
   price: 'A product must have a price',
   currency: 'A currency is required',
   brand: 'A product must have a brand',
