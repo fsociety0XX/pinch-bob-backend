@@ -45,6 +45,7 @@ interface IProduct {
   type: string; // cake, bake or others
   details: IProductDetails;
   maxQty?: number;
+  minQty?: number;
   refImageType?: string; // edible or customise
   preparationDays: number;
   available: boolean; // will be used to show 'sold out' tags
@@ -161,6 +162,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
     },
     maxQty: Number,
+    minQty: Number,
     refImageType: {
       type: String,
       enum: refImageType,
