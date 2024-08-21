@@ -23,7 +23,6 @@ const deliveryMethodSchema = new mongoose.Schema<IDeliveryMethod>(
     name: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
-      unique: true,
       trim: true,
     },
     price: {
@@ -46,6 +45,8 @@ const deliveryMethodSchema = new mongoose.Schema<IDeliveryMethod>(
     toObject: { virtuals: true },
   }
 );
+
+deliveryMethodSchema.index({ name: 1, brand: 1 }, { unique: true });
 
 const DeliveryMethod = mongoose.model('DeliveryMethod', deliveryMethodSchema);
 

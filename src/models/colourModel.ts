@@ -18,7 +18,6 @@ const colourSchema = new mongoose.Schema<IColour>(
     name: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
-      unique: true,
       trim: true,
     },
     active: {
@@ -33,6 +32,8 @@ const colourSchema = new mongoose.Schema<IColour>(
     toObject: { virtuals: true },
   }
 );
+
+colourSchema.index({ name: 1, brand: 1 }, { unique: true });
 
 const Colour = mongoose.model('Colour', colourSchema);
 

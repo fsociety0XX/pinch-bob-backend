@@ -35,7 +35,6 @@ const couponSchema = new mongoose.Schema<ICoupon>(
     code: {
       type: String,
       required: [true, COUPON_SCHEMA_VALIDATION.code],
-      unique: true,
       trim: true,
     },
     type: {
@@ -77,6 +76,8 @@ const couponSchema = new mongoose.Schema<ICoupon>(
     toObject: { virtuals: true },
   }
 );
+
+couponSchema.index({ code: 1, brand: 1 }, { unique: true });
 
 const Coupon = mongoose.model('Coupon', couponSchema);
 

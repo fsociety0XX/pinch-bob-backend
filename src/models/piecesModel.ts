@@ -18,7 +18,6 @@ const piecesSchema = new mongoose.Schema<IPieces>(
     name: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
-      unique: true,
       trim: true,
     },
     active: {
@@ -33,6 +32,8 @@ const piecesSchema = new mongoose.Schema<IPieces>(
     toObject: { virtuals: true },
   }
 );
+
+piecesSchema.index({ name: 1, brand: 1 }, { unique: true });
 
 const Pieces = mongoose.model('Pieces', piecesSchema);
 
