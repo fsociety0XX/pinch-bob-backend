@@ -18,7 +18,6 @@ const sizeSchema = new mongoose.Schema<ISize>(
     name: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
-      unique: true,
       trim: true,
     },
     active: {
@@ -33,6 +32,8 @@ const sizeSchema = new mongoose.Schema<ISize>(
     toObject: { virtuals: true },
   }
 );
+
+sizeSchema.index({ name: 1, brand: 1 }, { unique: true });
 
 const Size = mongoose.model('Size', sizeSchema);
 

@@ -21,11 +21,20 @@ interface IPhoto {
   location: string;
 }
 
-interface IProductDetails {
+interface IPinchProductDetails {
   details: string;
   dietaryAdvice: string;
   shelfLife: string;
   sizesAndPortions: string;
+}
+
+interface IBobProductDetails {
+  description: string[];
+  sizesDetails: string;
+  advice: string;
+  ingredients: string;
+  shelfLife: string;
+  howArrives: string;
 }
 
 interface IProduct {
@@ -43,7 +52,8 @@ interface IProduct {
   flavour?: mongoose.Types.ObjectId[];
   colour?: mongoose.Types.ObjectId[];
   type: string; // cake, bake or others
-  details: IProductDetails;
+  pinchDetails: IPinchProductDetails;
+  bobDetails: IBobProductDetails;
   maxQty?: number;
   minQty?: number;
   refImageType?: string; // edible or customise
@@ -68,11 +78,20 @@ const ProductImageSchema = new mongoose.Schema({
   location: String,
 });
 
-const ProductDetailSchema = new mongoose.Schema({
+const PinchProductDetailSchema = new mongoose.Schema<IPinchProductDetails>({
   details: String,
   dietaryAdvice: String,
   shelfLife: String,
   sizesAndPortions: String,
+});
+
+const BobProductDetailSchema = new mongoose.Schema<IBobProductDetails>({
+  description: [String],
+  sizesDetails: String,
+  advice: String,
+  ingredients: String,
+  shelfLife: String,
+  howArrives: String,
 });
 
 const productSchema = new mongoose.Schema<IProduct>(
@@ -157,9 +176,32 @@ const productSchema = new mongoose.Schema<IProduct>(
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
       enum: typeEnum,
     },
-    details: {
-      type: ProductDetailSchema,
-      required: [true, PRODUCT_SCHEMA_VALIDATION.detail],
+    pinchDetails: {
+      type: PinchProductDetailSchema,
+      validate: {
+        validator(this: IProduct, value: IPinchProductDetails) {
+          // `this` refers to the current document
+          if (this.brand === brandEnum[0]) {
+            // If brand is 'pinch', check if `pinchDetails` is not null or undefined
+            return value != null;
+          }
+          // If brand is not 'pinch', validation passes regardless of `pinchDetails`
+          return true;
+        },
+        message: PRODUCT_SCHEMA_VALIDATION.detail,
+      },
+    },
+    bobDetails: {
+      type: BobProductDetailSchema,
+      validate: {
+        validator(this: IProduct, value: IBobProductDetails) {
+          if (this.brand === brandEnum[1]) {
+            return value != null;
+          }
+          return true;
+        },
+        message: PRODUCT_SCHEMA_VALIDATION.detail,
+      },
     },
     maxQty: Number,
     minQty: Number,
