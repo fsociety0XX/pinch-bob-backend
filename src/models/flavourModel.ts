@@ -18,7 +18,6 @@ const flavourSchema = new mongoose.Schema<IFlavour>(
     name: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
-      unique: true,
       trim: true,
     },
     active: {
@@ -33,6 +32,8 @@ const flavourSchema = new mongoose.Schema<IFlavour>(
     toObject: { virtuals: true },
   }
 );
+
+flavourSchema.index({ name: 1, brand: 1 }, { unique: true });
 
 const Flavour = mongoose.model('Flavour', flavourSchema);
 
