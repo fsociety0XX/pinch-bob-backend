@@ -204,7 +204,10 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     },
     maxQty: Number,
-    minQty: Number,
+    minQty: {
+      type: Number,
+      default: 1,
+    },
     refImageType: {
       type: String,
       enum: refImageType,

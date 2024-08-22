@@ -18,6 +18,7 @@ export interface errorObject {
 }
 
 export const brandEnum = ['pinch', 'bob'];
+export const notesEnum = ['2', '10', '50'];
 export const typeEnum = ['cake', 'bake', 'others'];
 export const refImageType = ['customise', 'edible'];
 export const deliveryTypeEnum = ['single', 'multiple'];

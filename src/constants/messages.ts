@@ -77,6 +77,8 @@ export const COLLECTION_TIME_VALIDATION = {
   endTime: 'A collection time must have end time',
 };
 export const ORDER_SCHEMA_VALIDATION = {
+  moneyPullingMax: 'Maximum number of notes allowed is 25',
+  moneyPullingQty: 'Total number of notes should not be in decimals',
   orderNumber: 'Order number is required.',
   product: 'An order must have a product details',
   delivery: 'Delivery details are for the order',

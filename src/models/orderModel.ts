@@ -4,7 +4,7 @@ import {
   COMMON_SCHEMA_VALIDATION,
   ORDER_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
-import { brandEnum, deliveryTypeEnum } from '@src/types/customTypes';
+import { brandEnum, deliveryTypeEnum, notesEnum } from '@src/types/customTypes';
 import { generateOrderId } from '@src/utils/functions';
 
 type StripeWebhookEvent = Stripe.Event;
@@ -81,6 +81,10 @@ export interface IProduct {
   msg?: string;
   fondantName?: string;
   fondantNumber?: string;
+  moneyPulling?: {
+    noteType: string;
+    qty: number;
+  };
   address?: string; // will be used if delivery type - multi location delivery
 }
 
@@ -137,6 +141,22 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   msg: String,
   fondantName: String,
   fondantNumber: String,
+  moneyPulling: {
+    type: {
+      noteType: {
+        type: String,
+        enum: notesEnum,
+      },
+      qty: {
+        type: Number,
+        max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
+        validate: {
+          validator: Number.isInteger,
+          message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
+        },
+      },
+    },
+  },
   address: String,
 });
 
