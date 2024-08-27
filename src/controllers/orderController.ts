@@ -26,6 +26,7 @@ import {
   ORDER_AUTH_ERR,
   ORDER_FAIL_EMAIL,
   ORDER_NOT_FOUND,
+  ORDER_DELIVERY_DATE_ERR,
 } from '@src/constants/messages';
 import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -100,13 +101,32 @@ function cancelOrder(id: string) {
 }
 
 export const placeOrder = catchAsync(
-  // eslint-disable-next-line consistent-return
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    // check if delivery date is not today's date
+    const serverTimeUTC = new Date().getTime();
+    const clientTimeUTC = new Date(req.body.delivery.date).getTime();
+    if (clientTimeUTC < serverTimeUTC) {
+      return next(
+        new AppError(ORDER_DELIVERY_DATE_ERR, StatusCode.BAD_REQUEST)
+      );
+    }
+
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
       orderId = req.body.orderId;
     } else {
+      // Updating user document with extra details
+      const user = await User.findById(req.user?._id);
+      if (!user?.firstName && !user.lastName && !user.phone) {
+        const { customer } = req.body;
+        await User.findByIdAndUpdate(req.user?._id, {
+          firstName: customer?.firstName,
+          lastName: customer?.lastName,
+          phone: customer?.phone,
+        });
+      }
+
       const order = await Order.create(req.body);
       orderId = order.id;
     }
