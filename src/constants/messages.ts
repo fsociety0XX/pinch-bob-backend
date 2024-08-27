@@ -92,6 +92,7 @@ export const OTP_VERIFIED = 'OTP verified successfully';
 export const OTP_EXPIRED = 'OTP has expired';
 export const INVALID_OTP = 'OTP is invalid';
 export const ORDER_NOT_FOUND = 'Order not found.';
+export const ORDER_DELIVERY_DATE_ERR = `Delivery date should be greater than today's date`;
 export const ORDER_FAIL_EMAIL = 'Order failure email sent successfully.';
 export const DELIVERY_CREATE_ERROR = 'Error in creating delivery';
 export const TEMPLATES_DIR = path.resolve(__dirname, '..', 'templates');
