@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { IRequestWithUser } from '@src/controllers/authController';
-import { CANCELLED, Role } from '@src/types/customTypes';
+import { Role } from '@src/types/customTypes';
 
 // Usefull for filtering out data based on current logged in user
 export const appendUserIdInReqQuery = (
@@ -34,24 +34,24 @@ export const appendDefaultUserRoleInReq = (
 };
 
 // This middleware is used to send list of deliveries except cancelled ones
-export const appendCancelledStatusInReqQuery = (
-  req: Request,
-  _: Response,
-  next: NextFunction
-): void => {
-  // Check if there is an existing status filter in req.query
-  let statusFilter;
-  if (req.query.status?.length) {
-    statusFilter = {
-      status: req.query.status,
-    };
-  }
+// export const appendCancelledStatusInReqQuery = (
+//   req: Request,
+//   _: Response,
+//   next: NextFunction
+// ): void => {
+//   // Check if there is an existing status filter in req.query
+//   let statusFilter;
+//   if (req.query.status?.length) {
+//     statusFilter = {
+//       status: req.query.status,
+//     };
+//   }
 
-  // Merge the existing status filter with the new condition to exclude 'canceled'
-  statusFilter = { ...statusFilter, $ne: CANCELLED };
+//   // Merge the existing status filter with the new condition to exclude 'canceled'
+//   statusFilter = { ...statusFilter, $ne: CANCELLED };
 
-  // Update req.query.status with the modified filter
-  req.query.status = JSON.stringify(statusFilter);
+//   // Update req.query.status with the modified filter
+//   req.query.status = JSON.stringify(statusFilter);
 
-  return next();
-};
+//   return next();
+// };
