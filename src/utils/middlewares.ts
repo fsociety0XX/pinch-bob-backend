@@ -39,6 +39,19 @@ export const appendCancelledStatusInReqQuery = (
   _: Response,
   next: NextFunction
 ): void => {
-  req.query = { ...req.query, status: { $ne: CANCELLED } };
+  // Check if there is an existing status filter in req.query
+  let statusFilter;
+  if (req.query.status?.length) {
+    statusFilter = {
+      status: req.query.status,
+    };
+  }
+
+  // Merge the existing status filter with the new condition to exclude 'canceled'
+  statusFilter = { ...statusFilter, $ne: CANCELLED };
+
+  // Update req.query.status with the modified filter
+  req.query.status = JSON.stringify(statusFilter);
+
   return next();
 };
