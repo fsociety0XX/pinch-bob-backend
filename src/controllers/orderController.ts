@@ -9,7 +9,12 @@ import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
-import { Role, StatusCode, checkoutSessionFor } from '@src/types/customTypes';
+import {
+  CANCELLED,
+  Role,
+  StatusCode,
+  checkoutSessionFor,
+} from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import {
   getAll,
@@ -42,8 +47,6 @@ import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const CANCELLED = 'Cancelled';
-
 interface IWoodeliveryPackage {
   productId: ObjectId;
   orderId: string;
