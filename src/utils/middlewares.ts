@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { IRequestWithUser } from '@src/controllers/authController';
-import { Role } from '@src/types/customTypes';
+import { CANCELLED, Role } from '@src/types/customTypes';
 
 // Usefull for filtering out data based on current logged in user
 export const appendUserIdInReqQuery = (
@@ -30,5 +30,15 @@ export const appendDefaultUserRoleInReq = (
   next: NextFunction
 ): void => {
   req.body = { ...req.body, role: Role.CUSTOMER };
+  return next();
+};
+
+// This middleware is used to send list of deliveries except cancelled ones
+export const appendCancelledStatusInReqQuery = (
+  req: Request,
+  _: Response,
+  next: NextFunction
+): void => {
+  req.query = { ...req.query, status: { $ne: CANCELLED } };
   return next();
 };
