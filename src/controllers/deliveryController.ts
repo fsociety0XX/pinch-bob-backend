@@ -27,6 +27,16 @@ export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+export const getServerTime = catchAsync(async (req: Request, res: Response) => {
+  const serverDateTime = new Date();
+  res.status(StatusCode.SUCCESS).json({
+    status: 'success',
+    data: {
+      data: serverDateTime,
+    },
+  });
+});
+
 export const assignOrderToDriver = catchAsync(
   async (req: Request, res: Response) => {
     const deliveryId = req.params.id;
