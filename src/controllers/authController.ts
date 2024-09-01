@@ -332,7 +332,6 @@ export const fetchReviews = catchAsync(
     const response = await fetch(apiUrl);
     const data = await response.json();
     const { reviews } = data.result;
-    console.log(data, 'data999');
 
     if (data.status !== 'OK') {
       return next(new AppError(GOOGLE_REVIEWS_ERROR, StatusCode.BAD_REQUEST));
