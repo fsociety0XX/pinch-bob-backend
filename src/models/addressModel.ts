@@ -13,7 +13,7 @@ export interface IAddress {
   city: string;
   country: string;
   company?: string;
-  unitNumber: string;
+  unitNumber?: string;
   address1: string;
   address2?: string;
   postalCode: string;
@@ -52,7 +52,6 @@ const addressSchema = new mongoose.Schema<IAddress>(
     },
     unitNumber: {
       type: String,
-      required: [true, ADDRESS_SCHEMA_VALIDATION.unitNumber],
       trim: true,
     },
     address1: {
