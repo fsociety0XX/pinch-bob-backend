@@ -61,7 +61,6 @@ export const ADDRESS_SCHEMA_VALIDATION = {
   city: 'A city is required',
   country: 'A country is required',
   address1: 'A address1 is required',
-  address2: 'A address2 is required',
   postalCode: 'A postal code is required',
   phone: 'A phone number is required',
   default: 'Problem in marking address as default',

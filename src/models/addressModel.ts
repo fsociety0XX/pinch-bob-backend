@@ -13,6 +13,7 @@ export interface IAddress {
   city: string;
   country: string;
   company?: string;
+  unitNumber?: string;
   address1: string;
   address2?: string;
   postalCode: string;
@@ -49,6 +50,10 @@ const addressSchema = new mongoose.Schema<IAddress>(
       required: [true, ADDRESS_SCHEMA_VALIDATION.country],
       trim: true,
     },
+    unitNumber: {
+      type: String,
+      trim: true,
+    },
     address1: {
       type: String,
       required: [true, ADDRESS_SCHEMA_VALIDATION.address1],
@@ -56,7 +61,6 @@ const addressSchema = new mongoose.Schema<IAddress>(
     },
     address2: {
       type: String,
-      required: [true, ADDRESS_SCHEMA_VALIDATION.address2],
       trim: true,
     },
     company: String,
