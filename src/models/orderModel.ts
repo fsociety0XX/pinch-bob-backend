@@ -251,7 +251,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
     path: 'delivery.address',
     select:
-      'firstName lastName email city country company address1 address2 postalCode phone',
+      'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
