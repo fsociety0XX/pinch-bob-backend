@@ -148,7 +148,7 @@ export const submitCustomerForm = catchAsync(
       phone,
       brand,
       delivery: {
-        address: { city, country, address1, address2, postalCode },
+        address: { city, country, address1, address2, postalCode, unitNumber },
       },
     } = req.body;
 
@@ -175,6 +175,7 @@ export const submitCustomerForm = catchAsync(
       address2,
       postalCode,
       phone,
+      unitNumber,
       user: new mongoose.Types.ObjectId(result!._id),
     };
     const createdAddress = await Address.create(newAddress);
@@ -279,11 +280,11 @@ const createWoodeliveryTask = async (customiseCake: ICustomiseCake) => {
   };
 
   if (address) {
-    task.destinationAddress = `${address.address1}, ${
-      address.address2 || ''
-    }, ${address.company || ''}, ${address.city}, ${address.country}, ${
-      address.postalCode
-    }`;
+    task.destinationAddress = `${address.unitNumber || ''} ${
+      address.address1
+    }, ${address.address2 || ''}, ${address.company || ''}, ${
+      address.country
+    }, ${address.postalCode}`;
     task.requesterName = `${address.firstName} ${address.lastName}`;
     task.requesterPhone = String(address.phone);
   }

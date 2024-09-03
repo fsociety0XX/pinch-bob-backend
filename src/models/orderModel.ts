@@ -47,6 +47,7 @@ interface IDelivery {
     country: string;
     company?: string;
     address1: string;
+    unitNumber?: string;
     address2?: string;
     postalCode: string;
     phone: number;

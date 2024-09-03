@@ -267,11 +267,11 @@ const createWoodeliveryTask = (order: IOrder) => {
     packages,
   };
   if (address?.id) {
-    task.destinationAddress = `${address.address1}, ${
-      address.address2 || ''
-    }, ${address.company || ''}, ${address.city}, ${address.country}, ${
-      address.postalCode
-    }`;
+    task.destinationAddress = `${address.unitNumber || ''} ${
+      address.address1
+    }, ${address.address2 || ''}, ${address.company || ''}, ${
+      address.country
+    }, ${address.postalCode}`;
     task.requesterName = `${address.firstName} ${address.lastName}`;
     task.requesterPhone = String(address.phone);
   }
