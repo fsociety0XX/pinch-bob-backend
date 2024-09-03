@@ -86,7 +86,7 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   this.populate({
     path: 'address',
     select:
-      'firstName lastName email city country company address1 address2 postalCode phone',
+      'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
   });
   this.populate({
     path: 'order customiseCakeOrder',

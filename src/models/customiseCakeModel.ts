@@ -27,6 +27,7 @@ interface IDelivery {
     country: string;
     company?: string;
     address1: string;
+    unitNumber?: string;
     address2?: string;
     postalCode: string;
     phone: number;
@@ -322,7 +323,7 @@ customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
     this.populate({
       path: 'delivery.address',
       select:
-        'firstName lastName email city country company address1 address2 postalCode phone',
+        'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
     });
     this.populate({
       path: 'user',
