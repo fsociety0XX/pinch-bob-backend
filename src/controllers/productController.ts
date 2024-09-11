@@ -20,7 +20,7 @@ async function uploadProducts(p: IProduct) {
 
   // Initialize authentication
   const authClient = new GoogleAuth({
-    keyFile: path.resolve(__dirname, '../pinchGmerchant.json'), // TODO: Add condition for Bob
+    keyFile: path.resolve(__dirname, '../../pinchGmerchant.json'), // TODO: Add condition for Bob
     scopes: ['https://www.googleapis.com/auth/content'],
   });
 
