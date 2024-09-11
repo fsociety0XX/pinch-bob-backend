@@ -26,7 +26,7 @@ import {
 import sendEmail from '@src/utils/sendEmail';
 import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
-import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -289,7 +289,7 @@ const createWoodeliveryTask = async (customiseCake: ICustomiseCake) => {
     task.requesterPhone = String(address.phone);
   }
 
-  return fetchAPI(CREATE_WOODELIVERY_TASK, 'POST', task);
+  return fetchAPI(WOODELIVERY_TASK, 'POST', task);
 };
 
 const createDelivery = async (customiseCake: ICustomiseCake) => {

@@ -17,7 +17,7 @@ import {
 } from '@src/utils/factoryHandler';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
-  const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'POST');
+  const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
   const drivers = await response.json();
   res.status(StatusCode.SUCCESS).json({
     status: 'success',

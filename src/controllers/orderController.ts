@@ -21,7 +21,6 @@ import {
   getOne,
   softDeleteMany,
   softDeleteOne,
-  updateOne,
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import {
@@ -33,7 +32,7 @@ import {
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
 } from '@src/constants/messages';
-import { CREATE_WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
@@ -212,7 +211,7 @@ export const placeOrder = catchAsync(
   }
 );
 
-const createWoodeliveryTask = (order: IOrder) => {
+const createWoodeliveryTask = (order: IOrder, update = false) => {
   const {
     orderNumber,
     delivery: { address, date, collectionTime },
@@ -279,7 +278,9 @@ const createWoodeliveryTask = (order: IOrder) => {
     task.recipientEmail = user?.email;
   }
 
-  return fetchAPI(CREATE_WOODELIVERY_TASK, 'POST', task);
+  return update
+    ? fetchAPI(`${WOODELIVERY_TASK}/${order?.woodeliveryTaskId}`, 'PUT', task)
+    : fetchAPI(WOODELIVERY_TASK, 'POST', task);
 };
 
 const createDeliveryDocument = async (order: IOrder, task?: Response) => {
@@ -610,8 +611,43 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-export const updateOrder = updateOne(Order);
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);
 export const getOneOrder = getOne(Order);
 export const getAllOrder = getAll(Order);
+
+export const updateOrder = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { delivery, recipInfo } = req.body;
+    const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!order) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    // Updating delivery document
+    if (delivery || recipInfo) {
+      const deliveryBody = {};
+      if (delivery.date) deliveryBody.deliveryDate = new Date(delivery.date);
+      if (delivery.method) deliveryBody.method = delivery.method;
+      if (delivery.collectionTime)
+        deliveryBody.collectionTime = delivery.collectionTime;
+      if (recipInfo.name) deliveryBody.recipientName = recipInfo.name;
+      if (recipInfo.contact) deliveryBody.recipientPhone = recipInfo.contact;
+
+      await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
+    }
+
+    // Updating task in woodelivery
+    await createWoodeliveryTask(order, true);
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: order,
+      },
+    });
+  }
+);

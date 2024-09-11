@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable import/prefer-default-export */
 import { customAlphabet } from 'nanoid';
 
 interface FetchOptions {
@@ -20,7 +19,7 @@ export const fetchAPI = (
       'Content-Type': 'application/json',
     },
   };
-  if (method === 'POST') {
+  if (method === 'POST' || method === 'PUT') {
     options.body = JSON.stringify(body);
   }
   return fetch(url, options);
