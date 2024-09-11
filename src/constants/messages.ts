@@ -23,7 +23,7 @@ export const REGISTER_ERROR =
 export const UNAUTHORISED = 'Please login again.';
 export const TOKEN_INVALID = 'Token invalid, Please login again.';
 export const TOKEN_EXPIRED = 'Token expired, Please login again.';
-export const NO_USER = 'User does not exist';
+export const NO_USER = 'Please login again.';
 export const LOGIN_AGAIN =
   'User recently changed the password, Please login again.';
 export const INVALID_TOKEN = 'Please provide a valid token.';

@@ -1,5 +1,5 @@
 const VERSION1 = '/api/v1';
-const WOODELIVERY_BASEURL = 'https://api.woodelivery.com/api/form';
+const WOODELIVERY_BASEURL = 'https://api.woodelivery.com/v2';
 
 // MASTER ROUTES
 export const USER_ROUTE = `${VERSION1}/user`;
@@ -36,9 +36,9 @@ export const PLACE_ORDER = '/place-order';
 export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
 
 // DELIVERY
-export const CREATE_WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/createtask`;
-export const GET_WOODELIVERY_DRIVERS = `${WOODELIVERY_BASEURL}/getdrivers`;
-export const ASSIGN_TASK_TO_DRIVER = `${WOODELIVERY_BASEURL}/assigntasktodriver`;
+export const WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/tasks`;
+export const GET_WOODELIVERY_DRIVERS = `${WOODELIVERY_BASEURL}/drivers`;
+export const ASSIGN_TASK_TO_DRIVER = `${WOODELIVERY_BASEURL}/tasks/driver`;
 export const GET_DRIVERS = '/drivers';
 export const ASSIGN_ORDER_TO_DRIVER = '/assign/:id';
 export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';
