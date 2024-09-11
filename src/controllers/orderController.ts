@@ -580,7 +580,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     ) {
       cUser.usedCoupons!.push(order!.pricingSummary.coupon?._id);
     }
-    // Increment the coupon's used count atomically
+    // Increment the coupon's used count automically
     await Coupon.updateOne(
       { _id: order?.pricingSummary.coupon?._id },
       { $inc: { used: 1 } }
