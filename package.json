@@ -7,8 +7,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "start:prod": "NODE_ENV=production ts-node -r tsconfig-paths/register --files ./dist/index.js",
-    "start:stg": "NODE_ENV=development ts-node -r tsconfig-paths/register --files ./dist/index.js",
+    "start:prod": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=4096' ts-node -r tsconfig-paths/register --files ./dist/index.js",
+    "start:stg": "NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' ts-node -r tsconfig-paths/register --files ./dist/index.js",
     "build": "tsc",
     "prepare": "husky install",
     "lint-staged": "lint-staged --config lint-staged.js"
