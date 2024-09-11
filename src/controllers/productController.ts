@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import path from 'path';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 import Product, { IProduct } from '@src/models/productModel';
@@ -19,7 +20,7 @@ async function uploadProducts(p: IProduct) {
 
   // Initialize authentication
   const authClient = new GoogleAuth({
-    keyFile: '../../pinchGmerchant.json', // TODO: Add condition for Bob
+    keyFile: path.resolve(__dirname, '../pinchGmerchant.json'), // TODO: Add condition for Bob
     scopes: ['https://www.googleapis.com/auth/content'],
   });
 
