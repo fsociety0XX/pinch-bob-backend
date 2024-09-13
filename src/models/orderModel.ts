@@ -78,6 +78,7 @@ export interface IProduct {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
   };
+  card: string;
   refImage?: IPhoto;
   msg?: string;
   fondantName?: string;
@@ -138,6 +139,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
     type: mongoose.Schema.ObjectId,
     ref: 'Colour',
   },
+  card: String,
   refImage: ProductImageSchema,
   msg: String,
   fondantName: String,

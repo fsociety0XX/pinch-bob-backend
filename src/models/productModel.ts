@@ -52,6 +52,7 @@ export interface IProduct {
   images: IPhoto[];
   flavour?: mongoose.Types.ObjectId[];
   colour?: mongoose.Types.ObjectId[];
+  cardOptions?: string[];
   type: string; // cake, bake or others
   pinchDetails: IPinchProductDetails;
   bobDetails: IBobProductDetails;
@@ -169,6 +170,7 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Colour',
       },
     ],
+    cardOptions: [String],
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
