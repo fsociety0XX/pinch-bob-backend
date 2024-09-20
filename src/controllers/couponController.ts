@@ -19,7 +19,7 @@ import { COUPON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 export const applyCoupon = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const { code, ids, subTotal } = req.body;
+    const { code, ids, subTotal, totalProductQty } = req.body;
     const usedCoupons = req.user?.usedCoupons || [];
     const coupon = await Coupon.findOne({ code });
 
@@ -78,6 +78,13 @@ export const applyCoupon = catchAsync(
           COUPON_SCHEMA_VALIDATION.minPurchaseValue,
           StatusCode.BAD_REQUEST
         )
+      );
+    }
+
+    // 6. check if total qty of products added in cart is gt/eq than coupon.minQty
+    if (coupon?.minQty && +totalProductQty < coupon?.minQty) {
+      return next(
+        new AppError(COUPON_SCHEMA_VALIDATION.minQty, StatusCode.BAD_REQUEST)
       );
     }
 
