@@ -1,4 +1,4 @@
-import 'module-alias/register';
+import './aliases';
 import dotenv from 'dotenv-safe';
 import mongoose from 'mongoose';
 import app from './app';
