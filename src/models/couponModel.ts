@@ -15,12 +15,13 @@ interface ICoupon {
   type: string;
   applicableOn: string;
   ids?: [mongoose.Schema.Types.ObjectId];
-  limit: number;
+  limit: number; // how many times coupon can be used overall
   startDate: Date;
   endDate: Date;
   discountType: string;
   discount: number;
   minPurchase: number;
+  minQty: number;
   used?: number;
   active: boolean;
 }
@@ -52,6 +53,7 @@ const couponSchema = new mongoose.Schema<ICoupon>(
     startDate: Date,
     endDate: Date,
     minPurchase: Number,
+    minQty: Number, // If we need a coupon with conditions like "Buy 2 Get 10% Off"
     discountType: {
       type: String,
       required: [true, COUPON_SCHEMA_VALIDATION.discountType],

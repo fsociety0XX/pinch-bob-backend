@@ -1,4 +1,3 @@
-import 'module-alias/register';
 import path from 'path';
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
