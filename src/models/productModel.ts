@@ -153,7 +153,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       required: [true, PRODUCT_SCHEMA_VALIDATION.images],
       validate: {
         validator(images: IPhoto[]) {
-          return images.length;
+          return images.length > 0;
         },
         message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
       },
