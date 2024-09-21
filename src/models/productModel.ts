@@ -284,6 +284,11 @@ productSchema.pre('save', function (next) {
 
 // Query middleware
 productSchema.pre('findOne', function (next) {
+  this.populate({
+    path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
+    select: 'name',
+  });
+
   let alreadyPopulated = false;
   if (!alreadyPopulated) {
     this.populate({
