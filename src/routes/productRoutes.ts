@@ -7,11 +7,14 @@ import {
   getOneProduct,
   getOneProductViaSlug,
   updateProduct,
+  globalSearch,
 } from '@src/controllers/productController';
 import { Role } from '@src/types/customTypes';
 import uploadImage from '@src/utils/uploadImage';
 
 const productRouter = express.Router();
+
+productRouter.route('/globalSearch').get(globalSearch);
 
 productRouter
   .route('/')
