@@ -37,9 +37,7 @@ async function uploadProducts(p: IProduct) {
       p.brand === brandEnum[0]
         ? p.pinchDetails.details
         : p.bobDetails.description[0],
-    link: `${
-      p.brand === brandEnum[0] ? PINCH_URL : BOB_URL
-    }/${p._id.toString()}`, // TODO: change it when url is generated from slug instead of id
+    link: `${p.brand === brandEnum[0] ? PINCH_URL : BOB_URL}/details/${p.slug}`,
     imageLink: p.images[0].location,
     additionalImageLinks: [p.images[1].location],
     contentLanguage: 'en',
