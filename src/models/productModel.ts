@@ -283,6 +283,15 @@ productSchema.pre('save', function (next) {
 });
 
 // Query middleware
+productSchema.pre('find', function (next) {
+  this.populate({
+    path: 'category',
+    select: 'name',
+  });
+
+  next();
+});
+
 productSchema.pre('findOne', function (next) {
   this.populate({
     path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
