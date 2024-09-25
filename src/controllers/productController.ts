@@ -106,33 +106,4 @@ export const createProduct = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-export const globalSearch = catchAsync(async (req: Request, res: Response) => {
-  const query = (req.query.query as string) || '';
-  const page = (req.query.page as string) || '1';
-  const limit = (req.query.limit as string) || '30';
-  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-  const sort = (req.query.sort as string) || '-createdAt';
-
-  const filters = {
-    brand: req.query.brand === brandEnum[0] ? brandEnum[0] : brandEnum[1],
-    minPrice: req.query.minPrice || '0',
-    maxPrice: req.query.maxPrice || '999999',
-  };
-
-  const searchCriteria = {
-    name: { $regex: query, $options: 'i' },
-    available: true,
-    brand: filters.brand,
-    price: { $gte: filters.minPrice, $lte: filters.maxPrice },
-  };
-
-  const results = await Product.find(searchCriteria)
-    .sort(sort)
-    .skip(skip)
-    .limit(parseInt(limit, 10));
-
-  res.status(StatusCode.SUCCESS).json({
-    status: 'success',
-    data: results,
-  });
-});
+export const globalSearch = getAll(Product);

@@ -162,6 +162,11 @@ export const getAll = (
         };
       }
 
+      // use wildcard regex search for Product name
+      if (req.query.name && model.modelName === 'Product') {
+        req.query.name = { $regex: req.query.name, $options: 'i' };
+      }
+
       const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter(filterFields)
         .sort()
