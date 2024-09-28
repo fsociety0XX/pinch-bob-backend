@@ -630,12 +630,12 @@ export const updateOrder = catchAsync(
     // Updating delivery document
     if (delivery || recipInfo) {
       const deliveryBody = {};
-      if (delivery.date) deliveryBody.deliveryDate = new Date(delivery.date);
-      if (delivery.method) deliveryBody.method = delivery.method;
-      if (delivery.collectionTime)
+      if (delivery?.date) deliveryBody.deliveryDate = new Date(delivery.date);
+      if (delivery?.method) deliveryBody.method = delivery.method;
+      if (delivery?.collectionTime)
         deliveryBody.collectionTime = delivery.collectionTime;
-      if (recipInfo.name) deliveryBody.recipientName = recipInfo.name;
-      if (recipInfo.contact) deliveryBody.recipientPhone = recipInfo.contact;
+      if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
+      if (recipInfo?.contact) deliveryBody.recipientPhone = recipInfo.contact;
 
       await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
     }
