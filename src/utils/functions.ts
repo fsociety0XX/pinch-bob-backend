@@ -83,3 +83,14 @@ export const generateOrderId = (): string => {
   const nanoid = customAlphabet(alphabet, 6);
   return nanoid();
 };
+
+export const getDateOneDayFromNow = (): String => {
+  const today = new Date();
+  const oneDayFromNow = new Date(today);
+  oneDayFromNow.setDate(today.getDate() + 1); // Add 1 day
+  oneDayFromNow.setUTCHours(0, 0, 0, 0);
+
+  // Convert to UTC by subtracting 8 hours (SGT)
+  const utcDate = new Date(oneDayFromNow.getTime() - 8 * 60 * 60 * 1000);
+  return utcDate.toISOString();
+};

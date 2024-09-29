@@ -131,6 +131,16 @@ export const PINCH_EMAILS = {
     template: 'orderFailure',
     previewText: 'Attention required',
   },
+  orderPrepare: {
+    subject: 'Your order is being prepared',
+    template: 'orderPrepare',
+    previewText: 'The wait is almost over',
+  },
+  reqForReview: {
+    subject: 'Your order has been delivered!',
+    template: 'orderDeliverAndReview',
+    previewText: 'Your order has been delivered!',
+  },
 };
 export const BOB_EMAILS = {
   welcomeEmail: {
@@ -183,4 +193,12 @@ export const COUPON_SCHEMA_VALIDATION = {
   minQty: 'Your product quantity in cart is low for this coupon',
   notForYourCart: 'This coupon is not applicable on the products in your cart.',
   paymentLinkSent: 'An email has been sent to the customer with payment link',
+};
+
+export const ORDER_PREP_EMAIL = {
+  noOrdersFound: 'No orders found for the target date.',
+  emailFailed: (orderNumber: string): string =>
+    `Failed to send email for order ${orderNumber}:`,
+  allTaskCompleted: 'All email sending tasks completed.',
+  errorInSendingEmails: 'Error in sending order preparation emails:',
 };

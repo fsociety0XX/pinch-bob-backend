@@ -32,6 +32,15 @@ const sendEmail = async ({
         extname: '.hbs',
         layoutsDir: path.resolve(TEMPLATES_DIR),
         defaultLayout: false,
+        helpers: {
+          ternaryDeliveryType: (
+            deliveryMethod: string,
+            option1: string,
+            option2: string
+          ) => {
+            return deliveryMethod === 'Self-collect' ? option1 : option2; // Self collect ternary condition for order confirmation email
+          },
+        },
       },
       viewPath: path.resolve(TEMPLATES_DIR),
       extName: '.hbs',

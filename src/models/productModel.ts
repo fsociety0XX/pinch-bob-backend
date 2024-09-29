@@ -69,6 +69,7 @@ export interface IProduct {
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
   fondantName: boolean;
+  fondantNameLimit: number;
   fondantNumber: boolean;
 }
 
@@ -232,6 +233,10 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    fondantNameLimit: {
+      type: Number,
+      default: 9,
+    },
     category: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -283,6 +288,15 @@ productSchema.pre('save', function (next) {
 });
 
 // Query middleware
+productSchema.pre('find', function (next) {
+  this.populate({
+    path: 'category',
+    select: 'name',
+  });
+
+  next();
+});
+
 productSchema.pre('findOne', function (next) {
   this.populate({
     path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
