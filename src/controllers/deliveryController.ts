@@ -15,6 +15,9 @@ import {
   getOne,
   updateOne,
 } from '@src/utils/factoryHandler';
+import sendEmail from '@src/utils/sendEmail';
+import { NO_DATA_FOUND, PINCH_EMAILS } from '@src/constants/messages';
+import AppError from '@src/utils/appError';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
@@ -63,12 +66,17 @@ export const assignOrderToDriver = catchAsync(
 );
 
 export const updateOrderStatus = catchAsync(
+  // eslint-disable-next-line consistent-return
   async (req: Request, res: Response) => {
+    const { subject, template, previewText } = PINCH_EMAILS.reqForReview;
     const orderNumber = req.params.id;
     const { brand } = req.query;
 
     if (brand === 'pinch') {
       const order = await Order.findOne({ orderNumber });
+      if (!order) {
+        return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+      }
       await Delivery.findOneAndUpdate(
         { order: order?._id },
         {
@@ -78,6 +86,22 @@ export const updateOrderStatus = catchAsync(
       await Order.findByIdAndUpdate(order?._id, {
         status: WOODELIVERY_STATUS[req.body.StatusId],
       });
+
+      // Send order delivered email and ask for google review from cx
+      if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
+        await sendEmail({
+          email: order?.user?.email,
+          subject,
+          template,
+          context: {
+            previewText,
+            orderNo: order.orderNumber || '',
+            customerName: `${order!.user?.firstName || ''} ${
+              order!.user?.lastName || ''
+            }`,
+          },
+        });
+      }
     }
     res.send(StatusCode.SUCCESS);
   }
