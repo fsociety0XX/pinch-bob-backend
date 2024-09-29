@@ -237,20 +237,19 @@ const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    // check if delivery date is not today's date
-    const serverTimeUTC = new Date().getTime();
-    const clientTimeUTC = new Date(req.body.delivery.date).getTime();
-    if (clientTimeUTC < serverTimeUTC) {
-      return next(
-        new AppError(ORDER_DELIVERY_DATE_ERR, StatusCode.BAD_REQUEST)
-      );
-    }
-
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
       orderId = req.body.orderId;
     } else {
+      // check if delivery date is not today's date (kept in else block so that it not gets triggered on retry payment)
+      const serverTimeUTC = new Date().getTime();
+      const clientTimeUTC = new Date(req.body.delivery.date).getTime();
+      if (clientTimeUTC < serverTimeUTC) {
+        return next(
+          new AppError(ORDER_DELIVERY_DATE_ERR, StatusCode.BAD_REQUEST)
+        );
+      }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
       if (!user?.firstName && !user.lastName && !user.phone) {
