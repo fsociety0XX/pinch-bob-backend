@@ -27,6 +27,7 @@ import sendEmail from '@src/utils/sendEmail';
 import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -64,6 +65,31 @@ interface IWoodeliveryTask {
   destinationAddress?: string;
 }
 
+const prepareCompleteAddress = (order: ICustomiseCake) => {
+  let completeAddress = '';
+  if (order?.delivery?.address?.id) {
+    const {
+      firstName,
+      lastName,
+      unitNumber,
+      address1,
+      address2,
+      company,
+      city,
+      postalCode,
+      phone,
+    } = order.delivery.address;
+    completeAddress = `${firstName} ${lastName}, ${
+      unitNumber || ''
+    }, ${address1}, ${address2 || ''}, ${
+      company || ''
+    }, ${city}, ${postalCode}, ${phone}`;
+  } else {
+    completeAddress = SELF_COLLECT_ADDRESS;
+  }
+  return completeAddress;
+};
+
 const generatePaymentLink = async (req: Request, customiseCakeId: string) => {
   const customiseCake = await CustomiseCake.findById(customiseCakeId);
   const user = await User.findById(customiseCake?.user);
@@ -81,10 +107,17 @@ const generatePaymentLink = async (req: Request, customiseCakeId: string) => {
         email: user!.email,
         subject,
         template,
-        context: { previewText, paymentLink: session.url! },
+        context: {
+          previewText,
+          customerName: `${customiseCake?.user?.firstName || ''} ${
+            customiseCake?.user?.lastName || ''
+          }`,
+          total: String(customiseCake.total),
+          paymentLink: session.url!,
+        },
       });
+      return false;
     }
-    return false;
   }
 
   const productList = [
@@ -133,7 +166,14 @@ const generatePaymentLink = async (req: Request, customiseCakeId: string) => {
     email: user!.email,
     subject,
     template,
-    context: { previewText, paymentLink: session.url! },
+    context: {
+      previewText,
+      customerName: `${customiseCake!.user?.firstName} ${
+        customiseCake!.user?.lastName
+      }`,
+      total: String(customiseCake!.total),
+      paymentLink: session.url!,
+    },
   });
 
   return false;
@@ -364,18 +404,40 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   const {
     customiseCakeOrderConfirm: { subject, template, previewText },
   } = PINCH_EMAILS;
+  const {
+    id: orderId,
+    orderNumber,
+    user,
+    quantity,
+    price,
+    deliveryFee,
+    discountedAmt,
+    total,
+    delivery,
+    woodeliveryTaskId,
+  } = customiseCakeOrder;
+
   await sendEmail({
     email: object.customer_email!,
     subject,
     template,
     context: {
       previewText,
-      orderId: customiseCakeOrder?.id, // TODO: use later
-      orderNo: customiseCakeOrder?.orderNumber,
-      deliveryDate: new Date(customiseCakeOrder!.delivery.date).toDateString(),
-      subTotal: String(customiseCakeOrder.price),
-      deliveryCharge: String(customiseCakeOrder.deliveryFee || 0),
-      total: String(customiseCakeOrder.price + customiseCakeOrder.deliveryFee),
+      orderId,
+      orderNo: orderNumber,
+      customerName: `${user.firstName} ${user.lastName}`,
+      qty: String(quantity),
+      subTotal: String(price),
+      deliveryCharge: String(deliveryFee || 0),
+      discountedAmt: String(discountedAmt || 0),
+      total: String(total),
+      deliveryDate: new Date(delivery.date)?.toDateString(),
+      deliveryMethod: delivery.deliveryType,
+      collectionTime: delivery?.time || '',
+      address: prepareCompleteAddress(customiseCakeOrder),
+      trackingLink: woodeliveryTaskId
+        ? `https://app.woodelivery.com/t?q=${woodeliveryTaskId}`
+        : '',
     },
   });
 };

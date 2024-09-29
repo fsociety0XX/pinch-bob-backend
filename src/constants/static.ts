@@ -28,3 +28,5 @@ export const WOODELIVERY_STATUS: { [key: number]: string } = {
   52: 'Returned',
   90: 'Cancelled',
 };
+export const SELF_COLLECT_ADDRESS =
+  '218 Pandan Loop, Level 1 Reception Xpace, 128408';
