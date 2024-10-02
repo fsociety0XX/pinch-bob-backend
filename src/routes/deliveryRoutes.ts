@@ -4,6 +4,7 @@ import { Role } from '@src/types/customTypes';
 import {
   ASSIGN_ORDER_TO_DRIVER,
   GET_DRIVERS,
+  UNASSIGN_ORDER_TO_DRIVER,
   UPDATE_ORDER_STATUS,
 } from '@src/constants/routeConstants';
 import {
@@ -12,6 +13,7 @@ import {
   getAllDelivery,
   getAllDrivers,
   getOneDelivery,
+  unassignDriver,
   updateDelivery,
   updateOrderStatus,
 } from '@src/controllers/deliveryController';
@@ -22,6 +24,7 @@ deliveryRouter.route(UPDATE_ORDER_STATUS).post(updateOrderStatus);
 deliveryRouter.use(protect, roleRistriction(Role.ADMIN));
 deliveryRouter.route(GET_DRIVERS).get(getAllDrivers);
 deliveryRouter.route(ASSIGN_ORDER_TO_DRIVER).post(assignOrderToDriver);
+deliveryRouter.route(UNASSIGN_ORDER_TO_DRIVER).patch(unassignDriver);
 deliveryRouter.route('/').get(getAllDelivery);
 deliveryRouter
   .route('/:id')
