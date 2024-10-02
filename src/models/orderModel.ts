@@ -6,6 +6,7 @@ import {
 } from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum, notesEnum } from '@src/types/customTypes';
 import { generateOrderId } from '@src/utils/functions';
+import { IUser } from './userModel';
 
 type StripeWebhookEvent = Stripe.Event;
 
@@ -81,6 +82,7 @@ export interface IProduct {
   card: string;
   refImage?: IPhoto;
   msg?: string;
+  specialInstructions?: string;
   fondantName?: string;
   fondantNumber?: string;
   moneyPulling?: {
@@ -96,7 +98,7 @@ export interface IOrder {
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
-  user: mongoose.Types.ObjectId;
+  user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
   recipInfo?: IRecipInfo;
@@ -142,6 +144,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   card: String,
   refImage: ProductImageSchema,
   msg: String,
+  specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
   moneyPulling: {

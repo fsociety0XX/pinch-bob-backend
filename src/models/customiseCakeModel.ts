@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, customiseOrderEnums } from '@src/types/customTypes';
 import { generateOrderId } from '@src/utils/functions';
+import { IUser } from './userModel';
 
 type StripeWebhookEvent = Stripe.Event;
 
@@ -61,7 +62,7 @@ export interface ICustomiseCake {
   _id: string;
   brand: string;
   orderNumber: string;
-  user: mongoose.Schema.Types.ObjectId;
+  user: IUser;
   delivery: IDelivery;
   pax: number;
   specialRequest: string;
@@ -94,7 +95,6 @@ export interface ICustomiseCake {
   includeCoolerBag: boolean;
   candlesAndSparklers: ICandles[];
   notes: string;
-  deliveryFee: number;
   price: number;
   quantity: number;
   size: mongoose.Schema.Types.ObjectId;
@@ -103,6 +103,9 @@ export interface ICustomiseCake {
   formStatus: string;
   enquiryType: string;
   companyName?: string;
+  deliveryFee: number;
+  discountedAmt: number;
+  total: number;
   paid: boolean;
   stripeDetails: StripeWebhookEvent;
   checkoutSession: {
@@ -268,6 +271,8 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     candlesAndSparklers: [CandleSchema],
     notes: String,
     deliveryFee: Number,
+    discountedAmt: Number,
+    total: Number,
     price: Number,
     quantity: Number,
     size: {

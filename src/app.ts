@@ -1,3 +1,4 @@
+/* eslint-disable import/no-duplicates */
 import path from 'path';
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
@@ -54,6 +55,7 @@ import { protect, roleRistriction } from './controllers/authController';
 import { globalTableSearch } from './controllers/globalSearchController';
 import couponRouter from './routes/couponRoutes';
 import customiseCakeRouter from './routes/customiseCakeRoutes';
+import '@src/controllers/orderController';
 
 const app = express();
 const dirname = path.resolve();

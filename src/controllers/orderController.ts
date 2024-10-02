@@ -31,12 +31,14 @@ import {
   ORDER_FAIL_EMAIL,
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
+  ORDER_PREP_EMAIL,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
   generateOrderId,
+  getDateOneDayFromNow,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
@@ -44,6 +46,7 @@ import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
+import { PRODUCTION, SELF_COLLECT_ADDRESS } from '@src/constants/static';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -88,7 +91,65 @@ interface IDeliveryData {
   address?: ObjectId;
 }
 
-// cron
+const sendOrderPrepEmail = async () => {
+  try {
+    const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
+    const targetDate = getDateOneDayFromNow();
+    const query = { 'delivery.date': targetDate };
+
+    const ordersToNotify = await Order.find(query);
+
+    if (!ordersToNotify.length) {
+      console.log(ORDER_PREP_EMAIL.noOrdersFound);
+      return;
+    }
+    // Prepare email sending promises
+    const emailPromises = ordersToNotify.map((order: IOrder) =>
+      sendEmail({
+        email: order?.user?.email,
+        subject,
+        template,
+        context: {
+          previewText,
+          orderNo: order?.orderNumber,
+          customerName: `${order?.user?.firstName || ''} ${
+            order?.user?.lastName || ''
+          }`,
+        },
+      }).catch((error) => {
+        console.error(ORDER_PREP_EMAIL.emailFailed(order?.orderNumber), error);
+        return { orderNumber: order?.orderNumber, success: false, error };
+      })
+    );
+
+    await Promise.allSettled(emailPromises);
+
+    // // Log successful and failed email results
+    // results.forEach((result, index) => {
+    //   if (result.status === 'fulfilled') {
+    //     console.log(
+    //       `Email sent successfully to order ${ordersToNotify[index].orderNumber}`
+    //     );
+    //   } else {
+    //     console.error(
+    //       `Failed to send email to order ${ordersToNotify[index].orderNumber}:`,
+    //       result.reason
+    //     );
+    //   }
+    // });
+
+    console.log(ORDER_PREP_EMAIL.allTaskCompleted);
+  } catch (err) {
+    console.error(ORDER_PREP_EMAIL.errorInSendingEmails, err);
+  }
+};
+
+// Cron scheduled task that runs once a day at midnight
+cron.schedule('0 0 * * *', async () => {
+  if (process.env.NODE_ENV === PRODUCTION) sendOrderPrepEmail();
+});
+
+// Cron scheduled task to run after 30 mins of placing order if the payment failed
 function cancelOrder(id: string) {
   const currentTime = new Date();
   const thirtyMinutesAfterCurrentTime = new Date(
@@ -102,22 +163,93 @@ function cancelOrder(id: string) {
   });
 }
 
+const prepareCompleteAddress = (order: IOrder) => {
+  let completeAddress = '';
+  if (order?.delivery?.address?._id) {
+    const {
+      firstName,
+      lastName,
+      unitNumber,
+      address1,
+      address2,
+      company,
+      city,
+      postalCode,
+      phone,
+    } = order.delivery.address;
+    completeAddress = `${firstName} ${lastName}, ${
+      unitNumber || ''
+    }, ${address1}, ${address2 || ''}, ${
+      company || ''
+    }, ${city}, ${postalCode}, ${phone}`;
+  } else {
+    completeAddress = SELF_COLLECT_ADDRESS;
+  }
+  return completeAddress;
+};
+
+const createProductListForTemplate = (order: IOrder) => {
+  const productList = order?.product?.map((p) => ({
+    name: p.product.name,
+    image: p?.product?.images?.[0]?.location,
+    flavour: p.flavour?.name,
+    size: p.size?.name,
+    quantity: p.quantity,
+    price: p.price,
+    pieces: p.pieces?.name,
+    colour: p.colour?.name,
+    msg: p?.msg || '',
+    fondantName: p?.fondantName || '',
+    fondantNumber: p?.fondantNumber || '',
+    card: p.card || '',
+  }));
+  return productList;
+};
+
+const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
+  const {
+    orderConfirm: { subject, template, previewText },
+  } = PINCH_EMAILS;
+
+  await sendEmail({
+    email,
+    subject,
+    template,
+    context: {
+      previewText,
+      orderId: order?.id,
+      orderNo: order?.orderNumber,
+      customerName: `${order?.user?.firstName || ''} ${
+        order?.user?.lastName || ''
+      }`,
+      products: createProductListForTemplate(order!),
+      pricingSummary: order!.pricingSummary,
+      deliveryDate: new Date(order!.delivery?.date)?.toDateString(),
+      deliveryMethod: order?.delivery?.method?.name || '',
+      collectionTime: order?.delivery?.collectionTime || '',
+      address: prepareCompleteAddress(order),
+      trackingLink: order?.woodeliveryTaskId
+        ? `https://app.woodelivery.com/t?q=${order?.woodeliveryTaskId}`
+        : '',
+    },
+  });
+};
+
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    // check if delivery date is not today's date
-    const serverTimeUTC = new Date().getTime();
-    const clientTimeUTC = new Date(req.body.delivery.date).getTime();
-    if (clientTimeUTC < serverTimeUTC) {
-      return next(
-        new AppError(ORDER_DELIVERY_DATE_ERR, StatusCode.BAD_REQUEST)
-      );
-    }
-
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
       orderId = req.body.orderId;
     } else {
+      // check if delivery date is not today's date (kept in else block so that it not gets triggered on retry payment)
+      const serverTimeUTC = new Date().getTime();
+      const clientTimeUTC = new Date(req.body.delivery.date).getTime();
+      if (clientTimeUTC < serverTimeUTC) {
+        return next(
+          new AppError(ORDER_DELIVERY_DATE_ERR, StatusCode.BAD_REQUEST)
+        );
+      }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
       if (!user?.firstName && !user.lastName && !user.phone) {
@@ -335,19 +467,6 @@ const createDelivery = async (id: string) => {
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
 };
 
-const createProductListForTemplate = (order: IOrder) => {
-  const productList = order?.product?.map((p) => ({
-    name: p.product.name,
-    image: p?.product?.images?.[0]?.location,
-    flavour: p.flavour?.name,
-    size: p.size?.name,
-    quantity: p.quantity,
-    price: p.price,
-    pieces: p.pieces?.name,
-  }));
-  return productList;
-};
-
 async function updateProductSold(order: IOrder) {
   const updates = order.product.map((p) => ({
     updateOne: {
@@ -362,9 +481,6 @@ const updateOrderAfterPaymentSuccess = async (
   session: Stripe.CheckoutSessionCompletedEvent,
   res: Response
 ) => {
-  const {
-    orderConfirm: { subject, template, previewText },
-  } = PINCH_EMAILS;
   const {
     id,
     data: { object },
@@ -408,20 +524,8 @@ const updateOrderAfterPaymentSuccess = async (
 
   await updateProductSold(order!);
   await createDelivery(orderId);
-  await sendEmail({
-    email: object.customer_email!,
-    subject,
-    template,
-    context: {
-      previewText,
-      orderId: order?.id,
-      orderNo: order?.orderNumber,
-      orderCreatedAt: new Date(order!.createdAt).toDateString(),
-      products: createProductListForTemplate(order!),
-      pricingSummary: order!.pricingSummary,
-      deliveryDate: new Date(order!.delivery?.date).toDateString(),
-    },
-  });
+  await sendOrderConfirmationEmail(object.customer_email!, order);
+
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
     message: 'Payment successfull',
@@ -468,11 +572,8 @@ export const triggerOrderFailEmail = catchAsync(
       template,
       context: {
         previewText,
-        orderId: order?.orderNumber,
-        orderCreatedAt: new Date(order.createdAt).toDateString(),
-        products: createProductListForTemplate(order),
-        pricingSummary: order.pricingSummary,
-        deliveryDate: new Date(order?.delivery?.date).toDateString(),
+        orderNo: order?.orderNumber,
+        customerName: req.user?.firstName,
       },
     });
     res.status(StatusCode.SUCCESS).json({
@@ -534,9 +635,6 @@ export const authenticateOrderAccess = catchAsync(
 
 export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const {
-    orderConfirm: { subject, template, previewText },
-  } = PINCH_EMAILS;
-  const {
     brand,
     delivery: { address },
   } = req?.body;
@@ -590,19 +688,8 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 
   await updateProductSold(order);
   await createDelivery(order?._id);
-  await sendEmail({
-    email: user?.email,
-    subject,
-    template,
-    context: {
-      previewText,
-      orderId: order?.orderNumber,
-      orderCreatedAt: new Date(order!.createdAt).toDateString(),
-      products: createProductListForTemplate(order!),
-      pricingSummary: order!.pricingSummary,
-      deliveryDate: new Date(order!.delivery?.date).toDateString(),
-    },
-  });
+  await sendOrderConfirmationEmail(email, order);
+
   res.status(StatusCode.CREATE).json({
     status: 'success',
     data: {
@@ -630,12 +717,12 @@ export const updateOrder = catchAsync(
     // Updating delivery document
     if (delivery || recipInfo) {
       const deliveryBody = {};
-      if (delivery.date) deliveryBody.deliveryDate = new Date(delivery.date);
-      if (delivery.method) deliveryBody.method = delivery.method;
-      if (delivery.collectionTime)
+      if (delivery?.date) deliveryBody.deliveryDate = new Date(delivery.date);
+      if (delivery?.method) deliveryBody.method = delivery.method;
+      if (delivery?.collectionTime)
         deliveryBody.collectionTime = delivery.collectionTime;
-      if (recipInfo.name) deliveryBody.recipientName = recipInfo.name;
-      if (recipInfo.contact) deliveryBody.recipientPhone = recipInfo.contact;
+      if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
+      if (recipInfo?.contact) deliveryBody.recipientPhone = recipInfo.contact;
 
       await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
     }

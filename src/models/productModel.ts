@@ -69,6 +69,7 @@ export interface IProduct {
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
   fondantName: boolean;
+  fondantNameLimit: number;
   fondantNumber: boolean;
 }
 
@@ -231,6 +232,10 @@ const productSchema = new mongoose.Schema<IProduct>(
     fondantName: {
       type: Boolean,
       default: false,
+    },
+    fondantNameLimit: {
+      type: Number,
+      default: 9,
     },
     category: [
       {
