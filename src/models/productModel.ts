@@ -290,7 +290,7 @@ productSchema.pre('save', function (next) {
 // Query middleware
 productSchema.pre('find', function (next) {
   this.populate({
-    path: 'category',
+    path: 'category superCategory',
     select: 'name',
   });
 
@@ -299,7 +299,7 @@ productSchema.pre('find', function (next) {
 
 productSchema.pre('findOne', function (next) {
   this.populate({
-    path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
+    path: 'sizeDetails.size piecesDetails.pieces flavour colour category superCategory',
     select: 'name',
   });
 
@@ -307,7 +307,7 @@ productSchema.pre('findOne', function (next) {
   if (!alreadyPopulated) {
     this.populate({
       path: 'fbt',
-      select: 'name price images category discountedPrice slug',
+      select: 'name price images category superCategory discountedPrice slug',
     });
     alreadyPopulated = true;
   }

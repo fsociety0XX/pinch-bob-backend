@@ -208,7 +208,7 @@ export const getAll = (
         },
         meta: {
           totalDataCount: totalDocsCount,
-          currentPage: +currentPage || 1,
+          currentPage: +currentPage,
         },
       });
     }
