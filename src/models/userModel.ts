@@ -2,23 +2,15 @@ import crypto from 'crypto';
 import mongoose, { Schema, model, Types, Model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
-import { USER_SCHEMA_VALIDATION } from '@src/constants/messages';
-import { Role, brandEnum } from '@src/types/customTypes';
+import {
+  ORDER_SCHEMA_VALIDATION,
+  USER_SCHEMA_VALIDATION,
+} from '@src/constants/messages';
+import { Role, brandEnum, notesEnum } from '@src/types/customTypes';
 
 interface IWishlist {
   _id: Types.ObjectId;
 }
-
-interface ICart {
-  product: Types.ObjectId;
-  refImg?: [string];
-  quantity?: number;
-  size?: string;
-  piece?: number;
-  flavour?: string;
-  message?: string;
-}
-
 interface IPhoto {
   key: string;
   originalname: string;
@@ -26,6 +18,51 @@ interface IPhoto {
   size: number;
   location: string;
 }
+
+interface ICart {
+  product: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+    images: IPhoto[];
+  };
+  price: number;
+  quantity?: number;
+  size?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  pieces?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  flavour?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  colour?: {
+    id: mongoose.Schema.Types.ObjectId;
+    name: string;
+  };
+  card: string;
+  refImage?: IPhoto;
+  msg?: string;
+  specialInstructions?: string;
+  fondantName?: string;
+  fondantNumber?: string;
+  moneyPulling?: {
+    noteType: string;
+    qty: number;
+  };
+  address?: string; // will be used if delivery type - multi location delivery
+}
+
+const ProductImageSchema = new mongoose.Schema<IPhoto>({
+  key: String,
+  originalname: String,
+  mimetype: String,
+  size: Number,
+  location: String,
+});
 
 export interface IUser {
   _id: string;
@@ -40,7 +77,7 @@ export interface IUser {
   birthday?: Date;
   confirmPassword: string | undefined;
   wishlist?: Types.DocumentArray<IWishlist>;
-  cart?: Types.DocumentArray<ICart>;
+  cart?: ICart[];
   passwordChangedAt: Date;
   resetPasswordToken: string | undefined;
   resetPasswordTokenExpiresIn: Date | undefined;
@@ -61,6 +98,54 @@ export interface IUserMethods {
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type UserModel = Model<IUser, {}, IUserMethods>;
+
+const CartSchema = new mongoose.Schema<ICart>({
+  product: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Product',
+  },
+  price: Number,
+  quantity: Number,
+  size: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Size',
+  },
+  pieces: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Pieces',
+  },
+  flavour: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Flavour',
+  },
+  colour: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Colour',
+  },
+  card: String,
+  refImage: ProductImageSchema,
+  msg: String,
+  specialInstructions: String,
+  fondantName: String,
+  fondantNumber: String,
+  moneyPulling: {
+    type: {
+      noteType: {
+        type: String,
+        enum: notesEnum,
+      },
+      qty: {
+        type: Number,
+        max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
+        validate: {
+          validator: Number.isInteger,
+          message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
+        },
+      },
+    },
+  },
+  address: String,
+});
 
 const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
@@ -126,20 +211,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         ref: 'Product',
       },
     ],
-    cart: [
-      {
-        product: {
-          type: Schema.ObjectId,
-          ref: 'Product',
-        },
-        refImg: [String],
-        quantity: Number,
-        size: String,
-        piece: Number,
-        flavour: String,
-        message: String,
-      },
-    ],
+    cart: [CartSchema],
     passwordChangedAt: {
       type: Date,
       select: false,
