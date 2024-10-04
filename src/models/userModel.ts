@@ -10,7 +10,7 @@ interface IWishlist {
 }
 
 interface ICart {
-  _id: Types.ObjectId;
+  product: Types.ObjectId;
   refImg?: [string];
   quantity?: number;
   size?: string;
@@ -128,8 +128,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     ],
     cart: [
       {
-        type: Schema.ObjectId,
-        ref: 'Product',
+        product: {
+          type: Schema.ObjectId,
+          ref: 'Product',
+        },
         refImg: [String],
         quantity: Number,
         size: String,
