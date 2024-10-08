@@ -50,6 +50,8 @@ export const addToCart = catchAsync(async (req: Request, res: Response) => {
     specialInstructions,
     fondantName,
     fondantNumber,
+    moneyPulling,
+    address,
   } = req.query;
   await User.updateOne(
     { _id: new mongoose.Types.ObjectId(userId) },
@@ -69,6 +71,8 @@ export const addToCart = catchAsync(async (req: Request, res: Response) => {
           specialInstructions,
           fondantName,
           fondantNumber,
+          moneyPulling,
+          address,
         },
       },
     }
