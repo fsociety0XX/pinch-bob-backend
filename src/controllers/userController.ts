@@ -33,3 +33,51 @@ export const addToWishlist = catchAsync(async (req: Request, res: Response) => {
 
   return false;
 });
+
+export const addToCart = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.query.userId as string) || '';
+  const {
+    product,
+    price,
+    quantity,
+    size,
+    pieces,
+    flavour,
+    colour,
+    card,
+    refImage,
+    msg,
+    specialInstructions,
+    fondantName,
+    fondantNumber,
+  } = req.query;
+  await User.updateOne(
+    { _id: new mongoose.Types.ObjectId(userId) },
+    {
+      $push: {
+        cart: {
+          product,
+          price,
+          quantity,
+          size,
+          pieces,
+          flavour,
+          colour,
+          card,
+          refImage,
+          msg,
+          specialInstructions,
+          fondantName,
+          fondantNumber,
+        },
+      },
+    }
+  );
+
+  res.status(StatusCode.SUCCESS).json({
+    status: 'success',
+    message: 'The product has been added to your cart.',
+  });
+
+  return false;
+});
