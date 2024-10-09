@@ -91,7 +91,7 @@ interface IDeliveryData {
   address?: ObjectId;
 }
 
-const sendOrderPrepEmail = async () => {
+const sendOrderPrepEmail = async (res: Response) => {
   try {
     const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
     const targetDate = getDateOneDayFromNow();
@@ -138,6 +138,9 @@ const sendOrderPrepEmail = async () => {
     //   }
     // });
 
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+    });
     console.log(ORDER_PREP_EMAIL.allTaskCompleted);
   } catch (err) {
     console.error(ORDER_PREP_EMAIL.errorInSendingEmails, err);
