@@ -40,6 +40,7 @@ interface IDelivery {
     name: string;
   };
   collectionTime: string;
+  instructions?: string;
   address: {
     id: mongoose.Schema.Types.ObjectId;
     firstName: string;
@@ -173,6 +174,7 @@ const DeliverySchema = new mongoose.Schema<IDelivery>({
     ref: 'DeliveryMethod',
   },
   collectionTime: String,
+  instructions: String,
   address: {
     type: mongoose.Schema.ObjectId,
     ref: 'Address',
