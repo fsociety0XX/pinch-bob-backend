@@ -23,6 +23,7 @@ export interface IDelivery {
   woodeliveryTaskId?: string;
   driverDetails?: IDriver;
   status?: string;
+  instructions?: string;
   active: boolean;
 }
 
@@ -65,6 +66,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     woodeliveryTaskId: String,
     driverDetails: DriverSchema,
     status: String,
+    instructions: String,
     active: {
       type: Boolean,
       default: true,
