@@ -1,8 +1,10 @@
-import { Request, Response } from 'express';
-import mongoose from 'mongoose';
+import { Response, NextFunction } from 'express';
+import AppError from '@src/utils/appError';
 import User from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode } from '@src/types/customTypes';
+import { NO_DATA_FOUND } from '@src/constants/messages';
+import { IRequestWithUser } from './authController';
 import {
   createOne,
   deleteOne,
@@ -17,71 +19,82 @@ export const deleteUser = deleteOne(User);
 export const getOneUser = getOne(User);
 export const getAllUser = getAll(User);
 
-export const addToWishlist = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.query.userId as string) || '';
-  const { productId } = req.query;
+export const addToWishlist = catchAsync(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    const doc = await User.findByIdAndUpdate(
+      req.user?._id,
+      { $push: { wishlist: req.params.id } },
+      { new: true }
+    );
+    if (!doc) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: doc,
+      },
+    });
+    return false;
+  }
+);
 
-  await User.updateOne(
-    { _id: new mongoose.Types.ObjectId(userId) },
-    { $push: { wishlist: productId } }
-  );
+export const addToCart = catchAsync(
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    const {
+      product,
+      price,
+      quantity,
+      size,
+      pieces,
+      flavour,
+      colour,
+      card,
+      refImage,
+      msg,
+      specialInstructions,
+      fondantName,
+      fondantNumber,
+      moneyPulling,
+      address,
+    } = req.body;
 
-  res.status(StatusCode.SUCCESS).json({
-    status: 'success',
-    message: 'The product has been added to your wishlist.',
-  });
-
-  return false;
-});
-
-export const addToCart = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req.query.userId as string) || '';
-  const {
-    product,
-    price,
-    quantity,
-    size,
-    pieces,
-    flavour,
-    colour,
-    card,
-    refImage,
-    msg,
-    specialInstructions,
-    fondantName,
-    fondantNumber,
-    moneyPulling,
-    address,
-  } = req.query;
-  await User.updateOne(
-    { _id: new mongoose.Types.ObjectId(userId) },
-    {
-      $push: {
-        cart: {
-          product,
-          price,
-          quantity,
-          size,
-          pieces,
-          flavour,
-          colour,
-          card,
-          refImage,
-          msg,
-          specialInstructions,
-          fondantName,
-          fondantNumber,
-          moneyPulling,
-          address,
+    const doc = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $push: {
+          cart: {
+            product,
+            price,
+            quantity,
+            size,
+            pieces,
+            flavour,
+            colour,
+            card,
+            refImage,
+            msg,
+            specialInstructions,
+            fondantName,
+            fondantNumber,
+            moneyPulling,
+            address,
+          },
         },
       },
+      { new: true }
+    );
+
+    if (!doc) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
-  );
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: doc,
+      },
+    });
 
-  res.status(StatusCode.SUCCESS).json({
-    status: 'success',
-    message: 'The product has been added to your cart.',
-  });
-
-  return false;
-});
+    return false;
+  }
+);
