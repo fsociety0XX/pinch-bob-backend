@@ -59,29 +59,27 @@ export const addToCart = catchAsync(
       address,
     } = req.body;
 
+    const cart = {
+      product,
+      price,
+      quantity,
+      size,
+      pieces,
+      flavour,
+      colour,
+      card,
+      refImage,
+      msg,
+      specialInstructions,
+      fondantName,
+      fondantNumber,
+      moneyPulling,
+      address,
+    };
+
     const doc = await User.findByIdAndUpdate(
       req.user?._id,
-      {
-        $push: {
-          cart: {
-            product,
-            price,
-            quantity,
-            size,
-            pieces,
-            flavour,
-            colour,
-            card,
-            refImage,
-            msg,
-            specialInstructions,
-            fondantName,
-            fondantNumber,
-            moneyPulling,
-            address,
-          },
-        },
-      },
+      { $push: { cart } },
       { new: true }
     );
 
