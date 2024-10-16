@@ -91,7 +91,7 @@ interface IDeliveryData {
   address?: ObjectId;
 }
 
-const sendOrderPrepEmail = async () => {
+const sendOrderPrepEmail = async (res: Response) => {
   try {
     const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
     const targetDate = getDateOneDayFromNow();
@@ -138,6 +138,9 @@ const sendOrderPrepEmail = async () => {
     //   }
     // });
 
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+    });
     console.log(ORDER_PREP_EMAIL.allTaskCompleted);
   } catch (err) {
     console.error(ORDER_PREP_EMAIL.errorInSendingEmails, err);
@@ -346,7 +349,7 @@ export const placeOrder = catchAsync(
 const createWoodeliveryTask = (order: IOrder, update = false) => {
   const {
     orderNumber,
-    delivery: { address, date, collectionTime },
+    delivery: { address, date, collectionTime, instructions },
     recipInfo,
     user,
   } = order;
@@ -396,6 +399,7 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     recipientPhone: String(recipInfo?.contact || ''),
     tag1: 'pinch',
     packages,
+    destinationNotes: instructions || '',
   };
   if (address?.id) {
     task.destinationAddress = `${address.unitNumber || ''} ${
@@ -719,6 +723,8 @@ export const updateOrder = catchAsync(
       const deliveryBody = {};
       if (delivery?.date) deliveryBody.deliveryDate = new Date(delivery.date);
       if (delivery?.method) deliveryBody.method = delivery.method;
+      if (delivery?.instructions)
+        deliveryBody.instructions = delivery.instructions;
       if (delivery?.collectionTime)
         deliveryBody.collectionTime = delivery.collectionTime;
       if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
