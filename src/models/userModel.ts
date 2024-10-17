@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import mongoose, { Schema, model, Types, Model } from 'mongoose';
+import mongoose, { Schema, model, Types, Model, Query } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
 import {
@@ -253,6 +253,35 @@ userSchema.pre('save', async function (next) {
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || this.isNew) return next();
   this.passwordChangedAt = new Date(Date.now() - 1000); // just to make sure everything is fine
+  return next();
+});
+
+userSchema.pre<Query<IUser, IUser>>(/^find/, function (next) {
+  const populatedFields = [
+    'name',
+    'price',
+    'discountedPrice',
+    'ratingsAvg',
+    'totalRatings',
+    'sizeDetails',
+    'flavour',
+    'colour',
+    'type',
+    'images',
+    'available',
+    'category',
+    'superCategory',
+    'active',
+    'piecesDetails',
+    'slug',
+  ];
+  this.populate({
+    path: 'wishlist',
+    select: populatedFields,
+  }).populate({
+    path: 'cart.product',
+    select: populatedFields,
+  });
   return next();
 });
 
