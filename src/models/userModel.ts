@@ -257,30 +257,9 @@ userSchema.pre('save', async function (next) {
 });
 
 userSchema.pre<Query<IUser, IUser>>(/^find/, function (next) {
-  const populatedFields = [
-    'name',
-    'price',
-    'discountedPrice',
-    'ratingsAvg',
-    'totalRatings',
-    'sizeDetails',
-    'flavour',
-    'colour',
-    'type',
-    'images',
-    'available',
-    'category',
-    'superCategory',
-    'active',
-    'piecesDetails',
-    'slug',
-  ];
   this.populate({
-    path: 'wishlist',
-    select: populatedFields,
-  }).populate({
-    path: 'cart.product',
-    select: populatedFields,
+    path: 'wishlist cart.product cart.size cart.pieces cart.colour cart.flavour',
+    select: 'name images price discountedPrice slug',
   });
   return next();
 });
