@@ -93,6 +93,16 @@ export interface IProduct {
   address?: string; // will be used if delivery type - multi location delivery
 }
 
+export interface IHitpayDetails {
+  id: string;
+  status: string;
+  amount: string;
+  paymentMethod: string;
+  transactionId: string;
+  paymentRequestId: string;
+  receiptUrl: string;
+}
+
 export interface IOrder {
   id: string;
   orderNumber?: string;
@@ -106,6 +116,7 @@ export interface IOrder {
   paid: boolean;
   status: string;
   stripeDetails: StripeWebhookEvent;
+  hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
   active: boolean;
   createdAt: string;
@@ -236,6 +247,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     },
     status: String,
     stripeDetails: Object,
+    hitpayDetails: Object,
     woodeliveryTaskId: String,
     active: {
       type: Boolean,
