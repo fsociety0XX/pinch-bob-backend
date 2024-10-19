@@ -324,7 +324,6 @@ const handleHitpayPayment = async (
   const paymentData = {
     amount: populatedOrder?.pricingSummary?.total,
     currency: 'SGD',
-    // payment_methods: ['card'],
     reference_number: orderId,
     email: populatedOrder?.user?.email || '',
     name: `${populatedOrder.user?.firstName || ''} ${
@@ -333,7 +332,6 @@ const handleHitpayPayment = async (
     phone: populatedOrder?.user?.phone || '',
     send_email: true,
     send_sms: true,
-    // generate_qr: true,
     redirect_url: `${req.protocol}://${req.get(
       'host'
     )}/order-confirm/${orderId}`,
@@ -836,26 +834,14 @@ function verifyHitPayHmac(data: any, hitPayHmac: string): boolean {
 
 const updateBobOrderAfterPaymentSuccess = catchAsync(
   async (session: IHitpayDetails, res: Response) => {
-    const {
-      id,
-      status,
-      amount,
-      payment_method,
-      transaction_id,
-      payment_request_id,
-      receipt_url,
-      reference_number,
-      customer_email,
-    } = session;
+    const { id, status, amount, payment_methods, reference_number, email } =
+      session?.payment_request;
     const orderId = reference_number;
     const hitpayDetails = {
-      id,
       status,
       amount,
-      paymentMethod: payment_method,
-      transactionId: transaction_id,
-      paymentRequestId: payment_request_id,
-      receiptUrl: receipt_url,
+      paymentMethod: payment_methods,
+      paymentRequestId: id,
     };
 
     const order = await Order.findByIdAndUpdate(
@@ -887,7 +873,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
 
     await updateProductSold(order!);
     await createDelivery(orderId);
-    await sendOrderConfirmationEmail(customer_email, order);
+    await sendOrderConfirmationEmail(email, order);
 
     res.status(StatusCode.SUCCESS).send({
       status: 'success',
@@ -898,26 +884,15 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
 
 const handlePaymentFaliureForBob = catchAsync(
   async (session: IHitpayDetails, res: Response) => {
-    const {
-      id,
-      status,
-      amount,
-      payment_method,
-      transaction_id,
-      payment_request_id,
-      receipt_url,
-      reference_number,
-    } = session;
+    const { id, status, amount, payment_methods, reference_number } =
+      session?.payment_request;
 
     const orderId = reference_number;
     const hitpayDetails = {
-      id,
       status,
       amount,
-      paymentMethod: payment_method,
-      transactionId: transaction_id,
-      paymentRequestId: payment_request_id,
-      receiptUrl: receipt_url,
+      paymentMethod: payment_methods,
+      paymentRequestId: id,
     };
     await Order.findByIdAndUpdate(orderId, {
       hitpayDetails,
@@ -930,7 +905,6 @@ const handlePaymentFaliureForBob = catchAsync(
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
     const { status, hmac } = req.body;
-    console.log(req.body, '998899'); // TODO: remove later
 
     if (verifyHitPayHmac(req.body, hmac)) {
       if (status === 'completed') {
