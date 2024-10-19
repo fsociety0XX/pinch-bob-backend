@@ -6,6 +6,7 @@ import {
   deleteOrder,
   getAllOrder,
   getOneOrder,
+  hitpayWebhookHandler,
   placeOrder,
   triggerOrderFailEmail,
   updateOrder,
@@ -19,6 +20,8 @@ import { Role } from '@src/types/customTypes';
 import { appendUserIdInReqQuery } from '@src/utils/middlewares';
 
 const orderRouter = express.Router();
+orderRouter.post('/hitpay-webhook', hitpayWebhookHandler);
+
 orderRouter.use(protect);
 
 orderRouter.post(PLACE_ORDER, placeOrder);
