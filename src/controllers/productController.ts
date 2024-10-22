@@ -114,6 +114,7 @@ export const checkGlobalSearchParams = catchAsync(
 
     req.query.name = { $regex: name, $options: 'i' };
     req.query.brand = brand;
+    req.query.fields = 'name,images,price,discountedPrice,slug';
 
     next();
   }
