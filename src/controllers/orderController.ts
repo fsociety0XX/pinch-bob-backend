@@ -345,7 +345,6 @@ const handleHitpayPayment = async (
     },
     body: JSON.stringify(paymentData),
   };
-  console.log(paymentData, 'options999');
   const response = await fetch(process.env.HITPAY_API_URL, options);
 
   if (!response.ok) {
