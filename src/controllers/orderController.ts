@@ -822,11 +822,12 @@ export const updateOrder = catchAsync(
 function verifyHitPayHmac(data: any, hitPayHmac: string): boolean {
   const dataWithoutHmac = { ...data };
   delete dataWithoutHmac.hmac;
-
   const computedHmac = crypto
-    .createHmac('sha256', process.env.HITPAY_SALT)
+    .createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT)
     .update(JSON.stringify(dataWithoutHmac))
     .digest('hex');
+
+  console.log(computedHmac, hitPayHmac, '0000oooo');
 
   return computedHmac === hitPayHmac;
 }
@@ -904,7 +905,7 @@ const handlePaymentFaliureForBob = catchAsync(
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
     const { status, hmac } = req.body;
-
+    console.log(req.body, hmac, '11221122');
     if (verifyHitPayHmac(req.body, hmac)) {
       if (status === 'completed') {
         updateBobOrderAfterPaymentSuccess(req.body, res);
