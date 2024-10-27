@@ -35,6 +35,7 @@ import {
   ORDER_DELIVERY_DATE_ERR,
   ORDER_PREP_EMAIL,
   BOB_EMAILS,
+  ORDER_FAIL_EMAIL,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -49,7 +50,11 @@ import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
-import { PRODUCTION, SELF_COLLECT_ADDRESS } from '@src/constants/static';
+import {
+  PRODUCTION,
+  SELF_COLLECT_ADDRESS,
+  WOODELIVERY_STATUS,
+} from '@src/constants/static';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -527,6 +532,7 @@ const createDelivery = async (id: string) => {
         createDeliveryDocument(order, task);
         await Order.findByIdAndUpdate(id, {
           woodeliveryTaskId: task.data.guid,
+          status: WOODELIVERY_STATUS[task?.data?.statusId],
         });
       })
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
@@ -597,29 +603,35 @@ const updateOrderAfterPaymentSuccess = async (
   });
 };
 
-export const triggerOrderFailEmail = catchAsync(async (orderId: string) => {
-  const order = await Order.findById(orderId).lean();
-  const email = order?.user.email;
+export const triggerOrderFailEmail = catchAsync(
+  async (req: IRequestWithUser, res: Response) => {
+    const email = req.user?.email;
+    const orderId = req.params.orderId!;
+    const order = await Order.findById(orderId).lean();
+    if (!order) {
+      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+    }
 
-  if (!order) {
-    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+    const {
+      orderFail: { subject, template, previewText },
+    } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+
+    await sendEmail({
+      email: email! || order.user.email,
+      subject,
+      template,
+      context: {
+        previewText,
+        orderNo: order?.orderNumber,
+        customerName: req.user?.firstName,
+      },
+    });
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: ORDER_FAIL_EMAIL,
+    });
   }
-
-  const {
-    orderFail: { subject, template, previewText },
-  } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
-
-  await sendEmail({
-    email: email!,
-    subject,
-    template,
-    context: {
-      previewText,
-      orderNo: order?.orderNumber,
-      customerName: order?.user?.firstName || '',
-    },
-  });
-});
+);
 
 async function handlePaymentFailure(
   session: Stripe.PaymentIntentPaymentFailedEvent,
@@ -641,7 +653,6 @@ async function handlePaymentFailure(
     stripeDetails,
     status: CANCELLED,
   });
-  await triggerOrderFailEmail(orderId);
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
 
@@ -884,7 +895,6 @@ const handlePaymentFaliureForBob = catchAsync(
       hitpayDetails,
       status: CANCELLED,
     });
-    await triggerOrderFailEmail(orderId);
     res.status(StatusCode.BAD_REQUEST).json(hitpayDetails);
   }
 );
