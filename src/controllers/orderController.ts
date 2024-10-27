@@ -819,17 +819,24 @@ export const updateOrder = catchAsync(
  * @author Kush
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function verifyHitPayHmac(data: any, hitPayHmac: string): boolean {
-  const dataWithoutHmac = { ...data };
-  delete dataWithoutHmac.hmac;
+
+function verifyHitPayHmac(payload, hitPayHmac) {
+  const sortedKeys = Object.keys(payload).sort();
+  const concatenatedString = sortedKeys
+    .map((key) => `${payload[key]}`)
+    .join('');
+
   const computedHmac = crypto
     .createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT)
-    .update(JSON.stringify(dataWithoutHmac))
+    .update(concatenatedString)
     .digest('hex');
 
   console.log(computedHmac, hitPayHmac, '0000oooo');
 
-  return computedHmac === hitPayHmac;
+  return crypto.timingSafeEqual(
+    Buffer.from(computedHmac),
+    Buffer.from(hitPayHmac)
+  );
 }
 
 const updateBobOrderAfterPaymentSuccess = catchAsync(
