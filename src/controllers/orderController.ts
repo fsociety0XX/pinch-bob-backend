@@ -824,7 +824,7 @@ function verifyHitPayHmac(req: Request, hitpaySignature: string) {
 
   // Calculate HMAC
   const hmac = crypto.createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT);
-  const digest = Buffer.from(hmac.update(req.rawBody).digest('hex'), 'utf8');
+  const digest = Buffer.from(hmac.update(req.body).digest('hex'), 'utf8');
 
   console.log(digest.toString(), sig.toString(), 'Comparing HMACs');
 
@@ -904,10 +904,9 @@ const handlePaymentFaliureForBob = catchAsync(
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
     const hitpaySignature = req.headers['hitpay-signature'];
-    req.body = JSON.parse(req.rawBody);
     const { status } = req.body?.payment_request;
 
-    console.log(req.rawBody, 'req raw body', req.body, 'req body');
+    console.log(req.body, 'req body');
 
     if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
