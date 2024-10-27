@@ -903,18 +903,18 @@ const handlePaymentFaliureForBob = catchAsync(
 
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
-    const hitpaySignature = req.headers['hitpay-signature'];
-    const { status } = req.body?.payment_request;
-
     console.log(req.body, 'req body');
+
+    const hitpaySignature = req.headers['hitpay-signature'];
+    const parsedBody = JSON.parse(req.body);
+    const { status } = parsedBody?.payment_request;
 
     if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
-        updateBobOrderAfterPaymentSuccess(req.body, res);
+        updateBobOrderAfterPaymentSuccess(parsedBody, res);
       } else if (status === 'failed') {
-        handlePaymentFaliureForBob(req.body, res);
+        handlePaymentFaliureForBob(parsedBody, res);
       }
-
       res.status(200).send('Payment successfull');
     } else {
       res.status(400).send('Invalid HMAC signature');
