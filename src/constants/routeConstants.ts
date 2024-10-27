@@ -18,6 +18,7 @@ export const DELIVERY_ROUTE = `${VERSION1}/delivery`;
 export const COUPON_ROUTE = `${VERSION1}/coupon`;
 export const CUSTOMISE_CAKE_ROUTE = `${VERSION1}/customiseCake`;
 export const WEBHOOK_CHECKOUT_ROUTE = `${VERSION1}/webhook-checkout`;
+export const HITPAY_WEBHOOK_ROUTE = `${VERSION1}/hitpay-webhook`;
 export const SEARCH = `${VERSION1}/search`;
 
 // AUTH
