@@ -814,29 +814,21 @@ export const updateOrder = catchAsync(
 /**
  * Verifies the HMAC signature sent by HitPay using the Salt.
  * @param {Object} data - The webhook request body.
- * @param {string} hitPayHmac - The HMAC signature sent by HitPay.
+ * @param {string} hitpaySignature - The HMAC signature sent by HitPay.
  * @returns {boolean} - Returns true if the HMAC signatures match.
  * @author Kush
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-function verifyHitPayHmac(payload, hitPayHmac) {
-  const sortedKeys = Object.keys(payload).sort();
-  const concatenatedString = sortedKeys
-    .map((key) => `${payload[key]}`)
-    .join('');
+function verifyHitPayHmac(req: Request, hitpaySignature: string) {
+  const sig = Buffer.from(hitpaySignature || '', 'utf8');
 
-  const computedHmac = crypto
-    .createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT)
-    .update(concatenatedString)
-    .digest('hex');
+  // Calculate HMAC
+  const hmac = crypto.createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT);
+  const digest = Buffer.from(hmac.update(req.rawBody).digest('hex'), 'utf8');
 
-  console.log(computedHmac, hitPayHmac, '0000oooo');
+  console.log(digest.toString(), sig.toString(), 'Comparing HMACs');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(computedHmac),
-    Buffer.from(hitPayHmac)
-  );
+  return crypto.timingSafeEqual(digest, sig);
 }
 
 const updateBobOrderAfterPaymentSuccess = catchAsync(
@@ -912,9 +904,9 @@ const handlePaymentFaliureForBob = catchAsync(
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
     const { status } = req.body?.payment_request;
-    const hmac = req.headers['hitpay-signature'];
-    console.log(req.body, hmac, '11221122');
-    if (verifyHitPayHmac(req.body, hmac)) {
+    const hitpaySignature = req.headers['hitpay-signature'];
+    console.log(req.body, hitpaySignature, '11221122');
+    if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
         updateBobOrderAfterPaymentSuccess(req.body, res);
       } else if (status === 'failed') {
