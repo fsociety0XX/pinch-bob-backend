@@ -906,7 +906,7 @@ export const hitpayWebhookHandler = catchAsync(
     console.log(req.body, 'req body');
 
     const hitpaySignature = req.headers['hitpay-signature'];
-    const parsedBody = JSON.parse(req.body);
+    const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
     const { status } = parsedBody?.payment_request;
 
     if (verifyHitPayHmac(req, hitpaySignature)) {
