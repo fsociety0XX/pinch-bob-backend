@@ -31,7 +31,6 @@ import {
   PINCH_EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
-  ORDER_FAIL_EMAIL,
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
   ORDER_PREP_EMAIL,
@@ -598,6 +597,30 @@ const updateOrderAfterPaymentSuccess = async (
   });
 };
 
+export const triggerOrderFailEmail = catchAsync(async (orderId: string) => {
+  const order = await Order.findById(orderId).lean();
+  const email = order?.user.email;
+
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
+
+  const {
+    orderFail: { subject, template, previewText },
+  } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+
+  await sendEmail({
+    email: email!,
+    subject,
+    template,
+    context: {
+      previewText,
+      orderNo: order?.orderNumber,
+      customerName: order?.user?.firstName || '',
+    },
+  });
+});
+
 async function handlePaymentFailure(
   session: Stripe.PaymentIntentPaymentFailedEvent,
   res: Response
@@ -618,38 +641,9 @@ async function handlePaymentFailure(
     stripeDetails,
     status: CANCELLED,
   });
+  await triggerOrderFailEmail(orderId);
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
-
-export const triggerOrderFailEmail = catchAsync(
-  async (req: IRequestWithUser, res: Response) => {
-    const email = req.user?.email;
-    const orderId = req.params.orderId!;
-    const order = await Order.findById(orderId).lean();
-    if (!order) {
-      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
-    }
-
-    const {
-      orderFail: { subject, template, previewText },
-    } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
-
-    await sendEmail({
-      email: email!,
-      subject,
-      template,
-      context: {
-        previewText,
-        orderNo: order?.orderNumber,
-        customerName: req.user?.firstName,
-      },
-    });
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      message: ORDER_FAIL_EMAIL,
-    });
-  }
-);
 
 export const webhookCheckout = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';
@@ -826,15 +820,13 @@ function verifyHitPayHmac(req: Request, hitpaySignature: string) {
   const hmac = crypto.createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT);
   const digest = Buffer.from(hmac.update(req.body).digest('hex'), 'utf8');
 
-  console.log(digest.toString(), sig.toString(), 'Comparing HMACs');
-
   return crypto.timingSafeEqual(digest, sig);
 }
 
 const updateBobOrderAfterPaymentSuccess = catchAsync(
-  async (session: IHitpayDetails, res: Response) => {
+  async (session, res: Response) => {
     const { id, status, amount, payment_methods, reference_number, email } =
-      session?.payment_request;
+      session;
     const orderId = reference_number;
     const hitpayDetails = {
       status,
@@ -842,13 +834,11 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       paymentMethod: payment_methods,
       paymentRequestId: id,
     };
-
     const order = await Order.findByIdAndUpdate(
       orderId,
       { hitpayDetails, paid: true },
       { new: true }
     ).lean();
-
     // If customer has applied coupon
     if (
       order!.pricingSummary.coupon &&
@@ -869,11 +859,9 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       );
       await user!.save({ validateBeforeSave: false });
     }
-
     await updateProductSold(order!);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
-
     res.status(StatusCode.SUCCESS).send({
       status: 'success',
       message: 'Payment successfull',
@@ -883,8 +871,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
 
 const handlePaymentFaliureForBob = catchAsync(
   async (session: IHitpayDetails, res: Response) => {
-    const { id, status, amount, payment_methods, reference_number } =
-      session?.payment_request;
+    const { id, status, amount, payment_methods, reference_number } = session;
 
     const orderId = reference_number;
     const hitpayDetails = {
@@ -897,23 +884,23 @@ const handlePaymentFaliureForBob = catchAsync(
       hitpayDetails,
       status: CANCELLED,
     });
+    await triggerOrderFailEmail(orderId);
     res.status(StatusCode.BAD_REQUEST).json(hitpayDetails);
   }
 );
 
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
-    console.log(req.body, 'req body');
-
     const hitpaySignature = req.headers['hitpay-signature'];
     const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
-    const { status } = parsedBody?.payment_request;
+    const paymentRequest = parsedBody?.payment_request;
+    const { status } = paymentRequest;
 
     if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
-        updateBobOrderAfterPaymentSuccess(parsedBody, res);
+        updateBobOrderAfterPaymentSuccess(paymentRequest, res);
       } else if (status === 'failed') {
-        handlePaymentFaliureForBob(parsedBody, res);
+        handlePaymentFaliureForBob(paymentRequest, res);
       }
       res.status(200).send('Payment successfull');
     } else {
