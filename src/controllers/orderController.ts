@@ -899,10 +899,11 @@ export const hitpayWebhookHandler = catchAsync(
     if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
         updateBobOrderAfterPaymentSuccess(paymentRequest, res);
-      } else if (status === 'failed') {
+        res.status(200).send('Payment successfull');
+      } else {
         handlePaymentFaliureForBob(paymentRequest, res);
+        res.status(400).send('Payment failed');
       }
-      res.status(200).send('Payment successfull');
     } else {
       res.status(400).send('Invalid HMAC signature');
     }
