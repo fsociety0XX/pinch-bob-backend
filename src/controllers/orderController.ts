@@ -904,7 +904,8 @@ const handlePaymentFaliureForBob = catchAsync(
 
 export const hitpayWebhookHandler = catchAsync(
   async (req: Request, res: Response) => {
-    const { status, hmac } = req.body;
+    const { status } = req.body?.payment_request;
+    const hmac = req.headers['hitpay-signature'];
     console.log(req.body, hmac, '11221122');
     if (verifyHitPayHmac(req.body, hmac)) {
       if (status === 'completed') {
