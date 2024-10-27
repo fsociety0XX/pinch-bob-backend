@@ -645,7 +645,7 @@ async function handlePaymentFailure(
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
 
-export const webhookCheckout = (req: Request, res: Response): void => {
+export const stripeWebhookHandler = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';
   let event: Stripe.Event;
   try {
