@@ -391,7 +391,7 @@ export const placeOrder = catchAsync(
 
     let session;
     if (req.body.brand === brandEnum[0]) {
-      session = handleStripePayment(populatedOrder, req, orderId);
+      session = await handleStripePayment(populatedOrder, req, orderId);
     } else {
       session = await handleHitpayPayment(populatedOrder, req, orderId, next);
     }
