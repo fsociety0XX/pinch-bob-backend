@@ -769,7 +769,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);
 export const getOneOrder = getOne(Order);
-export const getAllOrder = getAll(Order);
+export const getAllOrder = getAll(Order, ['orderNumber']);
 
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
