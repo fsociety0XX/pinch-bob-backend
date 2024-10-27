@@ -35,7 +35,7 @@ import {
   SIZE_ROUTE,
   SUPER_CATEGORY_ROUTE,
   USER_ROUTE,
-  WEBHOOK_CHECKOUT_ROUTE,
+  STRIPE_WEBHOOK_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -49,7 +49,7 @@ import deliveryMethodRouter from './routes/deliveryMethodRoutes';
 import orderRouter from './routes/orderRoutes';
 import {
   hitpayWebhookHandler,
-  webhookCheckout,
+  stripeWebhookHandler,
 } from './controllers/orderController';
 import deliveryRouter from './routes/deliveryRoutes';
 import superCategoryRouter from './routes/superCategoryRoutes';
@@ -71,9 +71,9 @@ app.use(cors());
 
 // Stripe webhook, BEFORE body-parser, because stripe needs the body as stream
 app.post(
-  WEBHOOK_CHECKOUT_ROUTE,
+  STRIPE_WEBHOOK_ROUTE,
   express.raw({ type: 'application/json' }),
-  webhookCheckout
+  stripeWebhookHandler
 );
 // Hitpay webhook, BEFORE body-parser, because hitpay needs the body in raw format
 app.post(
