@@ -1,18 +1,21 @@
+/* eslint-disable camelcase */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
 import Stripe from 'stripe';
 import cron from 'node-cron';
+import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
-import Order, { IOrder } from '@src/models/orderModel';
+import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
 import {
   CANCELLED,
   Role,
   StatusCode,
+  brandEnum,
   checkoutSessionFor,
 } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
@@ -28,10 +31,11 @@ import {
   PINCH_EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
-  ORDER_FAIL_EMAIL,
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
   ORDER_PREP_EMAIL,
+  BOB_EMAILS,
+  ORDER_FAIL_EMAIL,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -46,7 +50,11 @@ import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
-import { PRODUCTION, SELF_COLLECT_ADDRESS } from '@src/constants/static';
+import {
+  PRODUCTION,
+  SELF_COLLECT_ADDRESS,
+  WOODELIVERY_STATUS,
+} from '@src/constants/static';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -117,7 +125,10 @@ const sendOrderPrepEmail = async (res: Response) => {
           }`,
         },
       }).catch((error) => {
-        console.error(ORDER_PREP_EMAIL.emailFailed(order?.orderNumber), error);
+        console.error(
+          ORDER_PREP_EMAIL.emailFailed(order?.orderNumber || ''),
+          error
+        );
         return { orderNumber: order?.orderNumber, success: false, error };
       })
     );
@@ -212,7 +223,7 @@ const createProductListForTemplate = (order: IOrder) => {
 const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
   const {
     orderConfirm: { subject, template, previewText },
-  } = PINCH_EMAILS;
+  } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
 
   await sendEmail({
     email,
@@ -238,6 +249,117 @@ const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
   });
 };
 
+const handleStripePayment = async (
+  populatedOrder: IOrder,
+  req: Request,
+  orderId: string
+): Stripe.CustomerSession => {
+  let productList = [];
+  if (populatedOrder!.pricingSummary.coupon?.code) {
+    productList = [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'sgd',
+          unit_amount: Math.floor(+populatedOrder.pricingSummary.total * 100), // Stripe expects amount in cents
+          product_data: {
+            name: 'All Products (including discount)',
+          },
+        },
+      },
+    ];
+  } else {
+    productList = populatedOrder?.product.map(
+      ({ product, price, quantity }) => ({
+        quantity,
+        price_data: {
+          currency: 'sgd',
+          unit_amount: ((+price?.toFixed(2) / quantity!) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
+          // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
+          // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
+          product_data: {
+            name: product.name,
+            images: [product?.images?.[0]?.location],
+          },
+        },
+      })
+    );
+    // Add delivery fee as a line item
+    productList.push({
+      quantity: 1,
+      price_data: {
+        currency: 'sgd',
+        unit_amount: +populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
+        product_data: {
+          name: 'Delivery Fee',
+          description: populatedOrder?.delivery?.method?.name,
+        },
+      },
+    });
+  }
+
+  // create checkout session
+  const session = await stripe.checkout.sessions.create({
+    customer_email: req.user?.email,
+    customer: req.user?._id,
+    payment_method_types: ['paynow', 'card'],
+    success_url: `${req.protocol}://${req.get(
+      'host'
+    )}/order-confirm/${orderId}`,
+    cancel_url: `${req.protocol}://${req.get('host')}/retry-payment/${orderId}`,
+    mode: 'payment',
+    currency: 'sgd',
+    line_items: productList,
+    metadata: {
+      sessionFor: checkoutSessionFor.website,
+      orderId,
+    },
+  });
+
+  return session;
+};
+
+const handleHitpayPayment = async (
+  populatedOrder: IOrder,
+  req: Request,
+  orderId: string,
+  next: NextFunction
+) => {
+  const paymentData = {
+    amount: populatedOrder?.pricingSummary?.total,
+    currency: 'SGD',
+    reference_number: orderId,
+    email: populatedOrder?.user?.email || '',
+    name: `${populatedOrder.user?.firstName || ''} ${
+      populatedOrder?.user?.lastName || ''
+    }`,
+    phone: populatedOrder?.user?.phone || '',
+    send_email: true,
+    send_sms: true,
+    redirect_url: `${req.protocol}://${req.get(
+      'host'
+    )}/order-confirm/${orderId}`,
+  };
+
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-BUSINESS-API-KEY': process.env.HITPAY_API_KEY,
+    },
+    body: JSON.stringify(paymentData),
+  };
+  const response = await fetch(process.env.HITPAY_API_URL, options);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    return next(new AppError(errorData, StatusCode.BAD_REQUEST));
+  }
+
+  const data = await response.json();
+  return data.url; // Return the payment URL
+};
+
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     req.body.user = req.user?._id;
@@ -255,7 +377,7 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (!user?.firstName && !user.lastName && !user.phone) {
+      if (!user?.firstName && !user?.lastName && !user?.phone) {
         const { customer } = req.body;
         await User.findByIdAndUpdate(req.user?._id, {
           firstName: customer?.firstName,
@@ -272,70 +394,12 @@ export const placeOrder = catchAsync(
       return next(new AppError(ORDER_NOT_FOUND, StatusCode.BAD_REQUEST));
     }
 
-    let productList = [];
-    if (populatedOrder!.pricingSummary.coupon?.code) {
-      productList = [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'sgd',
-            unit_amount: Math.floor(+populatedOrder.pricingSummary.total * 100), // Stripe expects amount in cents
-            product_data: {
-              name: 'All Products (including discount)',
-            },
-          },
-        },
-      ];
+    let session;
+    if (req.body.brand === brandEnum[0]) {
+      session = await handleStripePayment(populatedOrder, req, orderId);
     } else {
-      productList = populatedOrder?.product.map(
-        ({ product, price, quantity }) => ({
-          quantity,
-          price_data: {
-            currency: 'sgd',
-            unit_amount: ((+price?.toFixed(2) / quantity!) * 100).toFixed(0), // Stripe expects amount in cents, Also the reason for dividing price with quantity is that
-            // In DB 'price' is the total amount of that product with it's quantity - means originalProductPrice + specialMsg price (if any) * Quantity and in stripe checkout
-            // It again gets multiplied by the quantity since stripe thinks that 'price' property contains just originalPrice of 1 product.
-            product_data: {
-              name: product.name,
-              images: [product?.images?.[0]?.location],
-            },
-          },
-        })
-      );
-      // Add delivery fee as a line item
-      productList.push({
-        quantity: 1,
-        price_data: {
-          currency: 'sgd',
-          unit_amount:
-            +populatedOrder?.pricingSummary?.deliveryCharge * 100 || 0, // Stripe expects amount in cents
-          product_data: {
-            name: 'Delivery Fee',
-            description: populatedOrder?.delivery?.method?.name,
-          },
-        },
-      });
+      session = await handleHitpayPayment(populatedOrder, req, orderId, next);
     }
-
-    // create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer_email: req.user?.email,
-      customer: req.user?._id,
-      payment_method_types: ['paynow', 'card'],
-      success_url: `${req.protocol}://${req.get(
-        'host'
-      )}/order-confirm/${orderId}`,
-      cancel_url: `${req.protocol}://${req.get(
-        'host'
-      )}/retry-payment/${orderId}`,
-      mode: 'payment',
-      currency: 'sgd',
-      line_items: productList,
-      metadata: {
-        sessionFor: checkoutSessionFor.website,
-        orderId,
-      },
-    });
 
     // Cancel order after 30 mins if payment fails
     cancelOrder(orderId);
@@ -352,6 +416,7 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     delivery: { address, date, collectionTime, instructions },
     recipInfo,
     user,
+    brand,
   } = order;
 
   let taskDesc = '';
@@ -397,7 +462,7 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     requesterEmail: user?.email,
     recipientName: recipInfo?.name || '',
     recipientPhone: String(recipInfo?.contact || ''),
-    tag1: 'pinch',
+    tag1: brand,
     packages,
     destinationNotes: instructions || '',
   };
@@ -424,9 +489,10 @@ const createDeliveryDocument = async (order: IOrder, task?: Response) => {
     delivery: { address, method, date, collectionTime },
     recipInfo,
     user,
+    brand,
   } = order;
   const data: IDeliveryData = {
-    brand: 'pinch', // TODO: change when rewriting bob
+    brand,
     order: order?.id,
     deliveryDate: new Date(date),
     method: method.id,
@@ -466,6 +532,7 @@ const createDelivery = async (id: string) => {
         createDeliveryDocument(order, task);
         await Order.findByIdAndUpdate(id, {
           woodeliveryTaskId: task.data.guid,
+          status: WOODELIVERY_STATUS[task?.data?.statusId],
         });
       })
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
@@ -536,6 +603,36 @@ const updateOrderAfterPaymentSuccess = async (
   });
 };
 
+export const triggerOrderFailEmail = catchAsync(
+  async (req: IRequestWithUser, res: Response) => {
+    const email = req.user?.email;
+    const orderId = req.params.orderId!;
+    const order = await Order.findById(orderId).lean();
+    if (!order) {
+      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+    }
+
+    const {
+      orderFail: { subject, template, previewText },
+    } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+
+    await sendEmail({
+      email: email! || order.user.email,
+      subject,
+      template,
+      context: {
+        previewText,
+        orderNo: order?.orderNumber,
+        customerName: req.user?.firstName,
+      },
+    });
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: ORDER_FAIL_EMAIL,
+    });
+  }
+);
+
 async function handlePaymentFailure(
   session: Stripe.PaymentIntentPaymentFailedEvent,
   res: Response
@@ -559,35 +656,7 @@ async function handlePaymentFailure(
   res.status(StatusCode.BAD_REQUEST).json(stripeDetails);
 }
 
-export const triggerOrderFailEmail = catchAsync(
-  async (req: IRequestWithUser, res: Response) => {
-    const {
-      orderFail: { subject, template, previewText },
-    } = PINCH_EMAILS;
-    const email = req.user?.email;
-    const orderId = req.params.orderId!;
-    const order = await Order.findById(orderId).lean();
-    if (!order) {
-      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
-    }
-    await sendEmail({
-      email: email!,
-      subject,
-      template,
-      context: {
-        previewText,
-        orderNo: order?.orderNumber,
-        customerName: req.user?.firstName,
-      },
-    });
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      message: ORDER_FAIL_EMAIL,
-    });
-  }
-);
-
-export const webhookCheckout = (req: Request, res: Response): void => {
+export const stripeWebhookHandler = (req: Request, res: Response): void => {
   const sig = req.headers['stripe-signature'] || '';
   let event: Stripe.Event;
   try {
@@ -742,5 +811,111 @@ export const updateOrder = catchAsync(
         data: order,
       },
     });
+  }
+);
+
+// BOB controllers
+
+/**
+ * Verifies the HMAC signature sent by HitPay using the Salt.
+ * @param {Object} data - The webhook request body.
+ * @param {string} hitpaySignature - The HMAC signature sent by HitPay.
+ * @returns {boolean} - Returns true if the HMAC signatures match.
+ * @author Kush
+ */
+
+function verifyHitPayHmac(req: Request, hitpaySignature: string) {
+  const sig = Buffer.from(hitpaySignature || '', 'utf8');
+
+  // Calculate HMAC
+  const hmac = crypto.createHmac('sha256', process.env.HITPAY_WEBHOOK_SALT);
+  const digest = Buffer.from(hmac.update(req.body).digest('hex'), 'utf8');
+
+  return crypto.timingSafeEqual(digest, sig);
+}
+
+const updateBobOrderAfterPaymentSuccess = catchAsync(
+  async (session, res: Response) => {
+    const { id, status, amount, payment_methods, reference_number, email } =
+      session;
+    const orderId = reference_number;
+    const hitpayDetails = {
+      status,
+      amount,
+      paymentMethod: payment_methods,
+      paymentRequestId: id,
+    };
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { hitpayDetails, paid: true },
+      { new: true }
+    ).lean();
+    // If customer has applied coupon
+    if (
+      order!.pricingSummary.coupon &&
+      Object.keys(order!.pricingSummary.coupon).length
+    ) {
+      // Append coupon details in user model when customer apply a coupon successfully
+      const user = await User.findById(order?.user?._id);
+      if (
+        user?.usedCoupons &&
+        !user.usedCoupons?.includes(order!.pricingSummary.coupon?._id)
+      ) {
+        user.usedCoupons!.push(order!.pricingSummary.coupon?._id);
+      }
+      // Increment the coupon's used count atomically
+      await Coupon.updateOne(
+        { _id: order?.pricingSummary.coupon?._id },
+        { $inc: { used: 1 } }
+      );
+      await user!.save({ validateBeforeSave: false });
+    }
+    await updateProductSold(order!);
+    await createDelivery(orderId);
+    await sendOrderConfirmationEmail(email, order);
+    res.status(StatusCode.SUCCESS).send({
+      status: 'success',
+      message: 'Payment successfull',
+    });
+  }
+);
+
+const handlePaymentFaliureForBob = catchAsync(
+  async (session: IHitpayDetails, res: Response) => {
+    const { id, status, amount, payment_methods, reference_number } = session;
+
+    const orderId = reference_number;
+    const hitpayDetails = {
+      status,
+      amount,
+      paymentMethod: payment_methods,
+      paymentRequestId: id,
+    };
+    await Order.findByIdAndUpdate(orderId, {
+      hitpayDetails,
+      status: CANCELLED,
+    });
+    res.status(StatusCode.BAD_REQUEST).json(hitpayDetails);
+  }
+);
+
+export const hitpayWebhookHandler = catchAsync(
+  async (req: Request, res: Response) => {
+    const hitpaySignature = req.headers['hitpay-signature'];
+    const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
+    const paymentRequest = parsedBody?.payment_request;
+    const { status } = paymentRequest;
+
+    if (verifyHitPayHmac(req, hitpaySignature)) {
+      if (status === 'completed') {
+        updateBobOrderAfterPaymentSuccess(paymentRequest, res);
+        res.status(200).send('Payment successfull');
+      } else {
+        handlePaymentFaliureForBob(paymentRequest, res);
+        res.status(400).send('Payment failed');
+      }
+    } else {
+      res.status(400).send('Invalid HMAC signature');
+    }
   }
 );

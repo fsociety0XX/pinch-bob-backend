@@ -19,8 +19,8 @@ import { Role } from '@src/types/customTypes';
 import { appendUserIdInReqQuery } from '@src/utils/middlewares';
 
 const orderRouter = express.Router();
-orderRouter.use(protect);
 
+orderRouter.use(protect);
 orderRouter.post(PLACE_ORDER, placeOrder);
 orderRouter.get(TRIGGER_ORDER_FAIL_EMAIL, triggerOrderFailEmail);
 

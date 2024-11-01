@@ -100,38 +100,36 @@ export const updateOrderStatus = catchAsync(
   async (req: Request, res: Response) => {
     const { subject, template, previewText } = PINCH_EMAILS.reqForReview;
     const orderNumber = req.params.id;
-    const { brand } = req.query;
+    // const { brand } = req.query;
 
-    if (brand === 'pinch') {
-      const order = await Order.findOne({ orderNumber });
-      if (!order) {
-        return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
-      }
-      await Delivery.findOneAndUpdate(
-        { order: order?._id },
-        {
-          status: WOODELIVERY_STATUS[req.body.StatusId],
-        }
-      );
-      await Order.findByIdAndUpdate(order?._id, {
+    const order = await Order.findOne({ orderNumber });
+    if (!order) {
+      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+    }
+    await Delivery.findOneAndUpdate(
+      { order: order?._id },
+      {
         status: WOODELIVERY_STATUS[req.body.StatusId],
-      });
-
-      // Send order delivered email and ask for google review from cx
-      if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
-        await sendEmail({
-          email: order?.user?.email,
-          subject,
-          template,
-          context: {
-            previewText,
-            orderNo: order.orderNumber || '',
-            customerName: `${order!.user?.firstName || ''} ${
-              order!.user?.lastName || ''
-            }`,
-          },
-        });
       }
+    );
+    await Order.findByIdAndUpdate(order?._id, {
+      status: WOODELIVERY_STATUS[req.body.StatusId],
+    });
+
+    // Send order delivered email and ask for google review from cx
+    if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
+      await sendEmail({
+        email: order?.user?.email,
+        subject,
+        template,
+        context: {
+          previewText,
+          orderNo: order.orderNumber || '',
+          customerName: `${order!.user?.firstName || ''} ${
+            order!.user?.lastName || ''
+          }`,
+        },
+      });
     }
     res.send(StatusCode.SUCCESS);
   }

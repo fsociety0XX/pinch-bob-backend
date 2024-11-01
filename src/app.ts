@@ -27,6 +27,7 @@ import {
   DELIVERY_METHOD_ROUTE,
   DELIVERY_ROUTE,
   FLAVOUR_ROUTE,
+  HITPAY_WEBHOOK_ROUTE,
   ORDER_ROUTE,
   PIECES_ROUTE,
   PRODUCT_ROUTE,
@@ -34,7 +35,7 @@ import {
   SIZE_ROUTE,
   SUPER_CATEGORY_ROUTE,
   USER_ROUTE,
-  WEBHOOK_CHECKOUT_ROUTE,
+  STRIPE_WEBHOOK_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -46,7 +47,10 @@ import colourRouter from './routes/colourRoutes';
 import addressRouter from './routes/addressRoutes';
 import deliveryMethodRouter from './routes/deliveryMethodRoutes';
 import orderRouter from './routes/orderRoutes';
-import { webhookCheckout } from './controllers/orderController';
+import {
+  hitpayWebhookHandler,
+  stripeWebhookHandler,
+} from './controllers/orderController';
 import deliveryRouter from './routes/deliveryRoutes';
 import superCategoryRouter from './routes/superCategoryRoutes';
 import authRouter from './routes/authRoutes';
@@ -67,9 +71,15 @@ app.use(cors());
 
 // Stripe webhook, BEFORE body-parser, because stripe needs the body as stream
 app.post(
-  WEBHOOK_CHECKOUT_ROUTE,
+  STRIPE_WEBHOOK_ROUTE,
   express.raw({ type: 'application/json' }),
-  webhookCheckout
+  stripeWebhookHandler
+);
+// Hitpay webhook, BEFORE body-parser, because hitpay needs the body in raw format
+app.post(
+  HITPAY_WEBHOOK_ROUTE,
+  express.raw({ type: 'application/json' }),
+  hitpayWebhookHandler
 );
 
 // Parse incoming request bodies in JSON format
