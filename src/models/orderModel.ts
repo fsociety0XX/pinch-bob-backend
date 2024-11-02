@@ -87,6 +87,7 @@ export interface IProduct {
   fondantName?: string;
   fondantNumber?: string;
   moneyPulling?: {
+    want: boolean;
     noteType: string;
     qty: number;
   };
@@ -161,6 +162,10 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   fondantNumber: String,
   moneyPulling: {
     type: {
+      want: {
+        type: Boolean,
+        default: false,
+      },
       noteType: {
         type: String,
         enum: notesEnum,
