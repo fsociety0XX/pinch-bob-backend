@@ -386,6 +386,9 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 // Document middleware
 productSchema.pre('save', function (next) {
   this.slug = slugify(this.name);
+  if (this.inventory.track) {
+    this.inventory.remainingQty = this.inventory.totalQty;
+  }
   next();
 });
 
