@@ -1,6 +1,11 @@
 import mongoose, { Types, model } from 'mongoose';
 import slugify from 'slugify';
-import { brandEnum, refImageType, typeEnum } from '@src/types/customTypes';
+import {
+  brandEnum,
+  inventoryEnum,
+  refImageType,
+  typeEnum,
+} from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 interface ISize {
@@ -29,12 +34,19 @@ interface IPinchProductDetails {
 }
 
 interface IBobProductDetails {
-  description: string[];
+  description: string;
   sizesDetails: string;
   advice: string;
-  ingredients: string;
   shelfLife: string;
-  howArrives: string;
+  deliveryOptions: string;
+}
+
+interface IInventory {
+  track: boolean;
+  totalQty: number;
+  remainingQty: number;
+  available: boolean; // will be used to show 'sold out' tags
+  status: string;
 }
 
 export interface IProduct {
@@ -60,7 +72,6 @@ export interface IProduct {
   minQty?: number;
   refImageType?: string; // edible or customise
   preparationDays: number;
-  available: boolean; // will be used to show 'sold out' tags
   recommended: boolean;
   active: boolean;
   superCategory: Types.ObjectId;
@@ -71,6 +82,43 @@ export interface IProduct {
   fondantName: boolean;
   fondantNameLimit: number;
   fondantNumber: boolean;
+  priority: number; // for product sequencing
+  inventory: IInventory;
+  mayStain: boolean;
+  moneyPulling: boolean;
+  fixedFlavour: string;
+  layering: string;
+  baseSponge: {
+    type: string;
+    others: string;
+  };
+  baseColour: string;
+  cakeMsgLocation: string;
+  fondantNameDetails: {
+    value: string;
+    colour: string;
+  };
+  fondantNumberDetails: {
+    value: string;
+    colour: string;
+    others: string;
+  };
+  simpleAcc: string;
+  complexAcc: string;
+  complexAccHr: string;
+  ediblePrint: {
+    one: {
+      type: string;
+      value: string;
+    };
+    two: {
+      type: string;
+      value: string;
+    };
+  };
+  fondantFig: string;
+  fondantLvl: string;
+  metaDesc: string;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -89,12 +137,34 @@ const PinchProductDetailSchema = new mongoose.Schema<IPinchProductDetails>({
 });
 
 const BobProductDetailSchema = new mongoose.Schema<IBobProductDetails>({
-  description: [String],
+  description: String,
   sizesDetails: String,
   advice: String,
-  ingredients: String,
   shelfLife: String,
-  howArrives: String,
+  deliveryOptions: String,
+});
+
+const Inventory = new mongoose.Schema<IInventory>({
+  track: {
+    type: Boolean,
+    default: false,
+  },
+  totalQty: Number,
+  remainingQty: Number,
+  available: {
+    type: Boolean,
+    default: true,
+  },
+  status: {
+    type: String,
+    enum: inventoryEnum,
+    default: inventoryEnum[2],
+  },
+});
+
+const EdiblePrintSchema = new mongoose.Schema({
+  type: String,
+  value: String,
 });
 
 const productSchema = new mongoose.Schema<IProduct>(
@@ -217,10 +287,6 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Number,
       required: [true, PRODUCT_SCHEMA_VALIDATION.preparationDays],
     },
-    available: {
-      type: Boolean,
-      default: true,
-    },
     recommended: {
       type: Boolean,
       default: false,
@@ -258,6 +324,42 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     tag: [String],
+    inventory: Inventory,
+    mayStain: Boolean,
+    moneyPulling: Boolean,
+    fixedFlavour: String,
+    layering: String,
+    baseSponge: {
+      type: {
+        type: String,
+        others: String,
+      },
+    },
+    baseColour: String,
+    cakeMsgLocation: String,
+    fondantNameDetails: {
+      type: {
+        value: String,
+        colour: String,
+      },
+    },
+    fondantNumberDetails: {
+      type: {
+        value: String,
+        colour: String,
+        others: String,
+      },
+    },
+    simpleAcc: String,
+    complexAcc: String,
+    complexAccHr: String,
+    ediblePrint: {
+      one: EdiblePrintSchema,
+      two: EdiblePrintSchema,
+    },
+    fondantFig: String,
+    fondantLvl: String,
+    metaDesc: String,
     active: {
       type: Boolean,
       default: true,
@@ -293,6 +395,8 @@ productSchema.pre('find', function (next) {
     path: 'category superCategory',
     select: 'name',
   });
+
+  this.sort({ priority: 1, createdAt: -1 });
 
   next();
 });

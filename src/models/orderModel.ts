@@ -87,6 +87,7 @@ export interface IProduct {
   fondantName?: string;
   fondantNumber?: string;
   moneyPulling?: {
+    want: boolean;
     noteType: string;
     qty: number;
   };
@@ -161,6 +162,10 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   fondantNumber: String,
   moneyPulling: {
     type: {
+      want: {
+        type: Boolean,
+        default: false,
+      },
       noteType: {
         type: String,
         enum: notesEnum,
@@ -275,7 +280,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
-    select: 'name images',
+    select: 'name images inventory',
   });
   this.populate({
     path: 'user',

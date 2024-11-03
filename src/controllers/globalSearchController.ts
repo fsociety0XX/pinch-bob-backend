@@ -25,7 +25,6 @@ const productFieldsToRemove = {
   'product.product.pinchDetails': 0,
   'product.product.bobDetails': 0,
   'product.product.preparationDays': 0,
-  'product.product.available': 0,
   'product.product.recommended': 0,
   'product.product.category': 0,
   'product.product.superCategory': 0,

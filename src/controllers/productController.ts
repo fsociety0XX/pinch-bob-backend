@@ -43,7 +43,7 @@ async function uploadProducts(p: IProduct) {
     contentLanguage: 'en',
     targetCountry: 'SG',
     channel: 'online',
-    availability: p.available ? 'in stock' : 'out of stock',
+    availability: p?.inventory?.available ? 'in stock' : 'out of stock',
     condition: 'new',
     price: {
       value: p.price.toString(),
