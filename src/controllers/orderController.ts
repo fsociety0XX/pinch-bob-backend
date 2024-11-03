@@ -546,7 +546,7 @@ async function updateProductAfterPurchase(order: IOrder) {
     let inventoryUpdateQuery = { ...inventory };
 
     if (inventory && inventory.track) {
-      let updatedRemQty = inventory.totalQty - p.quantity;
+      let updatedRemQty = inventory.remainingQty - p.quantity;
       updatedRemQty = Math.max(0, updatedRemQty); // Ensure quantity doesn't go below 0
 
       inventoryUpdateQuery = {
