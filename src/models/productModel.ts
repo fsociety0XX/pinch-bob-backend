@@ -8,6 +8,11 @@ import {
 } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
+interface ISuperCategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
+
 interface ISize {
   size: mongoose.Types.ObjectId;
   price: number;
@@ -74,7 +79,7 @@ export interface IProduct {
   preparationDays: number;
   recommended: boolean;
   active: boolean;
-  superCategory: Types.ObjectId;
+  superCategory: ISuperCategory[];
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product

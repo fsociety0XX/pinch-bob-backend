@@ -9,6 +9,7 @@ import {
   updateProduct,
   checkGlobalSearchParams,
   globalSearch,
+  getFbtAlsoLike,
 } from '@src/controllers/productController';
 import { Role } from '@src/types/customTypes';
 import uploadImage from '@src/utils/uploadImage';
@@ -39,5 +40,7 @@ productRouter
   .delete(protect, roleRistriction(Role.ADMIN), deleteProduct);
 
 productRouter.route('/slug/:slug').get(getOneProductViaSlug);
+
+productRouter.route('/fbtAlsoLike/:id').get(getFbtAlsoLike);
 
 export default productRouter;
