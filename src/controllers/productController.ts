@@ -123,7 +123,7 @@ export const checkGlobalSearchParams = catchAsync(
 
 const getProductByCategory = (
   superCategory: string,
-  excludedIds: Array<ObjectId> | Array<string>
+  excludedIds: Array<ObjectId>
 ) => {
   const product = Product.aggregate([
     {
