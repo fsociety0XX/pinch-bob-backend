@@ -4,3 +4,5 @@ package-lock.json
 .env.production
 dist
 pinchGmerchant.json
+bobGmerchant.json
+

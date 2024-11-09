@@ -41,7 +41,7 @@ interface IBobProductDetails {
   deliveryOptions: string;
 }
 
-interface IInventory {
+export interface IInventory {
   track: boolean;
   totalQty: number;
   remainingQty: number;
@@ -65,6 +65,7 @@ export interface IProduct {
   flavour?: mongoose.Types.ObjectId[];
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
+  fondantMsgOptions?: string[];
   type: string; // cake, bake or others
   pinchDetails: IPinchProductDetails;
   bobDetails: IBobProductDetails;
@@ -242,6 +243,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     cardOptions: [String],
+    fondantMsgOptions: [String],
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -386,9 +388,6 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 // Document middleware
 productSchema.pre('save', function (next) {
   this.slug = slugify(this.name);
-  if (this.inventory.track) {
-    this.inventory.remainingQty = this.inventory.totalQty;
-  }
   next();
 });
 
