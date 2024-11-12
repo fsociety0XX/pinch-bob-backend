@@ -44,3 +44,6 @@ export const GET_DRIVERS = '/drivers';
 export const ASSIGN_ORDER_TO_DRIVER = '/assign/:id';
 export const UNASSIGN_ORDER_TO_DRIVER = '/unassign/:id';
 export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';
+
+// PRODUCT
+export const FBT_ALSO_LIKE = '/fbtAlsoLike/:id';

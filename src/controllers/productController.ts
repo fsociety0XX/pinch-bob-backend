@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
-import { ObjectId } from 'bson';
+import mongoose from 'mongoose';
 import Product, { IProduct } from '@src/models/productModel';
 import catchAsync from '@src/utils/catchAsync';
 import {
@@ -122,8 +122,9 @@ export const checkGlobalSearchParams = catchAsync(
 );
 
 const getProductByCategory = (
+  brand: string,
   superCategory: string,
-  excludedIds: Array<ObjectId>
+  excludedIds: Array<mongoose.Types.ObjectId>
 ) => {
   const product = Product.aggregate([
     {
@@ -143,6 +144,9 @@ const getProductByCategory = (
           {
             'superCategory.name': superCategory,
           },
+          {
+            brand,
+          },
         ],
         _id: {
           $nin: excludedIds,
@@ -156,12 +160,45 @@ const getProductByCategory = (
         price: 1,
         discountedPrice: 1,
         slug: 1,
+        brand: 1,
       },
     },
     { $sort: { sold: -1 } },
     { $limit: 1 },
-  ]);
+  ]).then((result) => {
+    return result[0];
+  });
   return product;
+};
+
+const getRandomProducts = (
+  brand: string,
+  sampleSize: number,
+  excludedIds: Array<mongoose.Types.ObjectId>
+) => {
+  const randomProducts = Product.aggregate([
+    {
+      $sample: { size: 5 },
+    },
+    {
+      $match: {
+        _id: { $nin: excludedIds },
+        brand,
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        images: 1,
+        price: 1,
+        discountedPrice: 1,
+        slug: 1,
+        brand: 1,
+      },
+    },
+    { $limit: sampleSize },
+  ]);
+  return randomProducts;
 };
 
 export const getFbtAlsoLike = catchAsync(
@@ -176,56 +213,153 @@ export const getFbtAlsoLike = catchAsync(
       'Accessories',
     ];
 
-    const product = await Product.findById(productId).select('superCategory');
+    const product = await Product.findById(productId).select(
+      'brand superCategory'
+    );
     if (!product) {
       return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
     }
 
     const superCategory = product.superCategory[0].name;
+    const { brand } = product;
+    const docs: IProduct[] = [];
+    const excludedIds: mongoose.Types.ObjectId[] = [];
+    const noOfSlots = 3;
+
+    // exclude the current product from showing in FBT
+    excludedIds.push(new mongoose.Types.ObjectId(product._id));
+
+    const insertIntoSlot = (slot: IProduct) => {
+      if (typeof slot !== 'undefined') {
+        excludedIds.push(new mongoose.Types.ObjectId(slot._id));
+        docs.push(slot);
+      }
+    };
+
     let slotOne;
     let slotTwo;
     let slotThree;
-    const docs = [];
-    const excludedIds = [];
-
     switch (superCategory) {
       case superCategories[0]:
-        console.log('Classic Cakes');
-        // Due to no pastries in the test database, I am retrieving all classic cakes temporarily for now
-        slotOne = await getProductByCategory(superCategories[0], []);
+        // Classic Cakes
+        slotOne = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotOne);
 
-        if (slotOne.length) {
-          excludedIds.push(slotOne[0]._id);
-        }
+        slotTwo = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotTwo);
 
-        slotTwo = await getProductByCategory(superCategories[0], excludedIds);
+        slotThree = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotThree);
 
-        if (slotTwo.length) {
-          excludedIds.push(slotTwo[0]._id);
-        }
-
-        slotThree = await getProductByCategory(superCategories[0], excludedIds);
-
-        docs.push(slotOne, slotTwo, slotThree);
         break;
       case superCategories[1]:
         console.log('Customised Cakes');
         break;
       case superCategories[2]:
         console.log('Customised Cupcakes');
+        // Customised Cupcakes
+        slotOne = await getProductByCategory(
+          brand,
+          superCategories[1],
+          excludedIds
+        );
+        insertIntoSlot(slotOne);
+
+        slotTwo = await getProductByCategory(
+          brand,
+          superCategories[1],
+          excludedIds
+        );
+        insertIntoSlot(slotTwo);
+
+        slotThree = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotThree);
+
         break;
       case superCategories[3]:
-        console.log('Pastries');
+        // Pastries
+        slotOne = await getProductByCategory(
+          brand,
+          superCategories[0],
+          excludedIds
+        );
+        insertIntoSlot(slotOne);
+
+        slotTwo = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotTwo);
+
+        slotThree = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotThree);
+
         break;
       case superCategories[4]:
         console.log('Seasonal');
         break;
       case superCategories[5]:
-        console.log('Accessories');
+        // Accessories
+        slotOne = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotOne);
+
+        slotTwo = await getProductByCategory(
+          brand,
+          superCategories[3],
+          excludedIds
+        );
+        insertIntoSlot(slotTwo);
+
+        slotThree = await getProductByCategory(
+          brand,
+          superCategories[5],
+          excludedIds
+        );
+        insertIntoSlot(slotThree);
+
         break;
       default:
-        console.log('not found');
-        return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+        break;
+    }
+
+    // If any of the slots are empty, retrieve random & unique products for these empty slots
+    // If all slots are empty, retrieve random products for all the slots
+    if (docs.length < noOfSlots) {
+      const randomProducts = await getRandomProducts(
+        brand,
+        noOfSlots - docs.length,
+        excludedIds
+      );
+      if (randomProducts.length) {
+        randomProducts.forEach((p) => {
+          docs.push(p);
+        });
+      }
     }
 
     res.status(StatusCode.SUCCESS).json({
