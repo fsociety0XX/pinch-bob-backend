@@ -13,6 +13,7 @@ import {
 } from '@src/controllers/productController';
 import { Role } from '@src/types/customTypes';
 import uploadImage from '@src/utils/uploadImage';
+import { FBT_ALSO_LIKE } from '@src/constants/routeConstants';
 
 const productRouter = express.Router();
 
@@ -41,6 +42,6 @@ productRouter
 
 productRouter.route('/slug/:slug').get(getOneProductViaSlug);
 
-productRouter.route('/fbtAlsoLike/:id').get(getFbtAlsoLike);
+productRouter.route(FBT_ALSO_LIKE).get(getFbtAlsoLike);
 
 export default productRouter;
