@@ -91,7 +91,7 @@ export interface IProduct {
   layering: string;
   baseSponge: {
     type: string;
-    others: string;
+    otherValue: string;
   };
   baseColour: string;
   cakeMsgLocation: string;
@@ -102,7 +102,7 @@ export interface IProduct {
   fondantNumberDetails: {
     value: string;
     colour: string;
-    others: string;
+    otherValue: string;
   };
   simpleAcc: string;
   complexAcc: string;
@@ -334,7 +334,7 @@ const productSchema = new mongoose.Schema<IProduct>(
     baseSponge: {
       type: {
         type: String,
-        others: String,
+        otherValue: String,
       },
     },
     baseColour: String,
@@ -349,7 +349,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: {
         value: String,
         colour: String,
-        others: String,
+        otherValue: String,
       },
     },
     simpleAcc: String,
@@ -378,6 +378,12 @@ const productSchema = new mongoose.Schema<IProduct>(
 productSchema.index({ price: 1, ratingsAverage: -1 });
 productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
+productSchema.virtual('views', {
+  ref: 'ProductViews',
+  localField: '_id',
+  foreignField: 'product',
+});
+
 // When reviews are ready
 // productSchema.virtual('reviews', {
 //   ref: 'Reviews',
@@ -393,6 +399,7 @@ productSchema.pre('save', function (next) {
 
 // Query middleware
 productSchema.pre('find', function (next) {
+  this.populate('views');
   this.populate({
     path: 'category superCategory',
     select: 'name',
