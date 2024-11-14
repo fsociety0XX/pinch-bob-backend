@@ -10,6 +10,7 @@ import AppError from '@src/utils/appError';
 import { NO_DATA_FOUND } from '@src/constants/messages';
 import { brandEnum, inventoryEnum, StatusCode } from '@src/types/customTypes';
 import { PRODUCTION } from '@src/constants/static';
+import ProductViewsModel from '@src/models/productViewsModel';
 
 async function syncProductWithMerchantCenter(
   p: IProduct,
@@ -134,10 +135,7 @@ export const updateProduct = catchAsync(
   }
 );
 
-export const getOneProduct = getOne(Product, {
-  path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
-  select: 'name',
-});
+export const getOneProduct = getOne(Product);
 export const getAllProduct = getAll(Product, ['size', 'name']);
 export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
@@ -147,6 +145,15 @@ export const getOneProductViaSlug = catchAsync(
     if (!doc) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
+    const filter = {
+      product: doc._id,
+      date: new Date().setHours(0, 0, 0, 0),
+    };
+    await ProductViewsModel.findOneAndUpdate(
+      filter,
+      { $inc: { views: 1 } },
+      { upsert: true }
+    );
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: {
