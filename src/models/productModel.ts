@@ -297,6 +297,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    priority: Number,
     fondantName: {
       type: Boolean,
       default: false,
@@ -365,7 +366,6 @@ const productSchema = new mongoose.Schema<IProduct>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
@@ -393,7 +393,9 @@ productSchema.virtual('views', {
 
 // Document middleware
 productSchema.pre('save', function (next) {
-  this.slug = slugify(this.name);
+  if (!this.slug) {
+    this.slug = slugify(this.name);
+  }
   next();
 });
 
