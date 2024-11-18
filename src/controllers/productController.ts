@@ -178,6 +178,101 @@ const getProductBySuperCategory = (
     });
 };
 
+const getProductBySuperCategoryAndCategory = (
+  brand: string,
+  superCategory: string,
+  categoryName: string,
+  categoryId: mongoose.Types.ObjectId,
+  excludedIds: Array<mongoose.Types.ObjectId>
+) => {
+  Product.aggregate([
+    {
+      $lookup: {
+        from: 'supercategories',
+        localField: 'superCategory',
+        foreignField: '_id',
+        as: 'superCategory',
+      },
+    },
+    {
+      $unwind: '$superCategory',
+    },
+    {
+      $match: {
+        $and: [
+          {
+            'superCategory.name': superCategory,
+          },
+          {
+            brand,
+          },
+        ],
+        _id: {
+          $nin: excludedIds,
+        },
+      },
+    },
+    {
+      $match: {
+        $and: [
+          { 'category.0': { $exists: true, $ne: null } },
+          { 'category.0': categoryId },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    {
+      $unwind: '$category',
+    },
+    {
+      $match: {
+        $and: [
+          {
+            'category.name': categoryName,
+          },
+          {
+            brand,
+          },
+        ],
+        _id: {
+          $nin: excludedIds,
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        price: 1,
+        discountedPrice: 1,
+        slug: 1,
+        brand: 1,
+        category: 1,
+      },
+    },
+    { $sort: { sold: -1 } },
+    { $limit: 1 },
+  ])
+    .then((result) => {
+      return result[0];
+    })
+    .catch((error) => {
+      console.error(
+        'Error occurred while executing getProductBySuperCategoryAndCategory.',
+        error
+      );
+      return {};
+    });
+};
+
 const getRandomProducts = (
   brand: string,
   sampleSize: number,
@@ -287,6 +382,7 @@ export const getFbtAlsoLike = catchAsync(
     }
 
     const superCategory = product.superCategory[0].name;
+    const category = product.category[0]; // get the first category to be used for Customised Cakes and Seasonal
     const { brand } = product;
     const alsoLikeDocs: IProduct[] = [];
     const noOfSlots = 3;
@@ -348,6 +444,40 @@ export const getFbtAlsoLike = catchAsync(
       }
       case superCategories[1]: {
         console.log('Customised Cakes');
+
+        slotOne = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[2],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne);
+        }
+
+        slotTwo = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[2],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo);
+        }
+
+        slotThree = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[3],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree);
+        }
+
         // You may also like
         const randomCustomisedCakes =
           await getRandomProductsFromSameSupercategory(
@@ -454,6 +584,53 @@ export const getFbtAlsoLike = catchAsync(
       }
       case superCategories[4]: {
         console.log('Seasonal');
+
+        slotOne = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[4],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne);
+        }
+
+        slotTwo = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[4],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo);
+        }
+
+        slotThree = await getProductBySuperCategoryAndCategory(
+          brand,
+          superCategories[3],
+          category.name,
+          category._id,
+          excludedIds
+        );
+        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree);
+        }
+
+        // You may also like
+        const randomCustomisedCakes =
+          await getRandomProductsFromSameSupercategory(
+            brand,
+            noOfMayLikeProducts,
+            excludedIds,
+            superCategories[1]
+          );
+        if (randomCustomisedCakes.length) {
+          randomCustomisedCakes.forEach((p) => {
+            alsoLikeDocs.push(p);
+          });
+        }
         break;
       }
       case superCategories[5]: {

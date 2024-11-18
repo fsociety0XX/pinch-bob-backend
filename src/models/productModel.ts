@@ -1,4 +1,4 @@
-import mongoose, { Types, model } from 'mongoose';
+import mongoose, { model } from 'mongoose';
 import slugify from 'slugify';
 import {
   brandEnum,
@@ -9,6 +9,11 @@ import {
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 interface ISuperCategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
+
+interface ICategory {
   _id: mongoose.Types.ObjectId;
   name: string;
 }
@@ -80,7 +85,7 @@ export interface IProduct {
   recommended: boolean;
   active: boolean;
   superCategory: ISuperCategory[];
-  category: Types.ObjectId;
+  category: ICategory[];
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   sold: number;
