@@ -105,10 +105,8 @@ export const updateProduct = catchAsync(
       req.body.images = req.files;
     }
     const updatedPayload = { ...req.body };
-    if (updatedPayload.product?.inventory) {
-      updatedPayload.product.inventory = inventorySetup(
-        updatedPayload.product.inventory
-      );
+    if (updatedPayload?.inventory) {
+      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
     }
 
     const product = await Product.findByIdAndUpdate(
@@ -171,10 +169,8 @@ export const createProduct = catchAsync(
       req.body.images = req.files;
     }
     const updatedPayload = { ...req.body };
-    if (updatedPayload.product?.inventory) {
-      updatedPayload.product.inventory = inventorySetup(
-        updatedPayload.product.inventory
-      );
+    if (updatedPayload?.inventory) {
+      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
     }
 
     const product = await Product.create(updatedPayload);
