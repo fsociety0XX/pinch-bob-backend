@@ -121,12 +121,12 @@ export const checkGlobalSearchParams = catchAsync(
   }
 );
 
-const getProductBySuperCategory = (
+async function getProductBySuperCategory(
   brand: string,
   superCategory: string,
   excludedIds: Array<mongoose.Types.ObjectId>
-) => {
-  Product.aggregate([
+) {
+  const product = await Product.aggregate([
     {
       $lookup: {
         from: 'supercategories',
@@ -165,27 +165,20 @@ const getProductBySuperCategory = (
     },
     { $sort: { sold: -1 } },
     { $limit: 1 },
-  ])
-    .then((result) => {
-      return result[0];
-    })
-    .catch((error) => {
-      console.error(
-        'Error occurred while executing getProductBySuperCategory.',
-        error
-      );
-      return {};
-    });
-};
+  ]).then((result) => {
+    return result[0];
+  });
+  return product;
+}
 
-const getProductBySuperCategoryAndCategory = (
+async function getProductBySuperCategoryAndCategory(
   brand: string,
   superCategory: string,
   categoryName: string,
   categoryId: mongoose.Types.ObjectId,
   excludedIds: Array<mongoose.Types.ObjectId>
-) => {
-  Product.aggregate([
+) {
+  const product = await Product.aggregate([
     {
       $lookup: {
         from: 'supercategories',
@@ -260,25 +253,18 @@ const getProductBySuperCategoryAndCategory = (
     },
     { $sort: { sold: -1 } },
     { $limit: 1 },
-  ])
-    .then((result) => {
-      return result[0];
-    })
-    .catch((error) => {
-      console.error(
-        'Error occurred while executing getProductBySuperCategoryAndCategory.',
-        error
-      );
-      return {};
-    });
-};
+  ]).then((result) => {
+    return result[0];
+  });
+  return product;
+}
 
-const getRandomProducts = (
+async function getRandomProducts(
   brand: string,
   sampleSize: number,
   excludedIds: Array<mongoose.Types.ObjectId>
-) => {
-  const randomProducts = Product.aggregate([
+) {
+  const randomProducts = await Product.aggregate([
     {
       $match: {
         _id: { $nin: excludedIds },
@@ -300,15 +286,15 @@ const getRandomProducts = (
     },
   ]);
   return randomProducts;
-};
+}
 
-const getRandomProductsFromSameSupercategory = (
+async function getRandomProductsFromSameSupercategory(
   brand: string,
   sampleSize: number,
   excludedIds: Array<mongoose.Types.ObjectId>,
   superCategory: string
-) => {
-  const randomProducts = Product.aggregate([
+) {
+  const randomProducts = await Product.aggregate([
     {
       $lookup: {
         from: 'supercategories',
@@ -350,13 +336,14 @@ const getRandomProductsFromSameSupercategory = (
     },
   ]);
   return randomProducts;
-};
+}
 
-const fbtDocs: IProduct[] = [];
-const excludedIds: mongoose.Types.ObjectId[] = [];
-
-const insertIntoFbtSlot = (slot: IProduct) => {
-  if (Object.keys(slot).length) {
+const insertIntoFbtSlot = (
+  slot: IProduct,
+  fbtDocs: IProduct[],
+  excludedIds: mongoose.Types.ObjectId[]
+) => {
+  if (Object.keys(slot)?.length) {
     excludedIds.push(new mongoose.Types.ObjectId(slot._id));
     fbtDocs.push(slot);
   }
@@ -387,6 +374,8 @@ export const getFbtAlsoLike = catchAsync(
     const alsoLikeDocs: IProduct[] = [];
     const noOfSlots = 3;
     const noOfMayLikeProducts = 10;
+    const fbtDocs: IProduct[] = [];
+    const excludedIds: mongoose.Types.ObjectId[] = [];
 
     // exclude the current product from showing in FBT
     excludedIds.push(new mongoose.Types.ObjectId(product._id));
@@ -405,8 +394,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+        if (slotOne && Object.keys(slotOne)?.length) {
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategory(
@@ -414,8 +403,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+        if (slotTwo && Object.keys(slotTwo)?.length) {
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategory(
@@ -423,8 +412,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+        if (slotThree && Object.keys(slotThree)?.length) {
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
@@ -435,7 +424,7 @@ export const getFbtAlsoLike = catchAsync(
             excludedIds,
             superCategories[0]
           );
-        if (randomClassicProducts.length) {
+        if (randomClassicProducts?.length) {
           randomClassicProducts.forEach((p) => {
             alsoLikeDocs.push(p);
           });
@@ -452,8 +441,8 @@ export const getFbtAlsoLike = catchAsync(
           category._id,
           excludedIds
         );
-        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+        if (slotOne && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategoryAndCategory(
@@ -463,8 +452,8 @@ export const getFbtAlsoLike = catchAsync(
           category._id,
           excludedIds
         );
-        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+        if (slotTwo && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategoryAndCategory(
@@ -474,8 +463,8 @@ export const getFbtAlsoLike = catchAsync(
           category._id,
           excludedIds
         );
-        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+        if (slotThree && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
@@ -486,7 +475,7 @@ export const getFbtAlsoLike = catchAsync(
             excludedIds,
             superCategories[1]
           );
-        if (randomCustomisedCakes.length) {
+        if (randomCustomisedCakes?.length) {
           randomCustomisedCakes.forEach((p) => {
             alsoLikeDocs.push(p);
           });
@@ -501,8 +490,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[1],
           excludedIds
         );
-        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+        if (slotOne && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategory(
@@ -510,8 +499,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[1],
           excludedIds
         );
-        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+        if (slotTwo && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategory(
@@ -519,8 +508,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+        if (slotThree && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
@@ -531,7 +520,7 @@ export const getFbtAlsoLike = catchAsync(
             excludedIds,
             superCategories[2]
           );
-        if (randomCustomisedCupcakes.length) {
+        if (randomCustomisedCupcakes?.length) {
           randomCustomisedCupcakes.forEach((p) => {
             alsoLikeDocs.push(p);
           });
@@ -545,8 +534,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[0],
           excludedIds
         );
-        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+        if (slotOne && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategory(
@@ -554,8 +543,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+        if (slotTwo && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategory(
@@ -563,8 +552,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+        if (slotThree && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
@@ -593,7 +582,7 @@ export const getFbtAlsoLike = catchAsync(
           excludedIds
         );
         if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategoryAndCategory(
@@ -604,7 +593,7 @@ export const getFbtAlsoLike = catchAsync(
           excludedIds
         );
         if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategoryAndCategory(
@@ -615,7 +604,7 @@ export const getFbtAlsoLike = catchAsync(
           excludedIds
         );
         if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
@@ -640,8 +629,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotOne !== 'undefined' && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne);
+        if (slotOne && Object.keys(slotOne).length) {
+          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
         slotTwo = await getProductBySuperCategory(
@@ -649,8 +638,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[3],
           excludedIds
         );
-        if (typeof slotTwo !== 'undefined' && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo);
+        if (slotTwo && Object.keys(slotTwo).length) {
+          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
         slotThree = await getProductBySuperCategory(
@@ -658,8 +647,8 @@ export const getFbtAlsoLike = catchAsync(
           superCategories[5],
           excludedIds
         );
-        if (typeof slotThree !== 'undefined' && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree);
+        if (slotThree && Object.keys(slotThree).length) {
+          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
 
         // You may also like
