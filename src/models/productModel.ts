@@ -90,7 +90,7 @@ export interface IProduct {
   fixedFlavour: string;
   layering: string;
   baseSponge: {
-    type: string;
+    baseSpongeType: string;
     otherValue: string;
   };
   baseColour: string;
@@ -333,25 +333,19 @@ const productSchema = new mongoose.Schema<IProduct>(
     fixedFlavour: String,
     layering: String,
     baseSponge: {
-      type: {
-        type: String,
-        otherValue: String,
-      },
+      baseSpongeType: String,
+      otherValue: String,
     },
     baseColour: String,
     cakeMsgLocation: String,
     fondantNameDetails: {
-      type: {
-        value: String,
-        colour: String,
-      },
+      value: String,
+      colour: String,
     },
     fondantNumberDetails: {
-      type: {
-        value: String,
-        colour: String,
-        otherValue: String,
-      },
+      value: String,
+      colour: String,
+      otherValue: String,
     },
     simpleAcc: String,
     complexAcc: String,

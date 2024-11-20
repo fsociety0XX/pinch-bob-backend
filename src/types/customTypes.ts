@@ -19,7 +19,7 @@ export interface errorObject {
 
 export const CANCELLED = 'Cancelled';
 export const brandEnum = ['pinch', 'bob'];
-export const inventoryEnum = ['sold_out', 'low_stock', 'in_stock'];
+export const inventoryEnum = ['Out of stock', 'Low stock', 'In stock'];
 export const notesEnum = ['2', '10', '50'];
 export const typeEnum = ['cake', 'bake', 'others'];
 export const refImageType = ['customise', 'edible'];
