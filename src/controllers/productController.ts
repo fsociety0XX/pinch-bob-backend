@@ -134,7 +134,11 @@ export const updateProduct = catchAsync(
 );
 
 export const getOneProduct = getOne(Product);
-export const getAllProduct = getAll(Product, ['size', 'name']);
+export const getAllProduct = getAll(Product, [
+  'size',
+  'name',
+  'inventoryStatus',
+]);
 export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
