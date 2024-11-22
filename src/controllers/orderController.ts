@@ -43,7 +43,7 @@ import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
-  generateOrderId,
+  generateUniqueIds,
   getDateOneDayFromNow,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -105,7 +105,7 @@ const sendOrderPrepEmail = async (res: Response) => {
   try {
     const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
     const targetDate = getDateOneDayFromNow();
-    const query = { 'delivery.date': targetDate };
+    const query = { 'delivery.date': targetDate, paid: true };
 
     const ordersToNotify = await Order.find(query);
 
@@ -762,7 +762,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
-  req.body.orderNumber = generateOrderId();
+  req.body.orderNumber = generateUniqueIds();
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 

@@ -7,6 +7,7 @@ import {
   typeEnum,
 } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
+import { generateUniqueIds } from '@src/utils/functions';
 
 interface ISize {
   size: mongoose.Types.ObjectId;
@@ -51,6 +52,7 @@ export interface IInventory {
 
 export interface IProduct {
   _id: string;
+  productNumber: string;
   name: string;
   slug: string;
   price: number;
@@ -170,6 +172,7 @@ const EdiblePrintSchema = new mongoose.Schema({
 
 const productSchema = new mongoose.Schema<IProduct>(
   {
+    productNumber: String,
     name: {
       type: String,
       trim: true,
@@ -387,6 +390,7 @@ productSchema.virtual('views', {
 
 // Document middleware
 productSchema.pre('save', function (next) {
+  this.productNumber = generateUniqueIds();
   if (!this.slug) {
     this.slug = slugify(this.name);
   }
