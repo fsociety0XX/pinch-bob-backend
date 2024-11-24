@@ -5,7 +5,7 @@ import {
   ORDER_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
 import { brandEnum, deliveryTypeEnum, notesEnum } from '@src/types/customTypes';
-import { generateOrderId } from '@src/utils/functions';
+import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
 type StripeWebhookEvent = Stripe.Event;
@@ -268,7 +268,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
 );
 
 orderSchema.pre('save', function (next) {
-  this.orderNumber = generateOrderId();
+  this.orderNumber = generateUniqueIds();
   next();
 });
 
@@ -280,7 +280,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
-    select: 'name images inventory',
+    select: 'name images inventory updatedAt',
   });
   this.populate({
     path: 'user',

@@ -162,6 +162,35 @@ export const getAll = (
         };
       }
 
+      // Special case for handling search query for name with single/multiple values
+      if (req.query.name) {
+        const names = (req.query.name as string).split(',');
+        // Create an $or condition for all names
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: Assuming `query.name` is always a string here
+        req.query.$or = names.map((name) => ({
+          $expr: {
+            $regexMatch: {
+              input: {
+                $toLower: {
+                  $replaceAll: {
+                    input: '$name', // Ensure this is a string
+                    find: "'", // Replace specific characters (adjust as needed)
+                    replacement: '',
+                  },
+                },
+              },
+              regex: name
+                .trim()
+                .replace(/[^a-zA-Z0-9 ]/g, '')
+                .toLowerCase(),
+              options: 'i',
+            },
+          },
+        }));
+
+        delete req.query.name;
+      }
       const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter(filterFields)
         .sort()

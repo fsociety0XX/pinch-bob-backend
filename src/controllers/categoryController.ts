@@ -11,4 +11,4 @@ export const createCategory = createOne(Category);
 export const updateCategory = updateOne(Category);
 export const deleteCategory = deleteOne(Category);
 export const getOneCategory = getOne(Category);
-export const getAllCategory = getAll(Category, ['name']);
+export const getAllCategory = getAll(Category);
