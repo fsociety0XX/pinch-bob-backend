@@ -109,15 +109,15 @@ export const updateOrderStatus = catchAsync(
     await Delivery.findOneAndUpdate(
       { order: order?._id },
       {
-        status: WOODELIVERY_STATUS[req.body.StatusId],
+        status: WOODELIVERY_STATUS[req.body.statusId],
       }
     );
     await Order.findByIdAndUpdate(order?._id, {
-      status: WOODELIVERY_STATUS[req.body.StatusId],
+      status: WOODELIVERY_STATUS[req.body.statusId],
     });
 
     // Send order delivered email and ask for google review from cx
-    if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
+    if (WOODELIVERY_STATUS[req.body.statusId] === 'Completed') {
       await sendEmail({
         email: order?.user?.email,
         subject,
