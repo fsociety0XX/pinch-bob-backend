@@ -280,7 +280,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
-    select: 'name images inventory',
+    select: 'name images inventory updatedAt',
   });
   this.populate({
     path: 'user',
