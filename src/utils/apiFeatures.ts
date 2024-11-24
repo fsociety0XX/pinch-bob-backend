@@ -19,18 +19,22 @@ class APIFeatures<T extends Document> {
     paramsToExclude.forEach((el) => delete queryObj[el]);
     fieldName.forEach((field: string) => {
       if (queryObj[field]) {
+        // PRODUCT CONTROLLER
         if (field === 'size') {
-          // PRODUCT CONTROLLER
           // Special case to handle size filter in get all product API
           queryObj['sizeDetails.size'] = (queryObj[field] as string).split(',');
           delete queryObj.size;
+        } else if (field === 'inventoryStatus') {
+          // Special case to handle inventory status filter in get all product API for Admins
+          queryObj['inventory.status'] = (queryObj[field] as string).split(',');
+          delete queryObj.inventoryStatus;
         }
-        if (field === 'driverId') {
-          // DELIVERY CONTROLLER
+        // DELIVERY CONTROLLER
+        else if (field === 'driverId') {
           // Special case to handle driver filter in get all delivery API
           queryObj['driverDetails.id'] = (queryObj[field] as string).split(',');
           delete queryObj.driverId;
-        } else queryObj[field] = (queryObj[field] as string).split(',');
+        } else queryObj[field] = (queryObj[field] as string)?.split(',');
       }
     });
     // Advance Filtering

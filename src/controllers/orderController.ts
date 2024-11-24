@@ -1,3 +1,4 @@
+/* eslint-disable prefer-destructuring */
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
@@ -17,6 +18,7 @@ import {
   StatusCode,
   brandEnum,
   checkoutSessionFor,
+  inventoryEnum,
 } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import {
@@ -41,7 +43,7 @@ import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
-  generateOrderId,
+  generateUniqueIds,
   getDateOneDayFromNow,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -103,7 +105,7 @@ const sendOrderPrepEmail = async (res: Response) => {
   try {
     const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
     const targetDate = getDateOneDayFromNow();
-    const query = { 'delivery.date': targetDate };
+    const query = { 'delivery.date': targetDate, paid: true };
 
     const ordersToNotify = await Order.find(query);
 
@@ -538,14 +540,40 @@ const createDelivery = async (id: string) => {
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
 };
 
-async function updateProductSold(order: IOrder) {
-  const updates = order.product.map((p) => ({
-    updateOne: {
-      filter: { _id: p.product._id }, // Filter by product ID
-      update: { $inc: { sold: p.quantity } }, // Increment by ordered quantity
-    },
-  }));
-  await Product.bulkWrite(updates); // Perform bulk updates
+async function updateProductAfterPurchase(order: IOrder) {
+  const updates = order.product.map((p) => {
+    const { inventory } = p?.product;
+    let inventoryUpdateQuery = { ...inventory };
+
+    if (inventory && inventory.track) {
+      let updatedRemQty = inventory.remainingQty - p.quantity;
+      updatedRemQty = Math.max(0, updatedRemQty); // Ensure quantity doesn't go below 0
+
+      inventoryUpdateQuery = {
+        'inventory.remainingQty': updatedRemQty,
+        'inventory.available': updatedRemQty > 0,
+      };
+
+      if (!updatedRemQty) {
+        inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+      } else if (updatedRemQty <= 20) {
+        inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
+      } else {
+        inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
+      }
+    }
+
+    return {
+      updateOne: {
+        filter: { _id: p.product._id },
+        update: { $inc: { sold: p.quantity }, ...inventoryUpdateQuery },
+      },
+    };
+  });
+
+  if (updates.length) {
+    await Product.bulkWrite(updates);
+  }
 }
 
 const updateOrderAfterPaymentSuccess = async (
@@ -593,7 +621,7 @@ const updateOrderAfterPaymentSuccess = async (
     await user!.save({ validateBeforeSave: false });
   }
 
-  await updateProductSold(order!);
+  await updateProductAfterPurchase(order!);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
 
@@ -734,7 +762,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
-  req.body.orderNumber = generateOrderId();
+  req.body.orderNumber = generateUniqueIds();
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -759,7 +787,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     await cUser.save({ validateBeforeSave: false });
   }
 
-  await updateProductSold(order);
+  await updateProductAfterPurchase(order);
   await createDelivery(order?._id);
   await sendOrderConfirmationEmail(email, order);
 
@@ -870,7 +898,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       );
       await user!.save({ validateBeforeSave: false });
     }
-    await updateProductSold(order!);
+    await updateProductAfterPurchase(order!);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
     res.status(StatusCode.SUCCESS).send({

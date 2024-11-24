@@ -2,7 +2,7 @@ import mongoose, { Query, model } from 'mongoose';
 import Stripe from 'stripe';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, customiseOrderEnums } from '@src/types/customTypes';
-import { generateOrderId } from '@src/utils/functions';
+import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
 type StripeWebhookEvent = Stripe.Event;
@@ -318,7 +318,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
 );
 
 customiseCakeSchema.pre('save', function (next) {
-  this.orderNumber = generateOrderId();
+  this.orderNumber = generateUniqueIds();
   next();
 });
 

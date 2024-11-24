@@ -1,7 +1,13 @@
 import mongoose, { Types, model } from 'mongoose';
 import slugify from 'slugify';
-import { brandEnum, refImageType, typeEnum } from '@src/types/customTypes';
+import {
+  brandEnum,
+  inventoryEnum,
+  refImageType,
+  typeEnum,
+} from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
+import { generateUniqueIds } from '@src/utils/functions';
 
 interface ISize {
   size: mongoose.Types.ObjectId;
@@ -29,16 +35,24 @@ interface IPinchProductDetails {
 }
 
 interface IBobProductDetails {
-  description: string[];
+  description: string;
   sizesDetails: string;
   advice: string;
-  ingredients: string;
   shelfLife: string;
-  howArrives: string;
+  deliveryOptions: string;
+}
+
+export interface IInventory {
+  track: boolean;
+  totalQty: number;
+  remainingQty: number;
+  available: boolean; // will be used to show 'sold out' tags
+  status: string;
 }
 
 export interface IProduct {
   _id: string;
+  productNumber: string;
   name: string;
   slug: string;
   price: number;
@@ -53,6 +67,7 @@ export interface IProduct {
   flavour?: mongoose.Types.ObjectId[];
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
+  fondantMsgOptions?: string[];
   type: string; // cake, bake or others
   pinchDetails: IPinchProductDetails;
   bobDetails: IBobProductDetails;
@@ -60,7 +75,6 @@ export interface IProduct {
   minQty?: number;
   refImageType?: string; // edible or customise
   preparationDays: number;
-  available: boolean; // will be used to show 'sold out' tags
   recommended: boolean;
   active: boolean;
   superCategory: Types.ObjectId;
@@ -71,6 +85,43 @@ export interface IProduct {
   fondantName: boolean;
   fondantNameLimit: number;
   fondantNumber: boolean;
+  priority: number; // for product sequencing
+  inventory: IInventory;
+  mayStain: boolean;
+  moneyPulling: boolean;
+  fixedFlavour: string;
+  layering: string;
+  baseSponge: {
+    baseSpongeType: string;
+    otherValue: string;
+  };
+  baseColour: string;
+  cakeMsgLocation: string;
+  fondantNameDetails: {
+    value: string;
+    colour: string;
+  };
+  fondantNumberDetails: {
+    value: string;
+    colour: string;
+    otherValue: string;
+  };
+  simpleAcc: string;
+  complexAcc: string;
+  complexAccHr: string;
+  ediblePrint: {
+    one: {
+      type: string;
+      value: string;
+    };
+    two: {
+      type: string;
+      value: string;
+    };
+  };
+  fondantFig: string;
+  fondantLvl: string;
+  metaDesc: string;
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -89,16 +140,39 @@ const PinchProductDetailSchema = new mongoose.Schema<IPinchProductDetails>({
 });
 
 const BobProductDetailSchema = new mongoose.Schema<IBobProductDetails>({
-  description: [String],
+  description: String,
   sizesDetails: String,
   advice: String,
-  ingredients: String,
   shelfLife: String,
-  howArrives: String,
+  deliveryOptions: String,
+});
+
+const Inventory = new mongoose.Schema<IInventory>({
+  track: {
+    type: Boolean,
+    default: false,
+  },
+  totalQty: Number,
+  remainingQty: Number,
+  available: {
+    type: Boolean,
+    default: true,
+  },
+  status: {
+    type: String,
+    enum: inventoryEnum,
+    default: inventoryEnum[2],
+  },
+});
+
+const EdiblePrintSchema = new mongoose.Schema({
+  type: String,
+  value: String,
 });
 
 const productSchema = new mongoose.Schema<IProduct>(
   {
+    productNumber: String,
     name: {
       type: String,
       trim: true,
@@ -172,6 +246,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     cardOptions: [String],
+    fondantMsgOptions: [String],
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -217,10 +292,6 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Number,
       required: [true, PRODUCT_SCHEMA_VALIDATION.preparationDays],
     },
-    available: {
-      type: Boolean,
-      default: true,
-    },
     recommended: {
       type: Boolean,
       default: false,
@@ -229,6 +300,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    priority: Number,
     fondantName: {
       type: Boolean,
       default: false,
@@ -258,10 +330,39 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     tag: [String],
+    inventory: Inventory,
+    mayStain: Boolean,
+    moneyPulling: Boolean,
+    fixedFlavour: String,
+    layering: String,
+    baseSponge: {
+      baseSpongeType: String,
+      otherValue: String,
+    },
+    baseColour: String,
+    cakeMsgLocation: String,
+    fondantNameDetails: {
+      value: String,
+      colour: String,
+    },
+    fondantNumberDetails: {
+      value: String,
+      colour: String,
+      otherValue: String,
+    },
+    simpleAcc: String,
+    complexAcc: String,
+    complexAccHr: String,
+    ediblePrint: {
+      one: EdiblePrintSchema,
+      two: EdiblePrintSchema,
+    },
+    fondantFig: String,
+    fondantLvl: String,
+    metaDesc: String,
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
@@ -274,6 +375,12 @@ const productSchema = new mongoose.Schema<IProduct>(
 productSchema.index({ price: 1, ratingsAverage: -1 });
 productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
+productSchema.virtual('views', {
+  ref: 'ProductViews',
+  localField: '_id',
+  foreignField: 'product',
+});
+
 // When reviews are ready
 // productSchema.virtual('reviews', {
 //   ref: 'Reviews',
@@ -283,16 +390,22 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
 // Document middleware
 productSchema.pre('save', function (next) {
-  this.slug = slugify(this.name);
+  this.productNumber = generateUniqueIds();
+  if (!this.slug) {
+    this.slug = slugify(this.name);
+  }
   next();
 });
 
 // Query middleware
 productSchema.pre('find', function (next) {
+  this.populate('views');
   this.populate({
     path: 'category superCategory',
     select: 'name',
   });
+
+  this.sort({ priority: 1, createdAt: -1 });
 
   next();
 });

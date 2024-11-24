@@ -50,6 +50,7 @@ interface ICart {
   fondantName?: string;
   fondantNumber?: string;
   moneyPulling?: {
+    want: boolean;
     noteType: string;
     qty: number;
   };
@@ -130,6 +131,10 @@ const CartSchema = new mongoose.Schema<ICart>({
   fondantNumber: String,
   moneyPulling: {
     type: {
+      want: {
+        type: Boolean,
+        default: false,
+      },
       noteType: {
         type: String,
         enum: notesEnum,
