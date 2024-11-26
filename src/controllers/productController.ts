@@ -104,6 +104,12 @@ export const updateProduct = catchAsync(
     if (req.files?.length) {
       req.body.images = req.files;
     }
+    if (!req.body?.colour) {
+      req.body.colour = [];
+    }
+    if (!req.body?.flavour) {
+      req.body.flavour = [];
+    }
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
       updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
