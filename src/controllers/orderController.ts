@@ -845,6 +845,24 @@ export const updateOrder = catchAsync(
   }
 );
 
+export const getWoodeliveryId = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { orderNumber } = req.query;
+    const { brand } = req.body;
+    const order = await Order.findOne({ orderNumber, brand });
+    if (!order) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: order?.woodeliveryTaskId || '',
+      },
+    });
+  }
+);
+
 // BOB controllers
 
 /**

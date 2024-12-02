@@ -6,11 +6,13 @@ import {
   deleteOrder,
   getAllOrder,
   getOneOrder,
+  getWoodeliveryId,
   placeOrder,
   triggerOrderFailEmail,
   updateOrder,
 } from '@src/controllers/orderController';
 import {
+  GET_WOO_ID,
   PLACE_ORDER,
   TRIGGER_ORDER_FAIL_EMAIL,
 } from '@src/constants/routeConstants';
@@ -19,7 +21,7 @@ import { Role } from '@src/types/customTypes';
 import { appendUserIdInReqQuery } from '@src/utils/middlewares';
 
 const orderRouter = express.Router();
-
+orderRouter.get(GET_WOO_ID, getWoodeliveryId);
 orderRouter.use(protect);
 orderRouter.post(PLACE_ORDER, placeOrder);
 orderRouter.get(TRIGGER_ORDER_FAIL_EMAIL, triggerOrderFailEmail);
