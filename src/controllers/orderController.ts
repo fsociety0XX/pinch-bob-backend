@@ -568,7 +568,7 @@ async function updateProductAfterPurchase(order: IOrder) {
         filter: { _id: p.product._id },
         update: {
           $inc: { sold: p.quantity },
-          $set: { ...inventoryUpdateQuery, updatedAt: p.updatedAt }, // updatedAt property of product is being prevented to be updated here just because we have to differentiate the old & new products after order is placed.
+          $set: { ...inventoryUpdateQuery },
         },
       },
     };
