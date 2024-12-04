@@ -17,8 +17,7 @@ import {
   updateOne,
 } from '@src/utils/factoryHandler';
 import sendEmail from '@src/utils/sendEmail';
-import { NO_DATA_FOUND, PINCH_EMAILS } from '@src/constants/messages';
-import AppError from '@src/utils/appError';
+import { PINCH_EMAILS } from '@src/constants/messages';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
@@ -100,11 +99,16 @@ export const updateOrderStatus = catchAsync(
   async (req: Request, res: Response) => {
     const { subject, template, previewText } = PINCH_EMAILS.reqForReview;
     const orderNumber = req.params.id;
-    // const { brand } = req.query;
+    const { brand } = req.query;
 
-    const order = await Order.findOne({ orderNumber });
+    const order = await Order.findOne({ orderNumber, brand });
     if (!order) {
-      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+      // Status code MUST be 200 here else woodelivery will mark webhook as invalid - can be removed after bob launch
+      return res.status(StatusCode.SUCCESS).json({
+        status: 'not found',
+        message: `No order found with order number: ${orderNumber} for ${brand}`,
+      });
+      // return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
     }
     await Delivery.findOneAndUpdate(
       { order: order?._id },
