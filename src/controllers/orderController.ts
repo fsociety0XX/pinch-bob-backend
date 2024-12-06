@@ -181,7 +181,9 @@ function cancelOrder(id: string) {
 
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
-  if (order?.delivery?.address?._id) {
+  if (
+    order?.delivery?.method?._id !== process.env.SELF_COLLECT_DELIVERY_METHOD_ID
+  ) {
     const {
       firstName,
       lastName,
