@@ -2,7 +2,7 @@
 /* eslint-disable consistent-return */
 import mongoose, { Model } from 'mongoose';
 import { NextFunction, Request, Response } from 'express';
-import { Role, StatusCode } from '@src/types/customTypes';
+import { CANCELLED, Role, StatusCode } from '@src/types/customTypes';
 import catchAsync from './catchAsync';
 import AppError from './appError';
 import { NO_DATA_FOUND } from '@src/constants/messages';
@@ -64,7 +64,7 @@ export const softDeleteOne = (
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const doc = await model.findByIdAndUpdate(
       req.params.id,
-      { active: false },
+      { active: false, status: CANCELLED },
       {
         new: true,
       }
