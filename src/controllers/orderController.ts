@@ -181,9 +181,13 @@ function cancelOrder(id: string) {
 
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
-  if (
-    order?.delivery?.method?._id !== process.env.SELF_COLLECT_DELIVERY_METHOD_ID
-  ) {
+  const isSelfCollect =
+    String(order?.delivery?.method?.id) ===
+    String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
+
+  if (isSelfCollect) {
+    completeAddress = SELF_COLLECT_ADDRESS;
+  } else {
     const {
       firstName,
       lastName,
@@ -200,8 +204,6 @@ const prepareCompleteAddress = (order: IOrder) => {
     }, ${address1}, ${address2 || ''}, ${
       company || ''
     }, ${city}, ${postalCode}, ${phone}`;
-  } else {
-    completeAddress = SELF_COLLECT_ADDRESS;
   }
   return completeAddress;
 };
