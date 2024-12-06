@@ -15,6 +15,7 @@ import { IRequestWithUser } from './authController';
 import {
   CANCELLED,
   Role,
+  SELF_COLLECT,
   StatusCode,
   brandEnum,
   checkoutSessionFor,
@@ -181,9 +182,7 @@ function cancelOrder(id: string) {
 
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
-  const isSelfCollect =
-    String(order?.delivery?.method?.id) ===
-    String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
+  const isSelfCollect = order?.delivery?.method?.name === SELF_COLLECT;
 
   if (isSelfCollect) {
     completeAddress = SELF_COLLECT_ADDRESS;
