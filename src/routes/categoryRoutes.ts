@@ -13,6 +13,7 @@ import uploadImage from '@src/utils/uploadImage';
 const categoryRouter = express.Router();
 
 categoryRouter.route('/').get(getAllCategory); // No protection for get all data
+categoryRouter.route('/:id').get(getOneCategory);
 
 categoryRouter.use(protect, roleRistriction(Role.ADMIN));
 categoryRouter
@@ -22,10 +23,6 @@ categoryRouter
     createCategory
   );
 
-categoryRouter
-  .route('/:id')
-  .get(getOneCategory)
-  .patch(updateCategory)
-  .delete(deleteCategory);
+categoryRouter.route('/:id').patch(updateCategory).delete(deleteCategory);
 
 export default categoryRouter;

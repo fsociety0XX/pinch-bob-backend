@@ -161,6 +161,18 @@ export const getAll = (
           in: (req.query.category as string).split(','),
         };
       }
+      // Special case for colour where we need to apply '$in' mongodb query
+      if (req.query.colour) {
+        req.query.colour = {
+          in: (req.query.colour as string).split(','),
+        };
+      }
+      // Special case for tag where we need to apply '$in' mongodb query
+      if (req.query.tag) {
+        req.query.tag = {
+          in: (req.query.tag as string).split(','),
+        };
+      }
 
       // Special case for handling search query for name with single/multiple values
       if (req.query.name) {

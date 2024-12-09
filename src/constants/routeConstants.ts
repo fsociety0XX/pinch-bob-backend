@@ -31,6 +31,8 @@ export const RESET_PASSWORD = `/reset-password/:token`;
 
 // USERS
 export const CHANGE_PASSWORD = `/change-password`;
+export const ADD_TO_WISHLIST = `/addToWishlist/:id`;
+export const ADD_TO_CART = `/addToCart/:id`;
 
 // Checkout session
 export const PLACE_ORDER = '/place-order';
@@ -45,3 +47,6 @@ export const GET_DRIVERS = '/drivers';
 export const ASSIGN_ORDER_TO_DRIVER = '/assign/:id';
 export const UNASSIGN_ORDER_TO_DRIVER = '/unassign/:id';
 export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';
+
+// MIGRATION
+export const MIGRATE = `/migrate`;
