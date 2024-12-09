@@ -1,4 +1,4 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Address from '@src/models/addressModel';
 import catchAsync from '@src/utils/catchAsync';
 import {
@@ -31,4 +31,14 @@ export const createAddress = createOne(Address);
 export const updateAddress = updateOne(Address);
 export const deleteAddress = deleteOne(Address);
 export const getOneAddress = getOne(Address);
-export const getAllAddress = getAll(Address, ['user']);
+
+export const getAllAddress = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.user) {
+      req.query.user = {
+        $in: (req.query.user as string).split(','),
+      };
+    }
+    await getAll(Address)(req, res, next);
+  }
+);

@@ -133,18 +133,10 @@ export const getOne = (
 /**
  *
  * @param model
- * @param filterFields - when you have a query param which can have multiple value in comma separated form
- * then pass that particular query param name in filterFields. This uses 'split' method and convert the
- * multiple comma separated string into array.
- * example: /api/v1/order?user=123,456,789
- * pass user through filterFields and it will convert user = [123,456,789] and put it inside query object.
- * So that mongodb can execute this query properly.
- * NOTE - Only use if a query can have multiple comma separated string values
  * @returns
  */
 export const getAll = (
-  model: Model<any>,
-  filterFields = ['']
+  model: Model<any>
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) =>
   catchAsync(
     async (req: IRequestWithUser, res: Response, next: NextFunction) => {
@@ -154,25 +146,6 @@ export const getAll = (
 
       // If customer calls GET APIs then show only active records
       if (req.user?.role === Role.CUSTOMER) req.query.active = 'true';
-
-      // Special case for category where we need to apply '$in' mongodb query
-      if (req.query.category) {
-        req.query.category = {
-          in: (req.query.category as string).split(','),
-        };
-      }
-      // Special case for colour where we need to apply '$in' mongodb query
-      if (req.query.colour) {
-        req.query.colour = {
-          in: (req.query.colour as string).split(','),
-        };
-      }
-      // Special case for tag where we need to apply '$in' mongodb query
-      if (req.query.tag) {
-        req.query.tag = {
-          in: (req.query.tag as string).split(','),
-        };
-      }
 
       // Special case for handling search query for name with single/multiple values
       if (req.query.name) {
@@ -204,7 +177,7 @@ export const getAll = (
         delete req.query.name;
       }
       const features = new APIFeatures(model.find(), req.query as QueryString)
-        .filter(filterFields)
+        .filter()
         .sort()
         .limit()
         .pagination();
@@ -230,7 +203,7 @@ export const getAll = (
           model.find(),
           req.query as QueryString
         )
-          .filter(filterFields)
+          .filter()
           .sort()
           .limit();
         totalDocsCount = await model

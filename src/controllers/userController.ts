@@ -1,6 +1,8 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Added only for migration controller function and need to remove it later
+import bcrypt from 'bcrypt';
 import { Response, NextFunction } from 'express';
 import AppError from '@src/utils/appError';
 import User, { IUser } from '@src/models/userModel';
@@ -101,22 +103,21 @@ export const addToCart = catchAsync(
 );
 
 export const migrateUsers = catchAsync(async (req: Request, res: Response) => {
-  const { users } = req.body || {};
+  const { users } = req.body || [];
   const failedIds: number[] = [];
-  const bulkOps = users.map((user: IUser) => ({
-    insertOne: { document: user },
-  }));
+  const bulkOps = await Promise.all(
+    users.map(async (user: IUser) => {
+      user.password = await bcrypt.hash(user.password, 12);
+      return { insertOne: { document: user } };
+    })
+  );
 
-  try {
-    await User.bulkWrite(bulkOps, { ordered: false });
-  } catch (error: any) {
-    if (error.writeErrors) {
-      error.writeErrors.forEach((err: any) => {
-        failedIds.push(users[err.index].sqlId);
-      });
-    } else {
-      throw error;
-    }
+  const result = await User.bulkWrite(bulkOps, { ordered: false });
+
+  if (result.writeErrors && result.writeErrors.length > 0) {
+    result.writeErrors.forEach((err: any) => {
+      failedIds.push(users[err.index]?.sqlId);
+    });
   }
 
   res.status(200).json({
