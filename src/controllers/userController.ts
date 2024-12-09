@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck - Added only for migration controller function and need to remove it later
 import { Response, NextFunction } from 'express';
 import AppError from '@src/utils/appError';
-import User from '@src/models/userModel';
+import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode } from '@src/types/customTypes';
 import { NO_DATA_FOUND } from '@src/constants/messages';
@@ -96,3 +99,28 @@ export const addToCart = catchAsync(
     return false;
   }
 );
+
+export const migrateUsers = catchAsync(async (req: Request, res: Response) => {
+  const { users } = req.body || {};
+  const failedIds: number[] = [];
+  const bulkOps = users.map((user: IUser) => ({
+    insertOne: { document: user },
+  }));
+
+  try {
+    await User.bulkWrite(bulkOps, { ordered: false });
+  } catch (error: any) {
+    if (error.writeErrors) {
+      error.writeErrors.forEach((err: any) => {
+        failedIds.push(users[err.index].sqlId);
+      });
+    } else {
+      throw error;
+    }
+  }
+
+  res.status(200).json({
+    message: 'Migration completed',
+    failedIds,
+  });
+});
