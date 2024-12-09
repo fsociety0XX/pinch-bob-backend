@@ -67,6 +67,7 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 
 export interface IUser {
   _id: string;
+  sqlId: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -154,6 +155,10 @@ const CartSchema = new mongoose.Schema<ICart>({
 
 const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
+    sqlId: {
+      type: Number,
+      unique: true,
+    },
     firstName: {
       type: String,
       trim: true,
@@ -202,7 +207,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     confirmPassword: {
       type: String,
-      required: [true, USER_SCHEMA_VALIDATION.confirmPassword],
+      // TODO: Uncomment this line after all users are migrated
+      // required: [true, USER_SCHEMA_VALIDATION.confirmPassword],
       validate: {
         message: USER_SCHEMA_VALIDATION.mismatchPasswords,
         validator(this: IUser, value: string): boolean {

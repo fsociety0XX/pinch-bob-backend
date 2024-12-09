@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import {
   ASSIGN_TASK_TO_DRIVER,
   GET_WOODELIVERY_DRIVERS,
@@ -139,7 +139,15 @@ export const updateOrderStatus = catchAsync(
   }
 );
 
-export const getAllDelivery = getAll(Delivery, ['driverId']);
+export const getAllDelivery = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.driverId) {
+      req.query['driverDetails.id'] = (req.query.driverId as string).split(',');
+      delete req.query.driverId;
+    }
+    await getAll(Delivery)(req, res, next);
+  }
+);
 export const getOneDelivery = getOne(Delivery);
 export const deleteDelivery = deleteOne(Delivery);
 export const updateDelivery = updateOne(Delivery);

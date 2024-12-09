@@ -139,8 +139,45 @@ export const updateProduct = catchAsync(
   }
 );
 
+// $in operators used when we have to filter results from array and for rest we
+// have not used any operator since we directly looked for value inside object rather than array
+export const getAllProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.category) {
+      req.query.category = {
+        $in: (req.query.category as string).split(','),
+      };
+    }
+
+    if (req.query.colour) {
+      req.query.colour = {
+        $in: (req.query.colour as string).split(','),
+      };
+    }
+
+    if (req.query.tag) {
+      req.query.tag = {
+        $in: (req.query.tag as string).split(','),
+      };
+    }
+
+    if (req.query.size) {
+      req.query['sizeDetails.size'] = (req.query.size as string).split(',');
+      delete req.query.size;
+    }
+
+    if (req.query.inventoryStatus) {
+      req.query['inventory.status'] = (
+        req.query.inventoryStatus as string
+      ).split(',');
+      delete req.query.inventoryStatus;
+    }
+
+    await getAll(Product)(req, res, next);
+  }
+);
+
 export const getOneProduct = getOne(Product);
-export const getAllProduct = getAll(Product, ['size', 'inventoryStatus']);
 export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
