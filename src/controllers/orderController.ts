@@ -808,7 +808,17 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);
 export const getOneOrder = getOne(Order);
-export const getAllOrder = getAll(Order, ['orderNumber']);
+
+export const getAllOrder = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.orderNumber) {
+      req.query.orderNumber = {
+        $in: (req.query.orderNumber as string).split(','),
+      };
+    }
+    await getAll(Order)(req, res, next);
+  }
+);
 
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
