@@ -354,8 +354,7 @@ export const getFbtAlsoLike = catchAsync(
     const productId = req.params.id!;
     const superCategories = [
       'Classic Cakes',
-      'Customised Cakes',
-      'Customised Cupcakes',
+      'Customised',
       'Pastries',
       'Seasonal',
       'Accessories',
@@ -432,11 +431,11 @@ export const getFbtAlsoLike = catchAsync(
         break;
       }
       case superCategories[1]: {
-        console.log('Customised Cakes');
+        console.log('Customised');
 
         slotOne = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[2],
+          superCategories[1],
           category.name,
           category._id,
           excludedIds
@@ -447,7 +446,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotTwo = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[2],
+          superCategories[1],
           category.name,
           category._id,
           excludedIds
@@ -458,7 +457,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotThree = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           category.name,
           category._id,
           excludedIds
@@ -483,51 +482,6 @@ export const getFbtAlsoLike = catchAsync(
         break;
       }
       case superCategories[2]: {
-        console.log('Customised Cupcakes');
-        // Customised Cupcakes
-        slotOne = await getProductBySuperCategory(
-          brand,
-          superCategories[1],
-          excludedIds
-        );
-        if (slotOne && Object.keys(slotOne).length) {
-          insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
-        }
-
-        slotTwo = await getProductBySuperCategory(
-          brand,
-          superCategories[1],
-          excludedIds
-        );
-        if (slotTwo && Object.keys(slotTwo).length) {
-          insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
-        }
-
-        slotThree = await getProductBySuperCategory(
-          brand,
-          superCategories[3],
-          excludedIds
-        );
-        if (slotThree && Object.keys(slotThree).length) {
-          insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
-        }
-
-        // You may also like
-        const randomCustomisedCupcakes =
-          await getRandomProductsFromSameSupercategory(
-            brand,
-            noOfMayLikeProducts,
-            excludedIds,
-            superCategories[2]
-          );
-        if (randomCustomisedCupcakes?.length) {
-          randomCustomisedCupcakes.forEach((p) => {
-            alsoLikeDocs.push(p);
-          });
-        }
-        break;
-      }
-      case superCategories[3]: {
         // Pastries
         slotOne = await getProductBySuperCategory(
           brand,
@@ -571,12 +525,12 @@ export const getFbtAlsoLike = catchAsync(
 
         break;
       }
-      case superCategories[4]: {
+      case superCategories[3]: {
         console.log('Seasonal');
 
         slotOne = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[4],
+          superCategories[3],
           category.name,
           category._id,
           excludedIds
@@ -587,7 +541,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotTwo = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[4],
+          superCategories[3],
           category.name,
           category._id,
           excludedIds
@@ -598,7 +552,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotThree = await getProductBySuperCategoryAndCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           category.name,
           category._id,
           excludedIds
@@ -622,11 +576,11 @@ export const getFbtAlsoLike = catchAsync(
         }
         break;
       }
-      case superCategories[5]: {
+      case superCategories[4]: {
         // Accessories
         slotOne = await getProductBySuperCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           excludedIds
         );
         if (slotOne && Object.keys(slotOne).length) {
@@ -635,7 +589,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotTwo = await getProductBySuperCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           excludedIds
         );
         if (slotTwo && Object.keys(slotTwo).length) {
@@ -644,7 +598,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotThree = await getProductBySuperCategory(
           brand,
-          superCategories[5],
+          superCategories[4],
           excludedIds
         );
         if (slotThree && Object.keys(slotThree).length) {
