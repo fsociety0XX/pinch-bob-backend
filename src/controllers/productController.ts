@@ -390,7 +390,7 @@ export const getFbtAlsoLike = catchAsync(
         // Classic Cakes
         slotOne = await getProductBySuperCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           excludedIds
         );
         if (slotOne && Object.keys(slotOne)?.length) {
@@ -399,7 +399,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotTwo = await getProductBySuperCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           excludedIds
         );
         if (slotTwo && Object.keys(slotTwo)?.length) {
@@ -408,7 +408,7 @@ export const getFbtAlsoLike = catchAsync(
 
         slotThree = await getProductBySuperCategory(
           brand,
-          superCategories[3],
+          superCategories[2],
           excludedIds
         );
         if (slotThree && Object.keys(slotThree)?.length) {
