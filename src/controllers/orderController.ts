@@ -40,7 +40,7 @@ import {
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
 } from '@src/constants/messages';
-import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { GA_URL, WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
@@ -179,6 +179,41 @@ function cancelOrder(id: string) {
       await Order.findByIdAndUpdate(id, { status: CANCELLED });
   });
 }
+
+const sendPurchaseEventToGA4 = catchAsync(async (id: string) => {
+  const API_URL = `${GA_URL}?measurement_id=${process.env.GMEASUREMENT_ID}&api_secret=${process.env.GA_SECRET}`;
+  const order = await Order.findById(id);
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
+
+  const payload = {
+    client_id: order?.gaClientId || order?.user?._id,
+    events: [
+      {
+        name: 'purchase',
+        params: {
+          currency: 'SGD',
+          transaction_id: order?.orderNumber,
+          value: +order?.pricingSummary?.subTotal,
+          coupon: order?.pricingSummary?.coupon?.code || '',
+          shipping: +order?.pricingSummary?.deliveryCharge,
+          items: order?.product?.map((p) => ({
+            item_id: p?.product?.id,
+            item_name: p?.product?.name,
+            price: p?.price,
+            quantity: p?.quantity,
+          })),
+        },
+      },
+    ],
+  };
+
+  await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+});
 
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
@@ -630,6 +665,7 @@ const updateOrderAfterPaymentSuccess = async (
   await updateProductAfterPurchase(order!);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
+  await sendPurchaseEventToGA4(orderId);
 
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
@@ -935,6 +971,8 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
     await updateProductAfterPurchase(order!);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
+    await sendPurchaseEventToGA4(orderId);
+
     res.status(StatusCode.SUCCESS).send({
       status: 'success',
       message: 'Payment successfull',
