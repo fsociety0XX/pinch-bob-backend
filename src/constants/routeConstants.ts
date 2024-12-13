@@ -50,3 +50,6 @@ export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';
 
 // MIGRATION
 export const MIGRATE = `/migrate`;
+
+// GOOGLE
+export const GA_URL = `https://www.google-analytics.com/mp/collect`;
