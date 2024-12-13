@@ -107,6 +107,7 @@ export interface IHitpayDetails {
 export interface IOrder {
   id: string;
   orderNumber?: string;
+  gaClientId?: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
@@ -212,6 +213,7 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
 const orderSchema = new mongoose.Schema<IOrder>(
   {
     orderNumber: String,
+    gaClientId: String,
     brand: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.brand],
