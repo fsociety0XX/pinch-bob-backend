@@ -195,7 +195,9 @@ const sendPurchaseEventToGA4 = catchAsync(async (id: string) => {
         params: {
           currency: 'SGD',
           transaction_id: order?.orderNumber,
-          value: +order?.pricingSummary?.subTotal,
+          value:
+            (+order?.pricingSummary?.subTotal ?? 0) -
+            (+order?.pricingSummary?.discountedAmt ?? 0),
           coupon: order?.pricingSummary?.coupon?.code || '',
           shipping: +order?.pricingSummary?.deliveryCharge,
           items: order?.product?.map((p) => ({
