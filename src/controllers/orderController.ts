@@ -880,6 +880,7 @@ export const updateOrder = catchAsync(
         deliveryBody.collectionTime = delivery.collectionTime;
       if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
       if (recipInfo?.contact) deliveryBody.recipientPhone = recipInfo.contact;
+      if (delivery?.address) deliveryBody.address = delivery?.address;
 
       await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
     }
