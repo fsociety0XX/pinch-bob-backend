@@ -161,6 +161,12 @@ export const getAllProduct = catchAsync(
       };
     }
 
+    if (req.query.filterColours) {
+      req.query.filterColours = {
+        $in: (req.query.filterColours as string).split(','),
+      };
+    }
+
     if (req.query.size) {
       req.query['sizeDetails.size'] = (req.query.size as string).split(',');
       delete req.query.size;
