@@ -64,7 +64,8 @@ export interface IProduct {
   piecesDetails?: IPieces[];
   sizeDetails?: ISize[];
   images: IPhoto[];
-  flavour?: mongoose.Types.ObjectId[];
+  flavour?: mongoose.Types.ObjectId[]; // this will be used for specific flavours
+  useGlobalFlavors: boolean;
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
   fondantMsgOptions?: string[];
@@ -81,6 +82,7 @@ export interface IProduct {
   category: Types.ObjectId;
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
+  filterColours: string[]; // will be used to filter cakes from colour filter option on website
   sold: number;
   fondantName: boolean;
   fondantNameLimit: number;
@@ -239,6 +241,10 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Flavour',
       },
     ],
+    useGlobalFlavors: {
+      type: Boolean,
+      default: true,
+    },
     colour: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -330,6 +336,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     tag: [String],
+    filterColours: [String],
     inventory: Inventory,
     mayStain: Boolean,
     moneyPulling: Boolean,
