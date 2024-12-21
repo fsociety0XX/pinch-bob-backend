@@ -177,7 +177,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     password: {
       type: String,
-      required: [true, USER_SCHEMA_VALIDATION.password],
+      // TODO: Uncomment this line after all users are migrated
+      // required: [true, USER_SCHEMA_VALIDATION.password],
       minLength: 8,
       select: false,
     },
