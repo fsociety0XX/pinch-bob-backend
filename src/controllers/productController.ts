@@ -379,9 +379,7 @@ export const getFbtAlsoLike = catchAsync(
     // exclude the current product from showing in FBT
     excludedIds.push(new mongoose.Types.ObjectId(product._id));
 
-    let slotOne;
-    let slotTwo;
-    let slotThree;
+    let slotOne, slotTwo, slotThree;
 
     fbtDocs.length = 0; // reset the array first
 
