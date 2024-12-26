@@ -31,9 +31,12 @@ export const RESET_PASSWORD = `/reset-password/:token`;
 
 // USERS
 export const CHANGE_PASSWORD = `/change-password`;
+export const ADD_TO_WISHLIST = `/addToWishlist/:id`;
+export const ADD_TO_CART = `/addToCart/:id`;
 
 // Checkout session
 export const PLACE_ORDER = '/place-order';
+export const GET_WOO_ID = '/woodeliveryId';
 export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
 
 // DELIVERY
@@ -47,3 +50,8 @@ export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';
 
 // PRODUCT
 export const FBT_ALSO_LIKE = '/fbtAlsoLike/:id';
+// MIGRATION
+export const MIGRATE = `/migrate`;
+
+// GOOGLE
+export const GA_URL = `https://www.google-analytics.com/mp/collect`;

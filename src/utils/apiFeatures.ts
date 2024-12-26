@@ -13,31 +13,14 @@ class APIFeatures<T extends Document> {
     this.queryString = queryString;
   }
 
-  filter(fieldName: string[]): this {
+  filter(): this {
     const queryObj = { ...this.queryString };
     const paramsToExclude = ['page', 'sort', 'limit', 'fields'];
     paramsToExclude.forEach((el) => delete queryObj[el]);
-    fieldName.forEach((field: string) => {
-      if (queryObj[field]) {
-        if (field === 'size') {
-          // PRODUCT CONTROLLER
-          // Special case to handle size filter in get all product API
-          queryObj['sizeDetails.size'] = (queryObj[field] as string).split(',');
-          delete queryObj.size;
-        }
-        if (field === 'driverId') {
-          // DELIVERY CONTROLLER
-          // Special case to handle driver filter in get all delivery API
-          queryObj['driverDetails.id'] = (queryObj[field] as string).split(',');
-          delete queryObj.driverId;
-        } else queryObj[field] = (queryObj[field] as string).split(',');
-      }
-    });
-    // Advance Filtering
     let queryString = JSON.stringify(queryObj);
     // Replace operators like gte,get,lte,lt -> $gte...
     queryString = queryString.replace(
-      /\b(gte|gt|lte|lt|in)\b/g,
+      /\b(gte|gt|lte|lt)\b/g,
       (match) => `$${match}`
     );
     this.query.find(JSON.parse(queryString));

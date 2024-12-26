@@ -5,6 +5,7 @@ import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 export interface IFlavour {
   brand: string;
   name: string;
+  isGlobal: boolean;
   active: boolean;
 }
 
@@ -19,6 +20,10 @@ const flavourSchema = new mongoose.Schema<IFlavour>(
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.name],
       trim: true,
+    },
+    isGlobal: {
+      type: Boolean,
+      default: true,
     },
     active: {
       type: Boolean,

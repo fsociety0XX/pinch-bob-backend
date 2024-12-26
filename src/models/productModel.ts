@@ -7,6 +7,7 @@ import {
   typeEnum,
 } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
+import { generateUniqueIds } from '@src/utils/functions';
 
 interface ISuperCategory {
   _id: mongoose.Types.ObjectId;
@@ -51,7 +52,7 @@ interface IBobProductDetails {
   deliveryOptions: string;
 }
 
-interface IInventory {
+export interface IInventory {
   track: boolean;
   totalQty: number;
   remainingQty: number;
@@ -61,6 +62,7 @@ interface IInventory {
 
 export interface IProduct {
   _id: string;
+  productNumber: string;
   name: string;
   slug: string;
   price: number;
@@ -72,9 +74,11 @@ export interface IProduct {
   piecesDetails?: IPieces[];
   sizeDetails?: ISize[];
   images: IPhoto[];
-  flavour?: mongoose.Types.ObjectId[];
+  flavour?: mongoose.Types.ObjectId[]; // this will be used for specific flavours
+  useGlobalFlavors: boolean;
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
+  fondantMsgOptions?: string[];
   type: string; // cake, bake or others
   pinchDetails: IPinchProductDetails;
   bobDetails: IBobProductDetails;
@@ -88,6 +92,7 @@ export interface IProduct {
   category: ICategory[];
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
+  filterColours: string[]; // will be used to filter cakes from colour filter option on website
   sold: number;
   fondantName: boolean;
   fondantNameLimit: number;
@@ -99,8 +104,8 @@ export interface IProduct {
   fixedFlavour: string;
   layering: string;
   baseSponge: {
-    type: string;
-    others: string;
+    baseSpongeType: string;
+    otherValue: string;
   };
   baseColour: string;
   cakeMsgLocation: string;
@@ -111,7 +116,7 @@ export interface IProduct {
   fondantNumberDetails: {
     value: string;
     colour: string;
-    others: string;
+    otherValue: string;
   };
   simpleAcc: string;
   complexAcc: string;
@@ -179,6 +184,7 @@ const EdiblePrintSchema = new mongoose.Schema({
 
 const productSchema = new mongoose.Schema<IProduct>(
   {
+    productNumber: String,
     name: {
       type: String,
       trim: true,
@@ -245,6 +251,10 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Flavour',
       },
     ],
+    useGlobalFlavors: {
+      type: Boolean,
+      default: true,
+    },
     colour: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -252,6 +262,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     cardOptions: [String],
+    fondantMsgOptions: [String],
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -305,6 +316,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    priority: Number,
     fondantName: {
       type: Boolean,
       default: false,
@@ -334,31 +346,26 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     tag: [String],
+    filterColours: [String],
     inventory: Inventory,
     mayStain: Boolean,
     moneyPulling: Boolean,
     fixedFlavour: String,
     layering: String,
     baseSponge: {
-      type: {
-        type: String,
-        others: String,
-      },
+      baseSpongeType: String,
+      otherValue: String,
     },
     baseColour: String,
     cakeMsgLocation: String,
     fondantNameDetails: {
-      type: {
-        value: String,
-        colour: String,
-      },
+      value: String,
+      colour: String,
     },
     fondantNumberDetails: {
-      type: {
-        value: String,
-        colour: String,
-        others: String,
-      },
+      value: String,
+      colour: String,
+      otherValue: String,
     },
     simpleAcc: String,
     complexAcc: String,
@@ -373,7 +380,6 @@ const productSchema = new mongoose.Schema<IProduct>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
@@ -386,6 +392,12 @@ const productSchema = new mongoose.Schema<IProduct>(
 productSchema.index({ price: 1, ratingsAverage: -1 });
 productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
+productSchema.virtual('views', {
+  ref: 'ProductViews',
+  localField: '_id',
+  foreignField: 'product',
+});
+
 // When reviews are ready
 // productSchema.virtual('reviews', {
 //   ref: 'Reviews',
@@ -395,15 +407,16 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
 // Document middleware
 productSchema.pre('save', function (next) {
-  this.slug = slugify(this.name);
-  if (this.inventory.track) {
-    this.inventory.remainingQty = this.inventory.totalQty;
+  this.productNumber = generateUniqueIds();
+  if (!this.slug) {
+    this.slug = slugify(this.name);
   }
   next();
 });
 
 // Query middleware
 productSchema.pre('find', function (next) {
+  this.populate('views');
   this.populate({
     path: 'category superCategory',
     select: 'name',

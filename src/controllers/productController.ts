@@ -1,27 +1,31 @@
+/* eslint-disable prefer-destructuring */
 import { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 import mongoose from 'mongoose';
-import Product, { IProduct } from '@src/models/productModel';
+import Product, { IInventory, IProduct } from '@src/models/productModel';
 import catchAsync from '@src/utils/catchAsync';
-import {
-  deleteOne,
-  getAll,
-  getOne,
-  updateOne,
-} from '@src/utils/factoryHandler';
+import { deleteOne, getAll, getOne } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import { NO_DATA_FOUND } from '@src/constants/messages';
-import { brandEnum, StatusCode } from '@src/types/customTypes';
+import { brandEnum, inventoryEnum, StatusCode } from '@src/types/customTypes';
+import { PRODUCTION } from '@src/constants/static';
+import ProductViewsModel from '@src/models/productViewsModel';
 
-async function uploadProducts(p: IProduct) {
-  const PINCH_URL = 'https://pinchbakehouse.com/details';
+async function syncProductWithMerchantCenter(
+  p: IProduct,
+  brand: string,
+  isUpdate = false
+) {
+  const PINCH_URL = 'https://pinchbakehouse.com';
   const BOB_URL = 'https://bobthebakerboy.com';
+  const PINCH_JSON = path.resolve(__dirname, '../../pinchGmerchant.json');
+  const BOB_JSON = path.resolve(__dirname, '../../bobGmerchant.json');
 
   // Initialize authentication
   const authClient = new GoogleAuth({
-    keyFile: path.resolve(__dirname, '../../pinchGmerchant.json'), // TODO: Add condition for Bob
+    keyFile: brand === brandEnum[0] ? PINCH_JSON : BOB_JSON,
     scopes: ['https://www.googleapis.com/auth/content'],
   });
 
@@ -54,24 +58,133 @@ async function uploadProducts(p: IProduct) {
   };
 
   try {
-    await content.products.insert({
-      merchantId: process.env.GOOGLE_MERCHANT_ID,
-      requestBody: googleProduct,
-    });
+    if (isUpdate) {
+      // Update existing product in Google Merchant Center
+      await content.products.update({
+        merchantId: process.env.GOOGLE_MERCHANT_ID,
+        productId: googleProduct.offerId,
+        requestBody: googleProduct,
+      });
+    } else {
+      // Insert a new product in Google Merchant Center
+      await content.products.insert({
+        merchantId: process.env.GOOGLE_MERCHANT_ID,
+        requestBody: googleProduct,
+      });
+    }
   } catch (error) {
     console.error(
-      'Error while uploading products to google merchant center:',
+      'Error while syncing products to google merchant center:',
       error
     );
   }
 }
 
-export const updateProduct = updateOne(Product);
-export const getOneProduct = getOne(Product, {
-  path: 'sizeDetails.size piecesDetails.pieces flavour colour category',
-  select: 'name',
-});
-export const getAllProduct = getAll(Product, ['size', 'name']);
+const inventorySetup = (i: IInventory) => {
+  const inventory = { ...i };
+  if (inventory && inventory.track && inventory.totalQty >= 0) {
+    inventory.remainingQty = inventory.totalQty;
+    inventory.available = inventory.remainingQty > 0;
+
+    // Set status based on remainingQty
+    if (!inventory.remainingQty) {
+      inventory.status = inventoryEnum[0];
+    } else if (inventory.remainingQty <= 20) {
+      inventory.status = inventoryEnum[1];
+    } else {
+      inventory.status = inventoryEnum[2];
+    }
+  }
+
+  return inventory;
+};
+
+export const updateProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const brand = req.body?.brand;
+    if (req.files?.length) {
+      req.body.images = req.files;
+    }
+    if (!req.body?.colour) {
+      req.body.colour = [];
+    }
+    if (!req.body?.flavour) {
+      req.body.flavour = [];
+    }
+    const updatedPayload = { ...req.body };
+    if (updatedPayload?.inventory) {
+      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      updatedPayload,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+    if (!product) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    if (process.env.NODE_ENV === PRODUCTION) {
+      await syncProductWithMerchantCenter(product, brand, true);
+    }
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: product,
+      },
+    });
+  }
+);
+
+// $in operators used when we have to filter results from array and for rest we
+// have not used any operator since we directly looked for value inside object rather than array
+export const getAllProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.category) {
+      req.query.category = {
+        $in: (req.query.category as string).split(','),
+      };
+    }
+
+    if (req.query.colour) {
+      req.query.colour = {
+        $in: (req.query.colour as string).split(','),
+      };
+    }
+
+    if (req.query.tag) {
+      req.query.tag = {
+        $in: (req.query.tag as string).split(','),
+      };
+    }
+
+    if (req.query.filterColours) {
+      req.query.filterColours = {
+        $in: (req.query.filterColours as string).split(','),
+      };
+    }
+
+    if (req.query.size) {
+      req.query['sizeDetails.size'] = (req.query.size as string).split(',');
+      delete req.query.size;
+    }
+
+    if (req.query.inventoryStatus) {
+      req.query['inventory.status'] = (
+        req.query.inventoryStatus as string
+      ).split(',');
+      delete req.query.inventoryStatus;
+    }
+
+    await getAll(Product)(req, res, next);
+  }
+);
+
+export const getOneProduct = getOne(Product);
 export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -80,6 +193,15 @@ export const getOneProductViaSlug = catchAsync(
     if (!doc) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
+    const filter = {
+      product: doc._id,
+      date: new Date().setHours(0, 0, 0, 0),
+    };
+    await ProductViewsModel.findOneAndUpdate(
+      filter,
+      { $inc: { views: 1 } },
+      { upsert: true }
+    );
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: {
@@ -90,22 +212,33 @@ export const getOneProductViaSlug = catchAsync(
   }
 );
 
-export const createProduct = catchAsync(async (req: Request, res: Response) => {
-  if (req.files?.length) {
-    req.body.images = req.files;
+export const createProduct = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const brand = req.body?.brand;
+    if (req.files?.length) {
+      req.body.images = req.files;
+    }
+    const updatedPayload = { ...req.body };
+    if (updatedPayload?.inventory) {
+      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
+    }
+
+    const product = await Product.create(updatedPayload);
+    if (!product) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    if (process.env.NODE_ENV === PRODUCTION) {
+      await syncProductWithMerchantCenter(product, brand);
+    }
+    res.status(StatusCode.CREATE).json({
+      status: 'success',
+      data: {
+        data: product,
+      },
+    });
   }
-  if (req.file) {
-    req.body.image = req.file;
-  }
-  const product = await Product.create(req.body);
-  await uploadProducts(product);
-  res.status(StatusCode.CREATE).json({
-    status: 'success',
-    data: {
-      data: product,
-    },
-  });
-});
+);
 
 export const globalSearch = getAll(Product);
 export const checkGlobalSearchParams = catchAsync(

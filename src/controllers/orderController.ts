@@ -15,6 +15,7 @@ import { IRequestWithUser } from './authController';
 import {
   CANCELLED,
   Role,
+  SELF_COLLECT,
   StatusCode,
   brandEnum,
   checkoutSessionFor,
@@ -39,11 +40,11 @@ import {
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
 } from '@src/constants/messages';
-import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { GA_URL, WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
-  generateOrderId,
+  generateUniqueIds,
   getDateOneDayFromNow,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -105,7 +106,7 @@ const sendOrderPrepEmail = async (res: Response) => {
   try {
     const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
     const targetDate = getDateOneDayFromNow();
-    const query = { 'delivery.date': targetDate };
+    const query = { 'delivery.date': targetDate, paid: true };
 
     const ordersToNotify = await Order.find(query);
 
@@ -179,9 +180,50 @@ function cancelOrder(id: string) {
   });
 }
 
+const sendPurchaseEventToGA4 = catchAsync(async (id: string) => {
+  const API_URL = `${GA_URL}?measurement_id=${process.env.GMEASUREMENT_ID}&api_secret=${process.env.GA_SECRET}`;
+  const order = await Order.findById(id);
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
+
+  const payload = {
+    client_id: order?.gaClientId || order?.user?._id,
+    events: [
+      {
+        name: 'purchase',
+        params: {
+          currency: 'SGD',
+          transaction_id: order?.orderNumber,
+          value:
+            (+order?.pricingSummary?.subTotal ?? 0) -
+            (+order?.pricingSummary?.discountedAmt ?? 0),
+          coupon: order?.pricingSummary?.coupon?.code || '',
+          shipping: +order?.pricingSummary?.deliveryCharge,
+          items: order?.product?.map((p) => ({
+            item_id: p?.product?.id,
+            item_name: p?.product?.name,
+            price: p?.price,
+            quantity: p?.quantity,
+          })),
+        },
+      },
+    ],
+  };
+
+  await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+});
+
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
-  if (order?.delivery?.address?._id) {
+  const isSelfCollect = order?.delivery?.method?.name === SELF_COLLECT;
+
+  if (isSelfCollect) {
+    completeAddress = SELF_COLLECT_ADDRESS;
+  } else {
     const {
       firstName,
       lastName,
@@ -198,8 +240,6 @@ const prepareCompleteAddress = (order: IOrder) => {
     }, ${address1}, ${address2 || ''}, ${
       company || ''
     }, ${city}, ${postalCode}, ${phone}`;
-  } else {
-    completeAddress = SELF_COLLECT_ADDRESS;
   }
   return completeAddress;
 };
@@ -566,7 +606,10 @@ async function updateProductAfterPurchase(order: IOrder) {
     return {
       updateOne: {
         filter: { _id: p.product._id },
-        update: { $inc: { sold: p.quantity }, ...inventoryUpdateQuery },
+        update: {
+          $inc: { sold: p.quantity },
+          $set: { ...inventoryUpdateQuery },
+        },
       },
     };
   });
@@ -624,6 +667,7 @@ const updateOrderAfterPaymentSuccess = async (
   await updateProductAfterPurchase(order!);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
+  await sendPurchaseEventToGA4(orderId);
 
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
@@ -762,7 +806,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
-  req.body.orderNumber = generateOrderId();
+  req.body.orderNumber = generateUniqueIds();
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -802,7 +846,17 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);
 export const getOneOrder = getOne(Order);
-export const getAllOrder = getAll(Order, ['orderNumber']);
+
+export const getAllOrder = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.query.orderNumber) {
+      req.query.orderNumber = {
+        $in: (req.query.orderNumber as string).split(','),
+      };
+    }
+    await getAll(Order)(req, res, next);
+  }
+);
 
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -826,6 +880,7 @@ export const updateOrder = catchAsync(
         deliveryBody.collectionTime = delivery.collectionTime;
       if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
       if (recipInfo?.contact) deliveryBody.recipientPhone = recipInfo.contact;
+      if (delivery?.address) deliveryBody.address = delivery?.address;
 
       await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
     }
@@ -837,6 +892,24 @@ export const updateOrder = catchAsync(
       status: 'success',
       data: {
         data: order,
+      },
+    });
+  }
+);
+
+export const getWoodeliveryId = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { orderNumber } = req.query;
+    const { brand } = req.body;
+    const order = await Order.findOne({ orderNumber, brand });
+    if (!order) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: order?.woodeliveryTaskId || '',
       },
     });
   }
@@ -901,6 +974,8 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
     await updateProductAfterPurchase(order!);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
+    await sendPurchaseEventToGA4(orderId);
+
     res.status(StatusCode.SUCCESS).send({
       status: 'success',
       message: 'Payment successfull',
