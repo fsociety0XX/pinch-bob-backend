@@ -1,4 +1,4 @@
-import mongoose, { Types, model } from 'mongoose';
+import mongoose, { model } from 'mongoose';
 import slugify from 'slugify';
 import {
   brandEnum,
@@ -8,6 +8,16 @@ import {
 } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { generateUniqueIds } from '@src/utils/functions';
+
+interface ISuperCategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
+
+interface ICategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
 
 interface ISize {
   size: mongoose.Types.ObjectId;
@@ -78,8 +88,8 @@ export interface IProduct {
   preparationDays: number;
   recommended: boolean;
   active: boolean;
-  superCategory: Types.ObjectId;
-  category: Types.ObjectId;
+  superCategory: ISuperCategory[];
+  category: ICategory[];
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   filterColours: string[]; // will be used to filter cakes from colour filter option on website
