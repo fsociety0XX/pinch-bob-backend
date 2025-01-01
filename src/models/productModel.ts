@@ -1,4 +1,4 @@
-import mongoose, { Types, model } from 'mongoose';
+import mongoose, { model } from 'mongoose';
 import slugify from 'slugify';
 import {
   brandEnum,
@@ -8,6 +8,16 @@ import {
 } from '@src/types/customTypes';
 import { PRODUCT_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { generateUniqueIds } from '@src/utils/functions';
+
+interface ISuperCategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
+
+interface ICategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
 
 interface ISize {
   size: mongoose.Types.ObjectId;
@@ -64,7 +74,8 @@ export interface IProduct {
   piecesDetails?: IPieces[];
   sizeDetails?: ISize[];
   images: IPhoto[];
-  flavour?: mongoose.Types.ObjectId[];
+  flavour?: mongoose.Types.ObjectId[]; // this will be used for specific flavours
+  useGlobalFlavors: boolean;
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
   fondantMsgOptions?: string[];
@@ -77,10 +88,11 @@ export interface IProduct {
   preparationDays: number;
   recommended: boolean;
   active: boolean;
-  superCategory: Types.ObjectId;
-  category: Types.ObjectId;
+  superCategory: ISuperCategory[];
+  category: ICategory[];
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
+  filterColours: string[]; // will be used to filter cakes from colour filter option on website
   sold: number;
   fondantName: boolean;
   fondantNameLimit: number;
@@ -239,6 +251,10 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Flavour',
       },
     ],
+    useGlobalFlavors: {
+      type: Boolean,
+      default: true,
+    },
     colour: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -330,6 +346,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       },
     ],
     tag: [String],
+    filterColours: [String],
     inventory: Inventory,
     mayStain: Boolean,
     moneyPulling: Boolean,
@@ -420,7 +437,8 @@ productSchema.pre('findOne', function (next) {
   if (!alreadyPopulated) {
     this.populate({
       path: 'fbt',
-      select: 'name price images category superCategory discountedPrice slug',
+      select:
+        'name price images category superCategory discountedPrice slug active',
     });
     alreadyPopulated = true;
   }
