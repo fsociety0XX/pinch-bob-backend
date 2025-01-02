@@ -245,24 +245,30 @@ const productSchema = new mongoose.Schema<IProduct>(
         message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
       },
     },
-    flavour: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Flavour',
-      },
-    ],
+    flavour: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Flavour',
+        },
+      ],
+      default: [],
+    },
     useGlobalFlavors: {
       type: Boolean,
       default: true,
     },
-    colour: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Colour',
-      },
-    ],
-    cardOptions: [String],
-    fondantMsgOptions: [String],
+    colour: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Colour',
+        },
+      ],
+      default: [],
+    },
+    cardOptions: { type: [String], default: [] },
+    fondantMsgOptions: { type: [String], default: [] },
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -345,8 +351,8 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Product',
       },
     ],
-    tag: [String],
-    filterColours: [String],
+    tag: { type: [String], default: [] },
+    filterColours: { type: [String], default: [] },
     inventory: Inventory,
     mayStain: Boolean,
     moneyPulling: Boolean,
