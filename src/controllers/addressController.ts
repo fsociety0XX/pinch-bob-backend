@@ -3,9 +3,9 @@ import Address from '@src/models/addressModel';
 import catchAsync from '@src/utils/catchAsync';
 import {
   createOne,
-  deleteOne,
   getAll,
   getOne,
+  softDeleteOne,
   updateOne,
 } from '@src/utils/factoryHandler';
 import { IRequestWithUser } from './authController';
@@ -29,7 +29,7 @@ export const authenticateAddressAccess = catchAsync(
 
 export const createAddress = createOne(Address);
 export const updateAddress = updateOne(Address);
-export const deleteAddress = deleteOne(Address);
+export const deleteAddress = softDeleteOne(Address);
 export const getOneAddress = getOne(Address);
 
 export const getAllAddress = catchAsync(
