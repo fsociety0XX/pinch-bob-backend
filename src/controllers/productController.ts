@@ -118,6 +118,24 @@ export const updateProduct = catchAsync(
     if (req.body.piecesDetails === '') {
       req.body.flavour = [];
     }
+    if (req.body.cardOptions === '') {
+      req.body.cardOptions = [];
+    }
+    if (req.body.fondantMsgOptions === '') {
+      req.body.fondantMsgOptions = [];
+    }
+    if (req.body.category === '') {
+      req.body.category = [];
+    }
+    if (req.body.fbt === '') {
+      req.body.fbt = [];
+    }
+    if (req.body.tag === '') {
+      req.body.tag = [];
+    }
+    if (req.body.filterColours === '') {
+      req.body.filterColours = [];
+    }
 
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
