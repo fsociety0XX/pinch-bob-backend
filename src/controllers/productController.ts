@@ -110,13 +110,13 @@ export const updateProduct = catchAsync(
       req.body.flavour = [];
     }
     if (req.body.colour === '') {
-      req.body.flavour = [];
+      req.body.colour = [];
     }
     if (req.body.sizeDetails === '') {
-      req.body.flavour = [];
+      req.body.sizeDetails = [];
     }
     if (req.body.piecesDetails === '') {
-      req.body.flavour = [];
+      req.body.piecesDetails = [];
     }
     if (req.body.cardOptions === '') {
       req.body.cardOptions = [];
