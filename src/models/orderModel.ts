@@ -80,9 +80,10 @@ export interface IProduct {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
   };
-  card: string;
+  card: string; // value selected from card options of the product
   refImage?: IPhoto;
-  msg?: string;
+  msg?: string; // gift card message
+  cakeMsg: string; // message on cake or board
   specialInstructions?: string;
   fondantName?: string;
   fondantNumber?: string;
@@ -158,6 +159,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   card: String,
   refImage: ProductImageSchema,
   msg: String,
+  cakeMsg: String,
   specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
