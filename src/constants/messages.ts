@@ -202,3 +202,7 @@ export const ORDER_PREP_EMAIL = {
   allTaskCompleted: 'All email sending tasks completed.',
   errorInSendingEmails: 'Error in sending order preparation emails:',
 };
+
+export const SUBCATEGORY_SCHEMA_VALIDATION = {
+  category: 'A category is required.',
+};
