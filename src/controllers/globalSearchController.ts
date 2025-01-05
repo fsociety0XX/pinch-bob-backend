@@ -28,6 +28,7 @@ const productFieldsToRemove = {
   'product.product.recommended': 0,
   'product.product.category': 0,
   'product.product.superCategory': 0,
+  'product.product.subCategory': 0,
   'product.product.fbt': 0,
   'product.product.active': 0,
   'product.product.createdAt': 0,

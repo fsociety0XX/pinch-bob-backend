@@ -814,7 +814,7 @@ export const getFbtAlsoLike = catchAsync(
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
-      data: [{ fbt: fbtDocs }, { alsoLike: alsoLikeDocs }],
+      data: { fbt: fbtDocs, alsoLike: alsoLikeDocs },
     });
     return false;
   }
