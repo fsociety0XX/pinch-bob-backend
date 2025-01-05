@@ -27,7 +27,6 @@ userRouter.route('/').get(getAllUser).post(createUser);
 userRouter.route('/:id').get(getOneUser).patch(updateUser).delete(deleteUser);
 
 // MIGRATION API
-const largePayloadParser = express.json({ limit: '100mb' });
-userRouter.route(MIGRATE).post(largePayloadParser, migrateUsers);
+userRouter.route(MIGRATE).post(migrateUsers);
 
 export default userRouter;

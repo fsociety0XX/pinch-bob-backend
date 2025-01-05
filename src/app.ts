@@ -83,7 +83,7 @@ app.post(
 );
 
 // Parse incoming request bodies in JSON format
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
 
 // Set security http headers
 app.use(helmet());
