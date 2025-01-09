@@ -320,6 +320,7 @@ async function getProductBySuperCategory(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
     { $sort: { sold: -1 } },
@@ -408,6 +409,7 @@ async function getProductBySuperCategoryAndCategory(
         slug: 1,
         brand: 1,
         category: 1,
+        refImageType: 1,
       },
     },
     { $sort: { sold: -1 } },
@@ -441,6 +443,7 @@ async function getRandomProducts(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
   ]);
@@ -491,6 +494,7 @@ async function getRandomProductsFromSameSupercategory(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
   ]);
