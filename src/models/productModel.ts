@@ -456,7 +456,7 @@ productSchema.pre('findOne', function (next) {
     this.populate({
       path: 'fbt',
       select:
-        'name price images category superCategory subCategory discountedPrice slug active',
+        'name price images category superCategory subCategory discountedPrice slug active refImageType',
     });
     alreadyPopulated = true;
   }
