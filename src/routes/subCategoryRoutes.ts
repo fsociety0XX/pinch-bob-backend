@@ -25,7 +25,10 @@ subCategoryRouter
 subCategoryRouter
   .route('/:id')
   .get(getOneSubCategory)
-  .patch(updateSubCategory)
+  .patch(
+    uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).single('image'),
+    updateSubCategory
+  )
   .delete(deleteSubCategory);
 
 export default subCategoryRouter;
