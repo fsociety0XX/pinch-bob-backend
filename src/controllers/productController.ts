@@ -306,6 +306,9 @@ async function getProductBySuperCategory(
           {
             brand,
           },
+          {
+            active: true,
+          },
         ],
         _id: {
           $nin: excludedIds,
@@ -358,6 +361,9 @@ async function getProductBySuperCategoryAndCategory(
           },
           {
             brand,
+          },
+          {
+            active: true,
           },
         ],
         _id: {
@@ -430,6 +436,7 @@ async function getRandomProducts(
       $match: {
         _id: { $nin: excludedIds },
         brand,
+        active: true,
       },
     },
     {
@@ -476,6 +483,9 @@ async function getRandomProductsFromSameSupercategory(
           },
           {
             brand,
+          },
+          {
+            active: true,
           },
         ],
         _id: {
