@@ -25,7 +25,10 @@ superCategoryRouter
 superCategoryRouter
   .route('/:id')
   .get(getOneSuperCategory)
-  .patch(updateSuperCategory)
+  .patch(
+    uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).single('image'),
+    updateSuperCategory
+  )
   .delete(deleteSuperCategory);
 
 export default superCategoryRouter;

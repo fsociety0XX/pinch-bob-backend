@@ -25,7 +25,10 @@ categoryRouter
 categoryRouter
   .route('/:id')
   .get(getOneCategory)
-  .patch(updateCategory)
+  .patch(
+    uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).single('image'),
+    updateCategory
+  )
   .delete(deleteCategory);
 
 export default categoryRouter;
