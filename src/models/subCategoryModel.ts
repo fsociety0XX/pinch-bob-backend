@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
 import {
   COMMON_SCHEMA_VALIDATION,
@@ -67,6 +67,18 @@ const subCategorySchema = new mongoose.Schema<ISubCategory>(
 );
 
 subCategorySchema.index({ name: 1, brand: 1 }, { unique: true });
+
+subCategorySchema.pre<Query<ISubCategory, ISubCategory>>(
+  /^find/,
+  function (next) {
+    this.populate({
+      path: 'category',
+      select: 'name',
+    });
+
+    next();
+  }
+);
 
 const SubCategory = mongoose.model('SubCategory', subCategorySchema);
 
