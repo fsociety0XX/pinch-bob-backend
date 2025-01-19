@@ -10,25 +10,15 @@ interface IPhoto {
   location: string;
 }
 
-interface IContent {
-  title: string;
-  description: string;
-}
-
 export interface ICategory {
   brand: string;
   name: string;
   title: string;
   description: string;
   image: IPhoto;
-  content: IContent[];
+  content: string;
   active: boolean;
 }
-
-const ContentSchema = new mongoose.Schema<IContent>({
-  title: String,
-  description: String,
-});
 
 const categorySchema = new mongoose.Schema<ICategory>(
   {
@@ -51,7 +41,7 @@ const categorySchema = new mongoose.Schema<ICategory>(
       size: Number,
       location: String,
     },
-    content: [ContentSchema],
+    content: String,
     active: {
       type: Boolean,
       default: true,

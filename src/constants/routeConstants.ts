@@ -6,6 +6,7 @@ export const USER_ROUTE = `${VERSION1}/user`;
 export const AUTH_ROUTE = `${VERSION1}/auth`;
 export const CATEGORY_ROUTE = `${VERSION1}/category`;
 export const SUPER_CATEGORY_ROUTE = `${VERSION1}/superCategory`;
+export const SUB_CATEGORY_ROUTE = `${VERSION1}/subCategory`;
 export const PRODUCT_ROUTE = `${VERSION1}/product`;
 export const SIZE_ROUTE = `${VERSION1}/size`;
 export const PIECES_ROUTE = `${VERSION1}/pieces`;

@@ -19,6 +19,11 @@ interface ICategory {
   name: string;
 }
 
+interface ISubCategory {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+}
+
 interface ISize {
   size: mongoose.Types.ObjectId;
   price: number;
@@ -90,6 +95,7 @@ export interface IProduct {
   active: boolean;
   superCategory: ISuperCategory[];
   category: ICategory[];
+  subCategory: ISubCategory[];
   fbt: string[]; // frequently bought together
   tag: string[]; // can be used to less sweet/ vegan labels to show in product
   filterColours: string[]; // will be used to filter cakes from colour filter option on website
@@ -245,24 +251,30 @@ const productSchema = new mongoose.Schema<IProduct>(
         message: PRODUCT_SCHEMA_VALIDATION.atleastOneImage,
       },
     },
-    flavour: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Flavour',
-      },
-    ],
+    flavour: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Flavour',
+        },
+      ],
+      default: [],
+    },
     useGlobalFlavors: {
       type: Boolean,
       default: true,
     },
-    colour: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Colour',
-      },
-    ],
-    cardOptions: [String],
-    fondantMsgOptions: [String],
+    colour: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Colour',
+        },
+      ],
+      default: [],
+    },
+    cardOptions: { type: [String], default: [] },
+    fondantMsgOptions: { type: [String], default: [] },
     type: {
       type: String,
       required: [true, PRODUCT_SCHEMA_VALIDATION.type],
@@ -325,6 +337,12 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Number,
       default: 9,
     },
+    subCategory: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SubCategory',
+      },
+    ],
     category: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -345,8 +363,8 @@ const productSchema = new mongoose.Schema<IProduct>(
         ref: 'Product',
       },
     ],
-    tag: [String],
-    filterColours: [String],
+    tag: { type: [String], default: [] },
+    filterColours: { type: [String], default: [] },
     inventory: Inventory,
     mayStain: Boolean,
     moneyPulling: Boolean,
@@ -418,7 +436,7 @@ productSchema.pre('save', function (next) {
 productSchema.pre('find', function (next) {
   this.populate('views');
   this.populate({
-    path: 'category superCategory',
+    path: 'category superCategory subCategory',
     select: 'name',
   });
 
@@ -429,7 +447,7 @@ productSchema.pre('find', function (next) {
 
 productSchema.pre('findOne', function (next) {
   this.populate({
-    path: 'sizeDetails.size piecesDetails.pieces flavour colour category superCategory',
+    path: 'sizeDetails.size piecesDetails.pieces flavour colour category superCategory subCategory',
     select: 'name',
   });
 
@@ -438,7 +456,7 @@ productSchema.pre('findOne', function (next) {
     this.populate({
       path: 'fbt',
       select:
-        'name price images category superCategory discountedPrice slug active',
+        'name price images category superCategory subCategory discountedPrice slug active refImageType',
     });
     alreadyPopulated = true;
   }

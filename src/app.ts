@@ -36,6 +36,7 @@ import {
   SUPER_CATEGORY_ROUTE,
   USER_ROUTE,
   STRIPE_WEBHOOK_ROUTE,
+  SUB_CATEGORY_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -60,6 +61,7 @@ import { globalTableSearch } from './controllers/globalSearchController';
 import couponRouter from './routes/couponRoutes';
 import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
+import subCategoryRouter from './routes/subCategoryRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -83,7 +85,7 @@ app.post(
 );
 
 // Parse incoming request bodies in JSON format
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
 
 // Set security http headers
 app.use(helmet());
@@ -133,6 +135,7 @@ app.use(AUTH_ROUTE, authRouter);
 app.use(USER_ROUTE, userRouter);
 app.use(CATEGORY_ROUTE, categoryRouter);
 app.use(SUPER_CATEGORY_ROUTE, superCategoryRouter);
+app.use(SUB_CATEGORY_ROUTE, subCategoryRouter);
 app.use(PRODUCT_ROUTE, productRouter);
 app.use(SIZE_ROUTE, sizeRouter);
 app.use(PIECES_ROUTE, piecesRouter);

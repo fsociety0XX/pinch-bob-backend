@@ -106,6 +106,37 @@ export const updateProduct = catchAsync(
       req.body.images = req.files;
     }
 
+    if (req.body.flavour === '') {
+      req.body.flavour = [];
+    }
+    if (req.body.colour === '') {
+      req.body.colour = [];
+    }
+    if (req.body.sizeDetails === '') {
+      req.body.sizeDetails = [];
+    }
+    if (req.body.piecesDetails === '') {
+      req.body.piecesDetails = [];
+    }
+    if (req.body.cardOptions === '') {
+      req.body.cardOptions = [];
+    }
+    if (req.body.fondantMsgOptions === '') {
+      req.body.fondantMsgOptions = [];
+    }
+    if (req.body.category === '') {
+      req.body.category = [];
+    }
+    if (req.body.fbt === '') {
+      req.body.fbt = [];
+    }
+    if (req.body.tag === '') {
+      req.body.tag = [];
+    }
+    if (req.body.filterColours === '') {
+      req.body.filterColours = [];
+    }
+
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
       updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
@@ -289,6 +320,7 @@ async function getProductBySuperCategory(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
     { $sort: { sold: -1 } },
@@ -377,6 +409,7 @@ async function getProductBySuperCategoryAndCategory(
         slug: 1,
         brand: 1,
         category: 1,
+        refImageType: 1,
       },
     },
     { $sort: { sold: -1 } },
@@ -410,6 +443,7 @@ async function getRandomProducts(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
   ]);
@@ -460,6 +494,7 @@ async function getRandomProductsFromSameSupercategory(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
+        refImageType: 1,
       },
     },
   ]);
@@ -783,7 +818,7 @@ export const getFbtAlsoLike = catchAsync(
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
-      data: [{ fbt: fbtDocs }, { alsoLike: alsoLikeDocs }],
+      data: { fbt: fbtDocs, alsoLike: alsoLikeDocs },
     });
     return false;
   }

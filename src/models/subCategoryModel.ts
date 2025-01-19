@@ -1,6 +1,9 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import { brandEnum } from '@src/types/customTypes';
-import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
+import {
+  COMMON_SCHEMA_VALIDATION,
+  SUBCATEGORY_SCHEMA_VALIDATION,
+} from '@src/constants/messages';
 
 interface IPhoto {
   key: string;
@@ -10,17 +13,18 @@ interface IPhoto {
   location: string;
 }
 
-export interface ISuperCategory {
+export interface ISubCategory {
   brand: string;
   name: string;
   title: string;
   description: string;
+  category: mongoose.Types.ObjectId[];
   image: IPhoto;
   content: string;
   active: boolean;
 }
 
-const superCategorySchema = new mongoose.Schema<ISuperCategory>(
+const subCategorySchema = new mongoose.Schema<ISubCategory>(
   {
     brand: {
       type: String,
@@ -34,6 +38,13 @@ const superCategorySchema = new mongoose.Schema<ISuperCategory>(
     },
     title: String,
     description: String,
+    category: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: [true, SUBCATEGORY_SCHEMA_VALIDATION.category],
+      },
+    ],
     image: {
       key: String,
       originalname: String,
@@ -55,8 +66,20 @@ const superCategorySchema = new mongoose.Schema<ISuperCategory>(
   }
 );
 
-superCategorySchema.index({ name: 1, brand: 1 }, { unique: true });
+subCategorySchema.index({ name: 1, brand: 1 }, { unique: true });
 
-const SuperCategory = mongoose.model('SuperCategory', superCategorySchema);
+subCategorySchema.pre<Query<ISubCategory, ISubCategory>>(
+  /^find/,
+  function (next) {
+    this.populate({
+      path: 'category',
+      select: 'name',
+    });
 
-export default SuperCategory;
+    next();
+  }
+);
+
+const SubCategory = mongoose.model('SubCategory', subCategorySchema);
+
+export default SubCategory;
