@@ -25,6 +25,6 @@ addressRouter
   .route('/:id')
   .get(authenticateAddressAccess, getOneAddress)
   .patch(authenticateAddressAccess, updateAddress)
-  .delete(authenticateAddressAccess, deleteAddress);
+  .patch(authenticateAddressAccess, deleteAddress); // patch since its a soft delete
 
 export default addressRouter;
