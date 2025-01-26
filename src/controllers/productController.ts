@@ -594,8 +594,6 @@ export const getFbtAlsoLike = catchAsync(
         break;
       }
       case superCategories[1]: {
-        console.log('Customised');
-
         slotOne = await getProductBySuperCategoryAndCategory(
           brand,
           superCategories[1],
