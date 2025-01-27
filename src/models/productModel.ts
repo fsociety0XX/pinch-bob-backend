@@ -426,9 +426,7 @@ productSchema.virtual('views', {
 // Document middleware
 productSchema.pre('save', function (next) {
   this.productNumber = generateUniqueIds();
-  if (!this.slug) {
-    this.slug = slugify(this.name);
-  }
+  this.slug = slugify(this.slug || this.name);
   next();
 });
 
@@ -439,7 +437,6 @@ productSchema.pre('find', function (next) {
     path: 'category superCategory subCategory',
     select: 'name',
   });
-
   this.sort({ priority: 1, createdAt: -1 });
 
   next();
