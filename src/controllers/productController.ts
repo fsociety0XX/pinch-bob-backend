@@ -306,6 +306,9 @@ async function getProductBySuperCategory(
           {
             brand,
           },
+          {
+            active: true,
+          },
         ],
         _id: {
           $nin: excludedIds,
@@ -348,9 +351,6 @@ async function getProductBySuperCategoryAndCategory(
       },
     },
     {
-      $unwind: '$superCategory',
-    },
-    {
       $match: {
         $and: [
           {
@@ -358,6 +358,9 @@ async function getProductBySuperCategoryAndCategory(
           },
           {
             brand,
+          },
+          {
+            active: true,
           },
         ],
         _id: {
@@ -382,21 +385,11 @@ async function getProductBySuperCategoryAndCategory(
       },
     },
     {
-      $unwind: '$category',
-    },
-    {
-      $match: {
-        $and: [
-          {
-            'category.name': categoryName,
-          },
-          {
-            brand,
-          },
-        ],
-        _id: {
-          $nin: excludedIds,
-        },
+      $lookup: {
+        from: 'subcategories',
+        localField: 'subCategory',
+        foreignField: '_id',
+        as: 'subCategory',
       },
     },
     {
@@ -408,8 +401,40 @@ async function getProductBySuperCategoryAndCategory(
         discountedPrice: 1,
         slug: 1,
         brand: 1,
-        category: 1,
         refImageType: 1,
+        superCategory: {
+          $map: {
+            input: '$superCategory',
+            as: 'sc',
+            in: {
+              _id: '$$sc._id',
+              name: '$$sc.name',
+              active: '$$sc.active',
+            },
+          },
+        },
+        category: {
+          $map: {
+            input: '$category',
+            as: 'cat',
+            in: {
+              _id: '$$cat._id',
+              name: '$$cat.name',
+              active: '$$cat.active',
+            },
+          },
+        },
+        subCategory: {
+          $map: {
+            input: '$subCategory',
+            as: 'sub',
+            in: {
+              _id: '$$sub._id',
+              name: '$$sub.name',
+              active: '$$sub.active',
+            },
+          },
+        },
       },
     },
     { $sort: { sold: -1 } },
@@ -430,13 +455,39 @@ async function getRandomProducts(
       $match: {
         _id: { $nin: excludedIds },
         brand,
+        active: true,
       },
     },
     {
       $sample: { size: sampleSize },
     },
     {
+      $lookup: {
+        from: 'supercategories',
+        localField: 'superCategory',
+        foreignField: '_id',
+        as: 'superCategory',
+      },
+    },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    {
+      $lookup: {
+        from: 'subcategories',
+        localField: 'subCategory',
+        foreignField: '_id',
+        as: 'subCategory',
+      },
+    },
+    {
       $project: {
+        _id: 1,
         name: 1,
         images: 1,
         price: 1,
@@ -444,6 +495,39 @@ async function getRandomProducts(
         slug: 1,
         brand: 1,
         refImageType: 1,
+        superCategory: {
+          $map: {
+            input: '$superCategory',
+            as: 'sc',
+            in: {
+              _id: '$$sc._id',
+              name: '$$sc.name',
+              active: '$$sc.active',
+            },
+          },
+        },
+        category: {
+          $map: {
+            input: '$category',
+            as: 'cat',
+            in: {
+              _id: '$$cat._id',
+              name: '$$cat.name',
+              active: '$$cat.active',
+            },
+          },
+        },
+        subCategory: {
+          $map: {
+            input: '$subCategory',
+            as: 'sub',
+            in: {
+              _id: '$$sub._id',
+              name: '$$sub.name',
+              active: '$$sub.active',
+            },
+          },
+        },
       },
     },
   ]);
@@ -466,9 +550,6 @@ async function getRandomProductsFromSameSupercategory(
       },
     },
     {
-      $unwind: '$superCategory',
-    },
-    {
       $match: {
         $and: [
           {
@@ -477,6 +558,9 @@ async function getRandomProductsFromSameSupercategory(
           {
             brand,
           },
+          {
+            active: true,
+          },
         ],
         _id: {
           $nin: excludedIds,
@@ -484,10 +568,27 @@ async function getRandomProductsFromSameSupercategory(
       },
     },
     {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    {
+      $lookup: {
+        from: 'subcategories',
+        localField: 'subCategory',
+        foreignField: '_id',
+        as: 'subCategory',
+      },
+    },
+    {
       $sample: { size: sampleSize },
     },
     {
       $project: {
+        _id: 1,
         name: 1,
         images: 1,
         price: 1,
@@ -495,6 +596,39 @@ async function getRandomProductsFromSameSupercategory(
         slug: 1,
         brand: 1,
         refImageType: 1,
+        superCategory: {
+          $map: {
+            input: '$superCategory',
+            as: 'sc',
+            in: {
+              _id: '$$sc._id',
+              name: '$$sc.name',
+              active: '$$sc.active',
+            },
+          },
+        },
+        category: {
+          $map: {
+            input: '$category',
+            as: 'cat',
+            in: {
+              _id: '$$cat._id',
+              name: '$$cat.name',
+              active: '$$cat.active',
+            },
+          },
+        },
+        subCategory: {
+          $map: {
+            input: '$subCategory',
+            as: 'sub',
+            in: {
+              _id: '$$sub._id',
+              name: '$$sub.name',
+              active: '$$sub.active',
+            },
+          },
+        },
       },
     },
   ]);
@@ -594,6 +728,7 @@ export const getFbtAlsoLike = catchAsync(
         break;
       }
       case superCategories[1]: {
+        // Customised
         slotOne = await getProductBySuperCategoryAndCategory(
           brand,
           superCategories[1],
