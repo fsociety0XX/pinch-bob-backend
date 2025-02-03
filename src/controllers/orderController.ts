@@ -39,6 +39,7 @@ import {
   ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
+  PRODUCT_NOT_FOUND,
 } from '@src/constants/messages';
 import { GA_URL, WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -849,11 +850,52 @@ export const getOneOrder = getOne(Order);
 
 export const getAllOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    if (req.query.orderNumber) {
-      req.query.orderNumber = {
-        $in: (req.query.orderNumber as string).split(','),
+    const { orderNumber, superCategory, category, subCategory, flavour } =
+      req.query;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: any = {};
+
+    if (orderNumber) {
+      filter.orderNumber = {
+        $in: (orderNumber as string).split(','),
       };
     }
+
+    if (superCategory) {
+      const products = await Product.find({ superCategory });
+      if (!products || !products.length) {
+        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+      }
+      const productIds = products.map((product) => product._id);
+      filter['product.product'] = { $in: productIds };
+    }
+    if (category) {
+      const products = await Product.find({ category });
+      if (!products || !products.length) {
+        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+      }
+      const productIds = products.map((product) => product._id);
+      filter['product.product'] = { $in: productIds };
+    }
+    if (subCategory) {
+      const products = await Product.find({ subCategory });
+      if (!products || !products.length) {
+        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+      }
+      const productIds = products.map((product) => product._id);
+      filter['product.product'] = { $in: productIds };
+    }
+    if (flavour) {
+      filter['product.flavour'] = { $in: (flavour as string).split(',') };
+    }
+
+    delete req.query.superCategory;
+    delete req.query.category;
+    delete req.query.subCategory;
+    delete req.query.flavour;
+
+    req.query = { ...req.query, ...filter };
     await getAll(Order)(req, res, next);
   }
 );
