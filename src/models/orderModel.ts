@@ -4,7 +4,12 @@ import {
   COMMON_SCHEMA_VALIDATION,
   ORDER_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
-import { brandEnum, deliveryTypeEnum, notesEnum } from '@src/types/customTypes';
+import {
+  brandEnum,
+  deliveryTypeEnum,
+  notesEnum,
+  preparationStatusType,
+} from '@src/types/customTypes';
 import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
@@ -117,6 +122,9 @@ export interface IOrder {
   pricingSummary: IPricingSummary;
   recipInfo?: IRecipInfo;
   paid: boolean;
+  corporate: boolean;
+  moneyReceivedForMoneyPulling: boolean;
+  preparationStatus: string;
   status: string;
   stripeDetails: StripeWebhookEvent;
   hitpayDetails: IHitpayDetails;
@@ -253,6 +261,13 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: Boolean,
       required: [true, ORDER_SCHEMA_VALIDATION.paid],
       default: false,
+    },
+    corporate: Boolean,
+    moneyReceivedForMoneyPulling: Boolean,
+    preparationStatus: {
+      type: String,
+      default: '',
+      enum: preparationStatusType,
     },
     status: String,
     stripeDetails: Object,

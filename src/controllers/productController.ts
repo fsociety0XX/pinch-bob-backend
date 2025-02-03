@@ -199,6 +199,10 @@ export const getAllProduct = catchAsync(
       delete req.query.size;
     }
 
+    if (req.query.slug) {
+      req.query.slug = (req.query.slug as string).split(',');
+    }
+
     if (req.query.inventoryStatus) {
       req.query['inventory.status'] = (
         req.query.inventoryStatus as string
@@ -822,8 +826,6 @@ export const getFbtAlsoLike = catchAsync(
         break;
       }
       case superCategories[3]: {
-        console.log('Seasonal');
-
         slotOne = await getProductBySuperCategoryAndCategory(
           brand,
           superCategories[3],
