@@ -3,6 +3,7 @@ import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import {
   ASSIGN_ORDER_TO_DRIVER,
+  GET_DELIVERY_WITH_COLLECTION_TIME,
   GET_DRIVERS,
   UNASSIGN_ORDER_TO_DRIVER,
   UPDATE_ORDER_STATUS,
@@ -12,6 +13,7 @@ import {
   deleteDelivery,
   getAllDelivery,
   getAllDrivers,
+  getDeliveryWithCollectionTime,
   getOneDelivery,
   unassignDriver,
   updateDelivery,
@@ -26,6 +28,9 @@ deliveryRouter.route(GET_DRIVERS).get(getAllDrivers);
 deliveryRouter.route(ASSIGN_ORDER_TO_DRIVER).post(assignOrderToDriver);
 deliveryRouter.route(UNASSIGN_ORDER_TO_DRIVER).patch(unassignDriver);
 deliveryRouter.route('/').get(getAllDelivery);
+deliveryRouter
+  .route(GET_DELIVERY_WITH_COLLECTION_TIME)
+  .get(getDeliveryWithCollectionTime);
 deliveryRouter
   .route('/:id')
   .get(getOneDelivery)

@@ -209,3 +209,8 @@ export const SUBCATEGORY_SCHEMA_VALIDATION = {
 
 export const PRODUCT_NOT_FOUND =
   'No product belongs to the given super category id';
+
+export const DELIVERY_COLLECTION_TIME = {
+  collectionTime: 'CollectionTime is required',
+  timeFormat: "Invalid collectionTime format. Use '9am-1pm' format",
+};
