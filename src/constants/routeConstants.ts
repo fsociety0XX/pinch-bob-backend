@@ -45,6 +45,7 @@ export const WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/tasks`;
 export const GET_WOODELIVERY_DRIVERS = `${WOODELIVERY_BASEURL}/drivers`;
 export const ASSIGN_TASK_TO_DRIVER = `${WOODELIVERY_BASEURL}/tasks/driver`;
 export const GET_DRIVERS = '/drivers';
+export const GET_DELIVERY_WITH_COLLECTION_TIME = '/collectionTime';
 export const ASSIGN_ORDER_TO_DRIVER = '/assign/:id';
 export const UNASSIGN_ORDER_TO_DRIVER = '/unassign/:id';
 export const UPDATE_ORDER_STATUS = '/updateOrderStatus/:id';

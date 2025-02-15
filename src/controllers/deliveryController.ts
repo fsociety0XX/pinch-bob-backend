@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import moment from 'moment';
 import {
   ASSIGN_TASK_TO_DRIVER,
   GET_WOODELIVERY_DRIVERS,
@@ -17,7 +18,11 @@ import {
   updateOne,
 } from '@src/utils/factoryHandler';
 import sendEmail from '@src/utils/sendEmail';
-import { PINCH_EMAILS } from '@src/constants/messages';
+import {
+  DELIVERY_COLLECTION_TIME,
+  PINCH_EMAILS,
+} from '@src/constants/messages';
+import AppError from '@src/utils/appError';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
@@ -139,12 +144,58 @@ export const updateOrderStatus = catchAsync(
   }
 );
 
+const convertTo24Hour = (time: string) =>
+  moment(time, ['h:mma', 'h:mm a']).format('HH:mm');
+
+export const getDeliveryWithCollectionTime = catchAsync(
+  async (req: Request, res: Response) => {
+    const { collectionTime, gteDeliveryDate, lteDeliveryDate } = req.query;
+
+    if (!collectionTime) {
+      return new AppError(
+        DELIVERY_COLLECTION_TIME.collectionTime,
+        StatusCode.BAD_REQUEST
+      );
+    }
+
+    const [startTimeStr, endTimeStr] = (collectionTime as string).split('-');
+    if (!startTimeStr || !endTimeStr) {
+      return new AppError(
+        DELIVERY_COLLECTION_TIME.timeFormat,
+        StatusCode.BAD_REQUEST
+      );
+    }
+
+    const startTime = convertTo24Hour(startTimeStr.trim());
+    const endTime = convertTo24Hour(endTimeStr.trim());
+
+    const allDeliveries = await Delivery.find({
+      deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-shadow
+    const filteredDeliveries = allDeliveries.filter(({ collectionTime }) => {
+      const [storedStartTime, storedEndTime] = collectionTime
+        .split(' - ')
+        .map(convertTo24Hour);
+      return storedStartTime >= startTime && storedEndTime <= endTime;
+    });
+
+    res.json({ success: true, data: filteredDeliveries });
+  }
+);
+
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    if (req.query.driverId) {
-      req.query['driverDetails.id'] = (req.query.driverId as string).split(',');
+    const { driverId, method } = req.query;
+    if (driverId) {
+      req.query['driverDetails.id'] = (driverId as string).split(',');
       delete req.query.driverId;
     }
+    if (method) {
+      req.query.method = (method as string).split(',');
+    }
+
     await getAll(Delivery)(req, res, next);
   }
 );
