@@ -281,6 +281,12 @@ export const checkGlobalSearchParams = catchAsync(
     const brand = (req.query.brand as string) || '';
 
     req.query.name = { $regex: name, $options: 'i' };
+
+    // Convert back to a string
+    if (typeof req.query.name === 'object' && req.query.name.$regex) {
+      req.query.name = req.query.name.$regex;
+    }
+
     req.query.brand = brand;
     req.query.fields = 'name,images,price,discountedPrice,slug';
 
