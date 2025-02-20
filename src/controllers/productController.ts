@@ -274,7 +274,6 @@ export const createProduct = catchAsync(
   }
 );
 
-export const globalSearch = getAll(Product);
 export const checkGlobalSearchParams = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const name = (req.query.name as string) || '';

@@ -148,8 +148,8 @@ export const getAll = (
       if (req.user?.role === Role.CUSTOMER) req.query.active = 'true';
 
       // Special case for handling search query for name with single/multiple values
-      if (req.query.name) {
-        const names = (req.query.name as string).split(',');
+      if (req.query.name && typeof req.query.name === 'string') {
+        const names = req.query?.name?.split(',');
         // Create an $or condition for all names
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore: Assuming `query.name` is always a string here

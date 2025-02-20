@@ -68,6 +68,7 @@ export interface IProduct {
     images: IPhoto[];
   };
   price: number;
+  discountedPrice: number;
   quantity?: number;
   size?: {
     id: mongoose.Schema.Types.ObjectId;
@@ -147,6 +148,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
     ref: 'Product',
   },
   price: Number,
+  discountedPrice: Number,
   quantity: Number,
   size: {
     type: mongoose.Schema.ObjectId,
