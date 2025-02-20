@@ -8,7 +8,6 @@ import {
   getOneProductViaSlug,
   updateProduct,
   checkGlobalSearchParams,
-  globalSearch,
   getFbtAlsoLike,
 } from '@src/controllers/productController';
 import { Role } from '@src/types/customTypes';
@@ -17,7 +16,9 @@ import { FBT_ALSO_LIKE } from '@src/constants/routeConstants';
 
 const productRouter = express.Router();
 
-productRouter.route('/globalSearch').get(checkGlobalSearchParams, globalSearch);
+productRouter
+  .route('/globalSearch')
+  .get(checkGlobalSearchParams, getAllProduct);
 
 productRouter
   .route('/')
