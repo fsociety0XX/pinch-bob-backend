@@ -139,7 +139,9 @@ export const updateProduct = catchAsync(
 
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
-      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
+      const updatedInventory = inventorySetup(updatedPayload.inventory);
+      updatedPayload.inventory = updatedInventory;
+      updatedPayload.maxQty = updatedInventory.remainingQty;
     }
 
     const product = await Product.findByIdAndUpdate(
@@ -250,7 +252,9 @@ export const createProduct = catchAsync(
     }
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
-      updatedPayload.inventory = inventorySetup(updatedPayload.inventory);
+      const updatedInventory = inventorySetup(updatedPayload.inventory);
+      updatedPayload.inventory = updatedInventory;
+      updatedPayload.maxQty = updatedInventory.remainingQty;
     }
 
     const product = await Product.create(updatedPayload);
@@ -270,7 +274,6 @@ export const createProduct = catchAsync(
   }
 );
 
-export const globalSearch = getAll(Product);
 export const checkGlobalSearchParams = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const name = (req.query.name as string) || '';

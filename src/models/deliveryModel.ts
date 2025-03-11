@@ -92,7 +92,7 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   });
   this.populate({
     path: 'order customiseCakeOrder',
-    select: 'orderNumber product',
+    select: 'orderNumber product updatedAt createdAt',
   });
   next();
 });

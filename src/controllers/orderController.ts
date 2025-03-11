@@ -592,6 +592,7 @@ async function updateProductAfterPurchase(order: IOrder) {
 
       inventoryUpdateQuery = {
         'inventory.remainingQty': updatedRemQty,
+        maxQty: updatedRemQty,
         'inventory.available': updatedRemQty > 0,
       };
 
