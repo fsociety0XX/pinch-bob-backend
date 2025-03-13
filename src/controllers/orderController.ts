@@ -14,6 +14,7 @@ import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
 import {
   CANCELLED,
+  HITPAY_PAYMENT_PURPOSE,
   Role,
   SELF_COLLECT,
   StatusCode,
@@ -369,6 +370,7 @@ const handleHitpayPayment = async (
   next: NextFunction
 ) => {
   const paymentData = {
+    purpose: HITPAY_PAYMENT_PURPOSE[0],
     amount: populatedOrder?.pricingSummary?.total,
     currency: 'SGD',
     reference_number: orderId,
@@ -527,7 +529,11 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     : fetchAPI(WOODELIVERY_TASK, 'POST', task);
 };
 
-const createDeliveryDocument = async (order: IOrder, task?: Response) => {
+const createDeliveryDocument = async (
+  order: IOrder,
+  task?: Response,
+  update = false
+) => {
   const {
     delivery: { address, method, date, collectionTime },
     recipInfo,
@@ -552,10 +558,15 @@ const createDeliveryDocument = async (order: IOrder, task?: Response) => {
   if (!recipInfo || recipInfo?.sameAsSender) {
     data.recipientEmail = user?.email;
   }
-  await Delivery.create(data);
+
+  if (update) {
+    await Delivery.findOneAndUpdate({ order: order?._id }, data);
+  } else {
+    await Delivery.create(data);
+  }
 };
 
-const createDelivery = async (id: string) => {
+const createDelivery = async (id: string, update = false) => {
   const order = await Order.findById(id);
   if (!order) {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
@@ -567,9 +578,9 @@ const createDelivery = async (id: string) => {
     String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
 
   if (isSelfCollect) {
-    createDeliveryDocument(order);
+    createDeliveryDocument(order, undefined, update);
   } else
-    createWoodeliveryTask(order)
+    createWoodeliveryTask(order, update)
       .then(async (response) => {
         const task = await response.json();
         createDeliveryDocument(order, task);
@@ -739,17 +750,18 @@ export const stripeWebhookHandler = (req: Request, res: Response): void => {
       sig,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-    const sessionMetadata = event.data.object?.metadata || {};
+    // const sessionMetadata = event.data.object?.metadata || {};
     switch (event.type) {
       case 'payment_intent.payment_failed':
         handlePaymentFailure(event, res);
         break;
 
       case 'checkout.session.completed':
+        updateOrderAfterPaymentSuccess(event, res);
         // eslint-disable-next-line no-unused-expressions
-        sessionMetadata?.sessionFor === checkoutSessionFor.website
-          ? updateOrderAfterPaymentSuccess(event, res)
-          : updateCustomiseCakeOrderAfterPaymentSuccess(event, res);
+        // sessionMetadata?.sessionFor === checkoutSessionFor.website
+        //   ? updateOrderAfterPaymentSuccess(event, res)
+        //   : updateCustomiseCakeOrderAfterPaymentSuccess(event, res);
         break;
 
       default:
@@ -835,7 +847,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 
   await updateProductAfterPurchase(order);
   await createDelivery(order?._id);
-  await sendOrderConfirmationEmail(email, order);
+  // await sendOrderConfirmationEmail(email, order);
 
   res.status(StatusCode.CREATE).json({
     status: 'success',
@@ -912,24 +924,10 @@ export const updateOrder = catchAsync(
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
 
-    // Updating delivery document
+    // Updating delivery & woodelivery data
     if (delivery || recipInfo) {
-      const deliveryBody = {};
-      if (delivery?.date) deliveryBody.deliveryDate = new Date(delivery.date);
-      if (delivery?.method) deliveryBody.method = delivery.method;
-      if (delivery?.instructions)
-        deliveryBody.instructions = delivery.instructions;
-      if (delivery?.collectionTime)
-        deliveryBody.collectionTime = delivery.collectionTime;
-      if (recipInfo?.name) deliveryBody.recipientName = recipInfo.name;
-      if (recipInfo?.contact) deliveryBody.recipientPhone = recipInfo.contact;
-      if (delivery?.address) deliveryBody.address = delivery?.address;
-
-      await Delivery.findOneAndUpdate({ order: req.params.id }, deliveryBody);
+      createDelivery(order, true);
     }
-
-    // Updating task in woodelivery
-    await createWoodeliveryTask(order, true);
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -1050,11 +1048,14 @@ export const hitpayWebhookHandler = catchAsync(
     const hitpaySignature = req.headers['hitpay-signature'];
     const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
     const paymentRequest = parsedBody?.payment_request;
-    const { status } = paymentRequest;
+    const { status, purpose } = paymentRequest;
 
     if (verifyHitPayHmac(req, hitpaySignature)) {
       if (status === 'completed') {
-        updateBobOrderAfterPaymentSuccess(paymentRequest, res);
+        // eslint-disable-next-line no-unused-expressions
+        purpose === HITPAY_PAYMENT_PURPOSE[0]
+          ? updateBobOrderAfterPaymentSuccess(paymentRequest, res)
+          : updateCustomiseCakeOrderAfterPaymentSuccess(paymentRequest, res);
         res.status(200).send('Payment successfull');
       } else {
         handlePaymentFaliureForBob(paymentRequest, res);

@@ -38,7 +38,7 @@ export const couponApplicableEnum = [
 ];
 export const customiseOrderEnums = {
   deliveryType: ['Self-collect', 'Delivery'],
-  messagePlacement: [
+  cakeMsgLocation: [
     'Message on cake',
     'Message on cake board',
     'Message on gift card',
@@ -170,3 +170,5 @@ export const checkoutSessionFor = {
 };
 
 export const SELF_COLLECT = 'Self-collect';
+
+export const HITPAY_PAYMENT_PURPOSE = ['standard', 'customised'];
