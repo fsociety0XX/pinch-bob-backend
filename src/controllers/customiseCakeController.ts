@@ -234,44 +234,6 @@ const generatePaymentLink = async (
 export const submitCustomerForm = catchAsync(
   async (req: Request, res: Response) => {
     const { brand, delivery, user, bakes, images } = req.body;
-
-    let deliveryObj;
-    try {
-      deliveryObj = JSON.parse(delivery);
-    } catch (error) {
-      return res
-        .status(400)
-        .json({ status: 'error', message: 'Invalid delivery data' });
-    }
-
-    let bakesArray;
-    try {
-      bakesArray = JSON.parse(bakes);
-    } catch (error) {
-      return res
-        .status(400)
-        .json({ status: 'error', message: 'Invalid bakes data' });
-    }
-
-    let imagesArray;
-    try {
-      imagesArray = JSON.parse(images);
-    } catch (error) {
-      return res
-        .status(400)
-        .json({ status: 'error', message: 'Invalid images data' });
-    }
-
-    const {
-      city,
-      country,
-      address1,
-      address2,
-      postalCode,
-      unitNumber,
-      recipientName,
-      recipientPhone,
-    } = deliveryObj.address;
     const { email, firstName, lastName, phone } = JSON.parse(user);
 
     // creating user
@@ -286,29 +248,50 @@ export const submitCustomerForm = catchAsync(
     const options = { upsert: true, returnOriginal: false };
     const result = await User.findOneAndUpdate(filter, update, options);
 
-    // creating address
-    const newAddress = {
-      brand,
-      firstName: recipientName || firstName,
-      lastName: recipientName ? '.' : lastName,
-      city,
-      country,
-      address1,
-      address2,
-      postalCode,
-      phone: recipientPhone || phone,
-      unitNumber,
-      user: new mongoose.Types.ObjectId(result!._id),
-    };
-    const createdAddress = await Address.create(newAddress);
-
-    deliveryObj.address = createdAddress._id;
-    req.body.delivery = deliveryObj;
-
     req.body.user = result?._id;
 
-    req.body.bakes = bakesArray;
-    req.body.images = imagesArray;
+    if (delivery) {
+      const deliveryObj = JSON.parse(delivery);
+      if (deliveryObj.address) {
+        const {
+          city,
+          country,
+          address1,
+          address2,
+          postalCode,
+          unitNumber,
+          recipientName,
+          recipientPhone,
+        } = deliveryObj.address || {};
+
+        // creating address
+        const newAddress = {
+          brand,
+          firstName: recipientName || firstName,
+          lastName: recipientName ? '.' : lastName,
+          city,
+          country,
+          address1,
+          address2,
+          postalCode,
+          phone: recipientPhone || phone,
+          unitNumber,
+          user: new mongoose.Types.ObjectId(result!._id),
+        };
+        const createdAddress = await Address.create(newAddress);
+        deliveryObj.address = createdAddress._id;
+      }
+
+      req.body.delivery = deliveryObj;
+    }
+    if (bakes) {
+      const bakesArray = JSON.parse(bakes);
+      req.body.bakes = bakesArray;
+    }
+    if (images) {
+      const imagesArray = JSON.parse(images);
+      req.body.images = imagesArray;
+    }
 
     if (req.files?.length) {
       req.body.images = req.files;
