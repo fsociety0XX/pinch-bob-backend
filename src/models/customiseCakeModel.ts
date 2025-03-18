@@ -1,11 +1,8 @@
 import mongoose, { Query, model } from 'mongoose';
-import Stripe from 'stripe';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
 import { brandEnum, customiseOrderEnums } from '@src/types/customTypes';
 import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
-
-type StripeWebhookEvent = Stripe.Event;
 
 interface IPhoto {
   key: string;
@@ -33,6 +30,8 @@ interface IDelivery {
     postalCode: string;
     phone: number;
   };
+  recipientName: string;
+  recipientPhone: string;
 }
 
 interface IBakes {
@@ -58,6 +57,16 @@ interface IFondant {
   details: string;
 }
 
+export interface IHitpayDetails {
+  id: string;
+  status: string;
+  amount: string;
+  paymentMethod: string;
+  transactionId: string;
+  paymentRequestId: string;
+  receiptUrl: string;
+}
+
 export interface ICustomiseCake {
   _id: string;
   brand: string;
@@ -68,7 +77,7 @@ export interface ICustomiseCake {
   specialRequest: string;
   flavour: mongoose.Schema.Types.ObjectId;
   message: string;
-  messagePlacement: string;
+  cakeMsgLocation: string;
   images: IPhoto[];
   bakes: IBakes[];
   baseColour: string;
@@ -107,11 +116,8 @@ export interface ICustomiseCake {
   discountedAmt: number;
   total: number;
   paid: boolean;
-  stripeDetails: StripeWebhookEvent;
-  checkoutSession: {
-    id: string;
-    link: string;
-  };
+  hitpayDetails: IHitpayDetails;
+  paymentLink: string;
   woodeliveryTaskId: string;
   active: boolean;
 }
@@ -132,6 +138,8 @@ const DeliverySchema = new mongoose.Schema<IDelivery>({
     type: mongoose.Schema.ObjectId,
     ref: 'Address',
   },
+  recipientName: String,
+  recipientPhone: String,
 });
 
 const ImageSchema = new mongoose.Schema<IPhoto>({
@@ -225,9 +233,9 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       required: [true, 'A flavour is required'],
     },
     message: String,
-    messagePlacement: {
+    cakeMsgLocation: {
       type: String,
-      enum: customiseOrderEnums.messagePlacement,
+      enum: customiseOrderEnums.cakeMsgLocation,
     },
     images: [ImageSchema],
     bakes: [BakesSchema],
@@ -298,11 +306,8 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       type: Boolean,
       default: false,
     },
-    stripeDetails: Object,
-    checkoutSession: {
-      id: String,
-      link: String,
-    },
+    hitpayDetails: Object,
+    paymentLink: String,
     woodeliveryTaskId: String,
     active: {
       type: Boolean,

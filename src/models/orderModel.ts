@@ -130,6 +130,7 @@ export interface IOrder {
   stripeDetails: StripeWebhookEvent;
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
+  customiseCakeForm: boolean;
   active: boolean;
   createdAt: string;
 }
@@ -275,6 +276,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     stripeDetails: Object,
     hitpayDetails: Object,
     woodeliveryTaskId: String,
+    customiseCakeForm: Boolean,
     active: {
       type: Boolean,
       default: true,

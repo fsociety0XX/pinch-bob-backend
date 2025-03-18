@@ -24,6 +24,7 @@ export interface IDelivery {
   driverDetails?: IDriver;
   status?: string;
   instructions?: string;
+  customiseCakeForm: boolean;
   active: boolean;
 }
 
@@ -67,6 +68,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     driverDetails: DriverSchema,
     status: String,
     instructions: String,
+    customiseCakeForm: Boolean,
     active: {
       type: Boolean,
       default: true,
