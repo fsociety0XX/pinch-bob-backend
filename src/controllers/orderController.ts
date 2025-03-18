@@ -583,7 +583,7 @@ const createDelivery = async (id: string, update = false) => {
     createWoodeliveryTask(order, update)
       .then(async (response) => {
         const task = await response.json();
-        createDeliveryDocument(order, task);
+        createDeliveryDocument(order, task, update);
         await Order.findByIdAndUpdate(id, {
           woodeliveryTaskId: task.data.guid,
           status: WOODELIVERY_STATUS[task?.data?.statusId],
@@ -847,7 +847,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 
   await updateProductAfterPurchase(order);
   await createDelivery(order?._id);
-  // await sendOrderConfirmationEmail(email, order);
+  await sendOrderConfirmationEmail(email, order);
 
   res.status(StatusCode.CREATE).json({
     status: 'success',
