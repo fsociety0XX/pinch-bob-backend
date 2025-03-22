@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   authenticateOrderAccess,
+  bulkCreateOrders,
   createOrder,
   deleteManyOrder,
   deleteOrder,
@@ -12,6 +13,7 @@ import {
   updateOrder,
 } from '@src/controllers/orderController';
 import {
+  BULK_ORDER,
   GET_WOO_ID,
   PLACE_ORDER,
   TRIGGER_ORDER_FAIL_EMAIL,
@@ -31,6 +33,7 @@ orderRouter.route('/:id').get(authenticateOrderAccess, getOneOrder);
 
 orderRouter.use(roleRistriction(Role.ADMIN));
 orderRouter.route('/').post(createOrder);
+orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
 orderRouter.route('/').patch(deleteManyOrder);
 orderRouter.route('/:id').patch(updateOrder).delete(deleteOrder);
 

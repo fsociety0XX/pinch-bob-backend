@@ -18,6 +18,7 @@ export const ORDER_ROUTE = `${VERSION1}/order`;
 export const DELIVERY_ROUTE = `${VERSION1}/delivery`;
 export const COUPON_ROUTE = `${VERSION1}/coupon`;
 export const CUSTOMISE_CAKE_ROUTE = `${VERSION1}/customiseCake`;
+export const REPORT_ROUTE = `${VERSION1}/report`;
 export const STRIPE_WEBHOOK_ROUTE = `${VERSION1}/stripe-webhook`;
 export const HITPAY_WEBHOOK_ROUTE = `${VERSION1}/hitpay-webhook`;
 export const SEARCH = `${VERSION1}/search`;
@@ -35,10 +36,11 @@ export const CHANGE_PASSWORD = `/change-password`;
 export const ADD_TO_WISHLIST = `/addToWishlist/:id`;
 export const ADD_TO_CART = `/addToCart/:id`;
 
-// Checkout session
+// ORDER
 export const PLACE_ORDER = '/place-order';
 export const GET_WOO_ID = '/woodeliveryId';
 export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
+export const BULK_ORDER = '/bulk';
 
 // DELIVERY
 export const WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/tasks`;
@@ -61,3 +63,7 @@ export const GA_URL = `https://www.google-analytics.com/mp/collect`;
 // CUSTOMISE CAKE
 export const UPDATE_FORM = '/form/:id';
 export const SEND_PAYMENT_LINK = '/send/:id';
+
+// REPORTS
+export const CUSTOMER_ORDER_REPORT = '/customer-order';
+export const CUSTOMER_DELIVERY_REPORT = '/customer-delivery';
