@@ -269,7 +269,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     moneyReceivedForMoneyPulling: Boolean,
     preparationStatus: {
       type: String,
-      default: '',
+      default: preparationStatusType[0],
       enum: preparationStatusType,
     },
     status: String,

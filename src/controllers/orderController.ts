@@ -1,14 +1,14 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable prefer-destructuring */
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-
 import Stripe from 'stripe';
 import cron from 'node-cron';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { ObjectId } from 'mongoose';
+import mongoose, { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -856,6 +856,84 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     },
   });
 });
+
+export const bulkCreateOrders = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const ordersData = req.body.orders; // Expect an array of orders from Excel
+    const session = await mongoose.startSession();
+
+    try {
+      session.startTransaction();
+      const createdOrders = [];
+
+      // eslint-disable-next-line no-restricted-syntax
+      for (const orderData of ordersData) {
+        const {
+          brand,
+          delivery: { address },
+          user: userData,
+        } = orderData;
+        let user = await User.findOne({ email: userData.email }).session(
+          session
+        );
+
+        if (!user) {
+          user = new User(userData);
+          await user.save({ validateBeforeSave: false, session });
+        }
+
+        orderData.user = user._id;
+
+        // Create address
+        const newAddress = { brand, user: user._id, ...address };
+        const createdAddress = await Address.create([newAddress], { session });
+        orderData.delivery.address = createdAddress[0]._id;
+
+        // Generate order number and create order
+        orderData.orderNumber = generateUniqueIds();
+        const newOrder = await Order.create([orderData], { session });
+        const order = await Order.findById(newOrder[0]._id).lean();
+
+        // Handle Coupons
+        if (order?.pricingSummary?.coupon) {
+          const cUser = await User.findById(order.user).session(session);
+          const couponId = order.pricingSummary.coupon._id;
+          if (cUser && !cUser.usedCoupons?.includes(couponId)) {
+            cUser.usedCoupons.push(couponId);
+            await Coupon.updateOne(
+              { _id: couponId },
+              { $inc: { used: 1 } }
+            ).session(session);
+            await cUser.save({ validateBeforeSave: false, session });
+          }
+        }
+
+        await updateProductAfterPurchase(order);
+        await createDelivery(order._id);
+        await sendOrderConfirmationEmail(userData.email, order);
+
+        createdOrders.push(order);
+      }
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(StatusCode.CREATE).json({
+        status: 'success',
+        data: {
+          data: createdOrders,
+        },
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new AppError('Error in bulk upload', StatusCode.INTERNAL_SERVER_ERROR)
+      );
+    }
+  }
+);
 
 export const deleteOrder = softDeleteOne(Order);
 export const deleteManyOrder = softDeleteMany(Order);

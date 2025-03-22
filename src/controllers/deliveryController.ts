@@ -187,13 +187,16 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { driverId, method } = req.query;
+    const { driverId, method, collectionTime } = req.query;
     if (driverId) {
       req.query['driverDetails.id'] = (driverId as string).split(',');
       delete req.query.driverId;
     }
     if (method) {
       req.query.method = (method as string).split(',');
+    }
+    if (collectionTime) {
+      req.query.collectionTime = (collectionTime as string).split(',');
     }
 
     await getAll(Delivery)(req, res, next);
