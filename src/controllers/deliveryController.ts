@@ -149,7 +149,8 @@ const convertTo24Hour = (time: string) =>
 
 export const getDeliveryWithCollectionTime = catchAsync(
   async (req: Request, res: Response) => {
-    const { collectionTime, gteDeliveryDate, lteDeliveryDate } = req.query;
+    const { collectionTime, gteDeliveryDate, lteDeliveryDate, brand } =
+      req.query;
 
     if (!collectionTime) {
       return new AppError(
@@ -171,6 +172,7 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
     const allDeliveries = await Delivery.find({
       deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+      brand,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-shadow
