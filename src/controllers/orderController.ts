@@ -777,7 +777,7 @@ export const stripeWebhookHandler = (req: Request, res: Response): void => {
   }
 };
 
-// Used for GET One - Only allow user to get their respective order
+// Used for GET One and Update - Only allow user to get or update their respective order
 export const authenticateOrderAccess = catchAsync(
   async (req: IRequestWithUser, _: Response, next: NextFunction) => {
     const order = await Order.findById(req.params.id);
@@ -954,7 +954,11 @@ export const getAllOrder = catchAsync(
     }
 
     if (superCategory) {
-      const products = await Product.find({ superCategory });
+      const query = {};
+      query.superCategory = {
+        $in: (superCategory as string).split(','),
+      };
+      const products = await Product.find(query);
       if (!products || !products.length) {
         return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
       }
@@ -962,7 +966,11 @@ export const getAllOrder = catchAsync(
       filter['product.product'] = { $in: productIds };
     }
     if (category) {
-      const products = await Product.find({ category });
+      const query = {};
+      query.category = {
+        $in: (category as string).split(','),
+      };
+      const products = await Product.find(query);
       if (!products || !products.length) {
         return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
       }
@@ -970,7 +978,11 @@ export const getAllOrder = catchAsync(
       filter['product.product'] = { $in: productIds };
     }
     if (subCategory) {
-      const products = await Product.find({ subCategory });
+      const query = {};
+      query.subCategory = {
+        $in: (subCategory as string).split(','),
+      };
+      const products = await Product.find(query);
       if (!products || !products.length) {
         return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
       }

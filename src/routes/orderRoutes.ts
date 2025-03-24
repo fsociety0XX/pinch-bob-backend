@@ -29,12 +29,14 @@ orderRouter.post(PLACE_ORDER, placeOrder);
 orderRouter.get(TRIGGER_ORDER_FAIL_EMAIL, triggerOrderFailEmail);
 
 orderRouter.route('/').get(appendUserIdInReqQuery, getAllOrder);
-orderRouter.route('/:id').get(authenticateOrderAccess, getOneOrder);
+orderRouter
+  .route('/:id')
+  .get(authenticateOrderAccess, getOneOrder)
+  .patch(authenticateOrderAccess, updateOrder);
 
 orderRouter.use(roleRistriction(Role.ADMIN));
-orderRouter.route('/').post(createOrder);
+orderRouter.route('/').post(createOrder).patch(deleteManyOrder);
 orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
-orderRouter.route('/').patch(deleteManyOrder);
-orderRouter.route('/:id').patch(updateOrder).delete(deleteOrder);
+orderRouter.route('/:id').delete(deleteOrder);
 
 export default orderRouter;
