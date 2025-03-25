@@ -960,7 +960,7 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -972,7 +972,7 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -984,7 +984,7 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND);
+        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
