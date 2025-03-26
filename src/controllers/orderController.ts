@@ -941,8 +941,14 @@ export const getOneOrder = getOne(Order);
 
 export const getAllOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { orderNumber, superCategory, category, subCategory, flavour } =
-      req.query;
+    const {
+      orderNumber,
+      superCategory,
+      category,
+      subCategory,
+      flavour,
+      moneyPullingOrders,
+    } = req.query;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = {};
@@ -992,11 +998,14 @@ export const getAllOrder = catchAsync(
     if (flavour) {
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
-
+    if (moneyPullingOrders) {
+      filter['product.moneyPulling.want'] = true;
+    }
     delete req.query.superCategory;
     delete req.query.category;
     delete req.query.subCategory;
     delete req.query.flavour;
+    delete req.query.moneyPullingOrders;
 
     req.query = { ...req.query, ...filter };
     await getAll(Order)(req, res, next);
