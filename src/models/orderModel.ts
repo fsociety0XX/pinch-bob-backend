@@ -198,7 +198,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
 });
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
-  date: Date,
+  date: String,
   method: {
     type: mongoose.Schema.ObjectId,
     ref: 'DeliveryMethod',
