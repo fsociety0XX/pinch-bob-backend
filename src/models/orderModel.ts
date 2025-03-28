@@ -198,7 +198,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
 });
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
-  date: String,
+  date: Date,
   method: {
     type: mongoose.Schema.ObjectId,
     ref: 'DeliveryMethod',
@@ -265,7 +265,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
       required: [true, ORDER_SCHEMA_VALIDATION.paid],
       default: false,
     },
-    corporate: Boolean,
+    corporate: {
+      type: Boolean,
+      default: false,
+    },
     moneyReceivedForMoneyPulling: Boolean,
     preparationStatus: {
       type: String,
@@ -276,7 +279,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     stripeDetails: Object,
     hitpayDetails: Object,
     woodeliveryTaskId: String,
-    customiseCakeForm: Boolean,
+    customiseCakeForm: {
+      type: Boolean,
+      default: false,
+    },
     active: {
       type: Boolean,
       default: true,
