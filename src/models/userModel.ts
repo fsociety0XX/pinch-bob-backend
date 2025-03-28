@@ -237,7 +237,6 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
     otp: String,
     otpTimestamp: Date,
