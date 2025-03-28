@@ -265,18 +265,24 @@ const orderSchema = new mongoose.Schema<IOrder>(
       required: [true, ORDER_SCHEMA_VALIDATION.paid],
       default: false,
     },
-    corporate: Boolean,
+    corporate: {
+      type: Boolean,
+      default: false,
+    },
     moneyReceivedForMoneyPulling: Boolean,
     preparationStatus: {
       type: String,
-      default: '',
+      default: preparationStatusType[0],
       enum: preparationStatusType,
     },
     status: String,
     stripeDetails: Object,
     hitpayDetails: Object,
     woodeliveryTaskId: String,
-    customiseCakeForm: Boolean,
+    customiseCakeForm: {
+      type: Boolean,
+      default: false,
+    },
     active: {
       type: Boolean,
       default: true,

@@ -37,6 +37,7 @@ import {
   USER_ROUTE,
   STRIPE_WEBHOOK_ROUTE,
   SUB_CATEGORY_ROUTE,
+  REPORT_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -62,6 +63,7 @@ import couponRouter from './routes/couponRoutes';
 import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
 import subCategoryRouter from './routes/subCategoryRoutes';
+import reportRouter from './routes/reportRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -147,6 +149,7 @@ app.use(ORDER_ROUTE, orderRouter);
 app.use(DELIVERY_ROUTE, deliveryRouter);
 app.use(COUPON_ROUTE, couponRouter);
 app.use(CUSTOMISE_CAKE_ROUTE, customiseCakeRouter);
+app.use(REPORT_ROUTE, reportRouter);
 app
   .use(protect, roleRistriction(Role.ADMIN))
   .route(SEARCH)

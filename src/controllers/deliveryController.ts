@@ -148,21 +148,26 @@ const convertTo24Hour = (time: string) =>
   moment(time, ['h:mma', 'h:mm a']).format('HH:mm');
 
 export const getDeliveryWithCollectionTime = catchAsync(
-  async (req: Request, res: Response) => {
-    const { collectionTime, gteDeliveryDate, lteDeliveryDate } = req.query;
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { collectionTime, gteDeliveryDate, lteDeliveryDate, brand } =
+      req.query;
 
     if (!collectionTime) {
-      return new AppError(
-        DELIVERY_COLLECTION_TIME.collectionTime,
-        StatusCode.BAD_REQUEST
+      return next(
+        new AppError(
+          DELIVERY_COLLECTION_TIME.collectionTime,
+          StatusCode.BAD_REQUEST
+        )
       );
     }
 
     const [startTimeStr, endTimeStr] = (collectionTime as string).split('-');
     if (!startTimeStr || !endTimeStr) {
-      return new AppError(
-        DELIVERY_COLLECTION_TIME.timeFormat,
-        StatusCode.BAD_REQUEST
+      return next(
+        new AppError(
+          DELIVERY_COLLECTION_TIME.timeFormat,
+          StatusCode.BAD_REQUEST
+        )
       );
     }
 
@@ -171,6 +176,7 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
     const allDeliveries = await Delivery.find({
       deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+      brand,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-shadow
@@ -187,13 +193,16 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { driverId, method } = req.query;
+    const { driverId, method, collectionTime } = req.query;
     if (driverId) {
       req.query['driverDetails.id'] = (driverId as string).split(',');
       delete req.query.driverId;
     }
     if (method) {
       req.query.method = (method as string).split(',');
+    }
+    if (collectionTime) {
+      req.query.collectionTime = (collectionTime as string).split(',');
     }
 
     await getAll(Delivery)(req, res, next);

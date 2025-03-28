@@ -53,7 +53,8 @@ const orderFieldsToRemove = {
 
 export const createSearchQuery = (
   mode: string,
-  search: string
+  search: string,
+  brand: string
 ): { pipeline: any; model: any } => {
   let pipeline;
   let model;
@@ -61,6 +62,11 @@ export const createSearchQuery = (
 
   if (mode === 'order') {
     pipeline = [
+      {
+        $match: {
+          brand,
+        },
+      },
       {
         $unwind: '$product', // Deconstruct the product array
       },
@@ -161,6 +167,11 @@ export const createSearchQuery = (
   }
   if (mode === 'delivery') {
     pipeline = [
+      {
+        $match: {
+          brand,
+        },
+      },
       {
         $lookup: {
           from: 'orders',
@@ -291,7 +302,8 @@ export const globalTableSearch = catchAsync(
   async (req: Request, res: Response) => {
     const searchTerm = (req.query.search as string) || '';
     const mode = (req.query.mode as string) || '';
-    const { pipeline, model } = createSearchQuery(mode, searchTerm);
+    const brand = (req.query.brand as string) || '';
+    const { pipeline, model } = createSearchQuery(mode, searchTerm, brand);
 
     const docs = await model.aggregate(pipeline);
     res.status(StatusCode.SUCCESS).json({

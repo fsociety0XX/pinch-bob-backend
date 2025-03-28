@@ -1,6 +1,13 @@
 import mongoose, { Query, model } from 'mongoose';
-import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
-import { brandEnum, customiseOrderEnums } from '@src/types/customTypes';
+import {
+  COMMON_SCHEMA_VALIDATION,
+  ORDER_SCHEMA_VALIDATION,
+} from '@src/constants/messages';
+import {
+  brandEnum,
+  customiseOrderEnums,
+  notesEnum,
+} from '@src/types/customTypes';
 import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
@@ -103,7 +110,10 @@ export interface ICustomiseCake {
   giftCardMsg: string;
   includeCoolerBag: boolean;
   candlesAndSparklers: ICandles[];
-  notes: string;
+  moneyPulling?: {
+    noteType: string;
+    qty: number;
+  };
   price: number;
   quantity: number;
   size: mongoose.Schema.Types.ObjectId;
@@ -277,7 +287,22 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       default: false,
     },
     candlesAndSparklers: [CandleSchema],
-    notes: String,
+    moneyPulling: {
+      type: {
+        noteType: {
+          type: String,
+          enum: notesEnum,
+        },
+        qty: {
+          type: Number,
+          max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
+          validate: {
+            validator: Number.isInteger,
+            message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
+          },
+        },
+      },
+    },
     deliveryFee: Number,
     discountedAmt: Number,
     total: Number,
