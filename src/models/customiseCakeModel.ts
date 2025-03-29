@@ -337,7 +337,6 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
