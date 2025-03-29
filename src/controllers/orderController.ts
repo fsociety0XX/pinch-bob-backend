@@ -8,7 +8,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import mongoose, { ObjectId } from 'mongoose';
+import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -858,80 +858,61 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const bulkCreateOrders = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const ordersData = req.body.orders; // Expect an array of orders from Excel
-    const session = await mongoose.startSession();
+    const createdOrders = [];
 
-    try {
-      session.startTransaction();
-      const createdOrders = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const orderData of ordersData) {
+      const {
+        brand,
+        delivery: { address },
+        user: userData,
+      } = orderData;
 
-      // eslint-disable-next-line no-restricted-syntax
-      for (const orderData of ordersData) {
-        const {
-          brand,
-          delivery: { address },
-          user: userData,
-        } = orderData;
-        let user = await User.findOne({ email: userData.email }).session(
-          session
-        );
+      // Find or create user
+      let user = await User.findOne({ email: userData.email });
+      if (!user) {
+        user = new User(userData);
+        await user.save({ validateBeforeSave: false });
+      }
+      orderData.user = user._id;
 
-        if (!user) {
-          user = new User(userData);
-          await user.save({ validateBeforeSave: false, session });
+      // Create address
+      const newAddress = { brand, user: user._id, ...address };
+      const createdAddress = await Address.create(newAddress);
+      orderData.delivery.address = createdAddress._id;
+
+      // Generate order number and create order
+      orderData.orderNumber = generateUniqueIds();
+      const newOrder = await Order.create(orderData);
+      const order = await Order.findById(newOrder?.id).lean();
+
+      // Handle coupons
+      if (order?.pricingSummary?.coupon) {
+        const cUser = await User.findById(order.user);
+        const couponId = order.pricingSummary.coupon._id;
+
+        if (cUser && !cUser.usedCoupons?.includes(couponId)) {
+          cUser.usedCoupons.push(couponId);
+          await Coupon.updateOne({ _id: couponId }, { $inc: { used: 1 } });
+          await cUser.save({ validateBeforeSave: false });
         }
-
-        orderData.user = user._id;
-
-        // Create address
-        const newAddress = { brand, user: user._id, ...address };
-        const createdAddress = await Address.create([newAddress], { session });
-        orderData.delivery.address = createdAddress[0]._id;
-
-        // Generate order number and create order
-        orderData.orderNumber = generateUniqueIds();
-        const newOrder = await Order.create([orderData], { session });
-        const order = await Order.findById(newOrder[0]._id).lean();
-
-        // Handle Coupons
-        if (order?.pricingSummary?.coupon) {
-          const cUser = await User.findById(order.user).session(session);
-          const couponId = order.pricingSummary.coupon._id;
-          if (cUser && !cUser.usedCoupons?.includes(couponId)) {
-            cUser.usedCoupons.push(couponId);
-            await Coupon.updateOne(
-              { _id: couponId },
-              { $inc: { used: 1 } }
-            ).session(session);
-            await cUser.save({ validateBeforeSave: false, session });
-          }
-        }
-
-        await updateProductAfterPurchase(order);
-        await createDelivery(order._id);
-        await sendOrderConfirmationEmail(userData.email, order);
-
-        createdOrders.push(order);
       }
 
-      // Commit transaction
-      await session.commitTransaction();
-      session.endSession();
+      await updateProductAfterPurchase(order);
+      await createDelivery(order._id);
+      await sendOrderConfirmationEmail(userData.email, order);
 
-      res.status(StatusCode.CREATE).json({
-        status: 'success',
-        data: {
-          data: createdOrders,
-        },
-      });
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      return next(
-        new AppError('Error in bulk upload', StatusCode.INTERNAL_SERVER_ERROR)
-      );
+      createdOrders.push(order);
     }
+
+    res.status(StatusCode.CREATE).json({
+      status: 'success',
+      data: {
+        data: createdOrders,
+      },
+    });
   }
 );
 
@@ -999,7 +980,7 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.moneyPulling.want'] = true;
+      filter['product.moneyPulling.want'] = moneyPullingOrders;
     }
     delete req.query.superCategory;
     delete req.query.category;
