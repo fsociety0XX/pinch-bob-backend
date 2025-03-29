@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import {
+  getAllCustomiseForm,
   sendPaymentLink,
   submitAdminForm,
   submitCustomerForm,
@@ -24,6 +25,8 @@ customiseCakeRouter
 
 customiseCakeRouter.use(protect);
 customiseCakeRouter.use(roleRistriction(Role.ADMIN));
+
+customiseCakeRouter.route('/').get(getAllCustomiseForm);
 
 customiseCakeRouter
   .route('/:id')

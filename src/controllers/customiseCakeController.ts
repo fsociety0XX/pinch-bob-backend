@@ -31,6 +31,7 @@ import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
+import { getAll } from '@src/utils/factoryHandler';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -594,5 +595,20 @@ export const updateCustomiseCakeForm = catchAsync(
         data: customiseCakeOrder,
       },
     });
+  }
+);
+
+export const getAllCustomiseForm = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { moneyPullingOrders, ...otherQueries } = req.query;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: any = { ...otherQueries };
+
+    if (moneyPullingOrders) {
+      filter.moneyPulling = { $exists: moneyPullingOrders };
+    }
+    req.query = filter;
+    await getAll(CustomiseCake)(req, res, next);
   }
 );
