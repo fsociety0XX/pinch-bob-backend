@@ -3,6 +3,7 @@ import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import {
   getAllCustomiseForm,
+  getOneCustomiseCakeForm,
   sendPaymentLink,
   submitAdminForm,
   submitCustomerForm,
@@ -35,7 +36,8 @@ customiseCakeRouter
       'baseColourImg'
     ),
     submitAdminForm
-  );
+  )
+  .get(getOneCustomiseCakeForm);
 
 customiseCakeRouter.route(UPDATE_FORM).patch(
   uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
