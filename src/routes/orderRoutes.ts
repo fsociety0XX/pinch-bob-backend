@@ -21,6 +21,7 @@ import {
 import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import { appendUserIdInReqQuery } from '@src/utils/middlewares';
+import uploadImage from '@src/utils/uploadImage';
 
 const orderRouter = express.Router();
 orderRouter.get(GET_WOO_ID, getWoodeliveryId);
@@ -32,7 +33,14 @@ orderRouter.route('/').get(appendUserIdInReqQuery, getAllOrder);
 orderRouter
   .route('/:id')
   .get(authenticateOrderAccess, getOneOrder)
-  .patch(authenticateOrderAccess, updateOrder);
+  .patch(
+    authenticateOrderAccess,
+    uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).array(
+      'additionalRefImages',
+      5
+    ),
+    updateOrder
+  );
 
 orderRouter.use(roleRistriction(Role.ADMIN));
 orderRouter.route('/').post(createOrder).patch(deleteManyOrder);

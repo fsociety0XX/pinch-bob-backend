@@ -996,6 +996,9 @@ export const getAllOrder = catchAsync(
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { delivery, recipInfo } = req.body;
+    if (req.files?.length) {
+      req.body.additionalRefImages = req.files;
+    }
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,

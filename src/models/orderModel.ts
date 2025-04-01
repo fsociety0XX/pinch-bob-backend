@@ -88,6 +88,7 @@ export interface IProduct {
   };
   card: string; // value selected from card options of the product
   refImage?: IPhoto;
+  additionalRefImages?: IPhoto[];
   msg?: string; // gift card message
   cakeMsg: string; // message on cake or board
   specialInstructions?: string;
@@ -169,6 +170,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   },
   card: String,
   refImage: ProductImageSchema,
+  additionalRefImages: [ProductImageSchema],
   msg: String,
   cakeMsg: String,
   specialInstructions: String,

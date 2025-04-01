@@ -31,7 +31,7 @@ import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
-import { getAll } from '@src/utils/factoryHandler';
+import { getAll, getOne } from '@src/utils/factoryHandler';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -612,3 +612,5 @@ export const getAllCustomiseForm = catchAsync(
     await getAll(CustomiseCake)(req, res, next);
   }
 );
+
+export const getOneCustomiseCakeForm = getOne(CustomiseCake);
