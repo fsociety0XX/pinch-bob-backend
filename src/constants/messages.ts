@@ -207,8 +207,7 @@ export const SUBCATEGORY_SCHEMA_VALIDATION = {
   category: 'A category is required.',
 };
 
-export const PRODUCT_NOT_FOUND =
-  'No product belongs to the given super category id';
+export const PRODUCT_NOT_FOUND = 'No product belongs to the given id';
 
 export const DELIVERY_COLLECTION_TIME = {
   collectionTime: 'CollectionTime is required',

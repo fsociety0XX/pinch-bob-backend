@@ -40,7 +40,6 @@ import {
   ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
-  PRODUCT_NOT_FOUND,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -947,7 +946,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -959,7 +963,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -971,7 +980,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
