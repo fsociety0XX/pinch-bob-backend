@@ -40,6 +40,7 @@ import {
   ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
+  REF_IMG_UPDATE,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -1031,6 +1032,37 @@ export const updateOrder = catchAsync(
       data: {
         data: order,
       },
+    });
+  }
+);
+
+export const updateRefImages = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { productItemId } = req.body;
+
+    // Ensure files are attached
+    if (!req.files?.length) {
+      return next(new AppError(REF_IMG_UPDATE.noImg, StatusCode.BAD_REQUEST));
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
+    }
+
+    // Find the product item by its _id (subdocument)
+    const productItem = order.product.id(productItemId);
+    if (!productItem) {
+      return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
+    }
+
+    productItem.additionalRefImages.push(...req.files);
+
+    await order.save();
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: REF_IMG_UPDATE.imgUploadSuccess,
     });
   }
 );

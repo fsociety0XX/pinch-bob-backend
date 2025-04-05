@@ -11,12 +11,14 @@ import {
   placeOrder,
   triggerOrderFailEmail,
   updateOrder,
+  updateRefImages,
 } from '@src/controllers/orderController';
 import {
   BULK_ORDER,
   GET_WOO_ID,
   PLACE_ORDER,
   TRIGGER_ORDER_FAIL_EMAIL,
+  UPDATE_REF_IMG,
 } from '@src/constants/routeConstants';
 import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
@@ -33,18 +35,21 @@ orderRouter.route('/').get(appendUserIdInReqQuery, getAllOrder);
 orderRouter
   .route('/:id')
   .get(authenticateOrderAccess, getOneOrder)
+  .patch(authenticateOrderAccess, updateOrder);
+
+orderRouter.use(roleRistriction(Role.ADMIN));
+orderRouter.route('/').post(createOrder).patch(deleteManyOrder);
+orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
+orderRouter
+  .route(UPDATE_REF_IMG)
   .patch(
     authenticateOrderAccess,
     uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).array(
       'additionalRefImages',
       5
     ),
-    updateOrder
+    updateRefImages
   );
-
-orderRouter.use(roleRistriction(Role.ADMIN));
-orderRouter.route('/').post(createOrder).patch(deleteManyOrder);
-orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
 orderRouter.route('/:id').delete(deleteOrder);
 
 export default orderRouter;
