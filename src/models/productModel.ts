@@ -190,7 +190,10 @@ const EdiblePrintSchema = new mongoose.Schema({
 
 const productSchema = new mongoose.Schema<IProduct>(
   {
-    productNumber: String,
+    productNumber: {
+      type: String,
+      unique: true,
+    },
     name: {
       type: String,
       trim: true,

@@ -7,6 +7,7 @@ import {
   USER_SCHEMA_VALIDATION,
 } from '@src/constants/messages';
 import { Role, brandEnum, notesEnum } from '@src/types/customTypes';
+import { generateUniqueIds } from '@src/utils/functions';
 
 interface IWishlist {
   _id: Types.ObjectId;
@@ -68,6 +69,7 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 export interface IUser {
   _id: string;
   sqlId: number;
+  userId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -157,6 +159,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   {
     sqlId: {
       type: Number,
+      unique: true,
+    },
+    userId: {
+      type: String,
       unique: true,
     },
     firstName: {
@@ -252,6 +258,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 userSchema.index({ email: 1, phone: 1, brand: 1 }, { unique: true });
 
 userSchema.pre('save', async function (next) {
+  this.userId = generateUniqueIds();
   if (!this.isModified('password')) return next();
   // encrypt password
   this.password = await bcrypt.hash(this.password, 12);

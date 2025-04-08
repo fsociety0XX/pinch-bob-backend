@@ -109,6 +109,7 @@ export interface ICustomiseCake {
   includeGiftCard: boolean;
   giftCardMsg: string;
   includeCoolerBag: boolean;
+  coolerBagSize: string;
   candlesAndSparklers: ICandles[];
   moneyPulling?: {
     noteType: string;
@@ -116,7 +117,7 @@ export interface ICustomiseCake {
   };
   price: number;
   quantity: number;
-  size: mongoose.Schema.Types.ObjectId;
+  size: string;
   instructions: string;
   coupon: mongoose.Schema.Types.ObjectId;
   formStatus: string;
@@ -286,6 +287,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       type: Boolean,
       default: false,
     },
+    coolerBagSize: String,
     candlesAndSparklers: [CandleSchema],
     moneyPulling: {
       type: {
@@ -308,10 +310,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     total: Number,
     price: Number,
     quantity: Number,
-    size: {
-      type: mongoose.Schema.ObjectId,
-      ref: 'Size',
-    },
+    size: String,
     instructions: String,
     coupon: {
       type: mongoose.Schema.ObjectId,
@@ -364,7 +363,7 @@ customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
       select: 'firstName lastName email phone',
     });
     this.populate({
-      path: 'bakes.product candlesAndSparklers.product flavour size',
+      path: 'bakes.product candlesAndSparklers.product flavour',
       select: 'name images',
     });
     this.populate({

@@ -112,6 +112,21 @@ export interface IHitpayDetails {
   receiptUrl: string;
 }
 
+export interface ICorporateProduct {
+  name: string;
+  flavour: string;
+  size: string;
+  quantity: number;
+  specialInstructions?: string;
+  ediblePrints: string;
+  refImages: string[];
+  giftCardMsg: string;
+  notes: string;
+  fondantName?: string;
+  fondantNumber?: string;
+  complexAccessories?: string;
+}
+
 export interface IOrder {
   id: string;
   orderNumber?: string;
@@ -119,6 +134,7 @@ export interface IOrder {
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
+  corporateProduct: ICorporateProduct[];
   user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
@@ -142,6 +158,21 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
   mimetype: String,
   size: Number,
   location: String,
+});
+
+const CorporateProductSchema = new mongoose.Schema<ICorporateProduct>({
+  name: String,
+  flavour: String,
+  size: String,
+  quantity: Number,
+  specialInstructions: String,
+  ediblePrints: String,
+  refImages: [String],
+  giftCardMsg: String,
+  notes: String,
+  fondantName: String,
+  fondantNumber: String,
+  complexAccessories: String,
 });
 
 const ProductSchema = new mongoose.Schema<IProduct>({
@@ -227,7 +258,10 @@ const PricingSummarySchema = new mongoose.Schema<IPricingSummary>({
 
 const orderSchema = new mongoose.Schema<IOrder>(
   {
-    orderNumber: String,
+    orderNumber: {
+      type: String,
+      unique: true,
+    },
     gaClientId: String,
     brand: {
       type: String,
@@ -245,6 +279,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
         required: [true, ORDER_SCHEMA_VALIDATION.product],
       },
     ],
+    corporateProduct: [CorporateProductSchema],
     user: {
       type: mongoose.Schema.ObjectId,
       ref: 'User',
