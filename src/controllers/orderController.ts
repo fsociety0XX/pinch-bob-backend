@@ -465,37 +465,39 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   } = order;
 
   let taskDesc = '';
-  const packages = order.product.map(
-    (
-      {
-        product,
-        quantity,
-        price,
-        size,
-        pieces,
-        flavour,
-        msg,
-        fondantName,
-        fondantNumber,
-      },
-      index
-    ) => {
-      taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
-      return {
-        productId: product.id,
-        orderId: order.orderNumber,
-        quantity,
-        price,
-        field1: size?.name,
-        field2: pieces?.name,
-        field3: flavour?.name,
-        field4: msg || '',
-        field5: `Fondant Name: ${fondantName || ''} and Fondant Number: ${
-          fondantNumber || ''
-        }`,
-      };
-    }
-  );
+  const packages = order?.corporate
+    ? []
+    : order.product.map(
+        (
+          {
+            product,
+            quantity,
+            price,
+            size,
+            pieces,
+            flavour,
+            msg,
+            fondantName,
+            fondantNumber,
+          },
+          index
+        ) => {
+          taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
+          return {
+            productId: product.id,
+            orderId: order.orderNumber,
+            quantity,
+            price,
+            field1: size?.name,
+            field2: pieces?.name,
+            field3: flavour?.name,
+            field4: msg || '',
+            field5: `Fondant Name: ${fondantName || ''} and Fondant Number: ${
+              fondantNumber || ''
+            }`,
+          };
+        }
+      );
   const task: IWoodeliveryTask = {
     taskTypeId: 1, // Refer to woodelivery swagger
     taskDesc,
@@ -508,7 +510,6 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     recipientName: recipInfo?.name || '',
     recipientPhone: String(recipInfo?.contact || ''),
     tag1: brand,
-    packages,
     destinationNotes: instructions || '',
   };
   if (address?.id) {
@@ -522,6 +523,9 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   }
   if (recipInfo?.sameAsSender) {
     task.recipientEmail = user?.email;
+  }
+  if (packages.length) {
+    task.packages = packages;
   }
 
   return update
@@ -889,18 +893,18 @@ export const bulkCreateOrders = catchAsync(
       const order = await Order.findById(newOrder?.id).lean();
 
       // Handle coupons
-      if (order?.pricingSummary?.coupon) {
-        const cUser = await User.findById(order.user);
-        const couponId = order.pricingSummary.coupon._id;
+      // if (order?.pricingSummary?.coupon) {
+      //   const cUser = await User.findById(order.user);
+      //   const couponId = order.pricingSummary.coupon._id;
 
-        if (cUser && !cUser.usedCoupons?.includes(couponId)) {
-          cUser.usedCoupons.push(couponId);
-          await Coupon.updateOne({ _id: couponId }, { $inc: { used: 1 } });
-          await cUser.save({ validateBeforeSave: false });
-        }
-      }
+      //   if (cUser && !cUser.usedCoupons?.includes(couponId)) {
+      //     cUser.usedCoupons.push(couponId);
+      //     await Coupon.updateOne({ _id: couponId }, { $inc: { used: 1 } });
+      //     await cUser.save({ validateBeforeSave: false });
+      //   }
+      // }
 
-      await updateProductAfterPurchase(order);
+      // await updateProductAfterPurchase(order);
       await createDelivery(order._id);
       await sendOrderConfirmationEmail(userData.email, order);
 

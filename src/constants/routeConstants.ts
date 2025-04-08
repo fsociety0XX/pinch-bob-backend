@@ -68,3 +68,4 @@ export const SEND_PAYMENT_LINK = '/send/:id';
 // REPORTS
 export const CUSTOMER_ORDER_REPORT = '/customer-order';
 export const CUSTOMER_DELIVERY_REPORT = '/customer-delivery';
+export const AGGREGATE_REPORT = '/aggregate';

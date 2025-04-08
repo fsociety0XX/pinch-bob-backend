@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { PipelineStage } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order from '@src/models/orderModel';
 import AppError from '@src/utils/appError';
@@ -10,6 +11,7 @@ export const fetchCustomerDataByOrder = catchAsync(
     const endDate = req.query.endDate as string;
     const page = (req.query.page as string) || '1';
     const limit = (req.query.limit as string) || '10';
+    const brand = req.query.brand as string;
 
     if (!startDate || !endDate) {
       return next(
@@ -42,6 +44,7 @@ export const fetchCustomerDataByOrder = catchAsync(
         $match: {
           createdAt: { $gte: start, $lte: end },
           paid: true,
+          ...(brand && { brand }),
         },
       },
       {
@@ -202,9 +205,10 @@ export const fetchCustomerDataByOrder = catchAsync(
         data: reportData[0].data || [],
       },
       meta: {
-        currentPage: pageNum,
+        page: pageNum,
+        limit: limitNum,
         totalPages,
-        totalRecords: total,
+        totalCount: total,
       },
     });
   }
@@ -216,6 +220,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
     const endDate = req.query.endDate as string;
     const page = (req.query.page as string) || '1';
     const limit = (req.query.limit as string) || '10';
+    const brand = req.query.brand as string;
 
     if (!startDate || !endDate) {
       return next(
@@ -263,6 +268,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
         $match: {
           deliveryDateConverted: { $gte: start, $lte: end },
           paid: true,
+          ...(brand && { brand }),
         },
       },
       {
@@ -439,9 +445,204 @@ export const fetchCustomerDataByDelivery = catchAsync(
         data: reportData[0].data || [],
       },
       meta: {
-        currentPage: pageNum,
+        page: pageNum,
+        limit: limitNum,
         totalPages,
-        totalRecords: total,
+        totalCount: total,
+      },
+    });
+  }
+);
+
+export const aggregatedCustomerReport = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const {
+      startDate,
+      endDate,
+      groupBy = 'week',
+      page = '1',
+      limit = '10',
+      brand,
+    } = req.query as {
+      startDate: string;
+      endDate: string;
+      groupBy?: 'week' | 'month';
+      page?: string;
+      limit?: string;
+      brand?: string;
+    };
+
+    if (!startDate || !endDate || !['week', 'month'].includes(groupBy)) {
+      return next(
+        new AppError('Invalid query parameters', StatusCode.BAD_REQUEST)
+      );
+    }
+
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * pageSize;
+
+    const pipeline: PipelineStage[] = [
+      // Step 1: Add orderType
+      {
+        $addFields: { orderType: 'regular' },
+      },
+
+      // Step 2: Union with customiseorders
+      {
+        $unionWith: {
+          coll: 'customiseorders',
+          pipeline: [{ $addFields: { orderType: 'customise' } }],
+        },
+      },
+
+      // Step 3: Filter paid orders in date range
+      {
+        $match: {
+          paid: true,
+          createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+          ...(brand && { brand }),
+        },
+      },
+
+      // Step 4: Lookup user
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+
+      // Step 5: Add helper fields
+      {
+        $addFields: {
+          userCreatedAt: { $arrayElemAt: ['$userDetails.createdAt', 0] },
+          itemsCount: {
+            $cond: {
+              if: { $eq: ['$orderType', 'customise'] },
+              then: { $size: '$bakes' },
+              else: { $size: '$product' },
+            },
+          },
+          isAttachOrder: {
+            $cond: {
+              if: { $eq: ['$orderType', 'customise'] },
+              then: { $gte: [{ $size: '$bakes' }, 2] },
+              else: { $gte: [{ $size: '$product' }, 2] },
+            },
+          },
+          groupPeriod: {
+            $dateToString: {
+              format: groupBy === 'month' ? '%Y-%m' : '%G-W%V',
+              date: '$createdAt',
+            },
+          },
+        },
+      },
+
+      // Step 6: Group by user & period
+      {
+        $group: {
+          _id: { user: '$user', groupPeriod: '$groupPeriod' },
+          firstOrderDate: { $min: '$createdAt' },
+          totalOrders: { $sum: 1 },
+          totalItems: { $sum: '$itemsCount' },
+          userCreatedAt: { $first: '$userCreatedAt' },
+          hasAttachOrder: { $max: '$isAttachOrder' },
+        },
+      },
+
+      // Step 7: Add customer type flags
+      {
+        $addFields: {
+          isActiveAndLoyalCustomer: true,
+          isNewCustomer: {
+            $and: [
+              {
+                $eq: [
+                  {
+                    $dateToString: {
+                      format: '%Y-%m-%d',
+                      date: '$firstOrderDate',
+                    },
+                  },
+                  {
+                    $dateToString: {
+                      format: '%Y-%m-%d',
+                      date: '$userCreatedAt',
+                    },
+                  },
+                ],
+              },
+              { $gte: ['$firstOrderDate', new Date(startDate)] },
+              { $lte: ['$firstOrderDate', new Date(endDate)] },
+            ],
+          },
+          isRepeatCustomer: { $gt: ['$totalOrders', 1] },
+          isAttachCustomer: { $eq: ['$hasAttachOrder', true] },
+        },
+      },
+
+      // Step 8: Final group by period
+      {
+        $group: {
+          _id: '$_id.groupPeriod',
+          loyalCustomerCount: {
+            $sum: { $cond: ['$isActiveAndLoyalCustomer', 1, 0] },
+          },
+          newCustomerCount: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
+          repeatCustomerCount: { $sum: { $cond: ['$isRepeatCustomer', 1, 0] } },
+          attachCustomerCount: { $sum: { $cond: ['$isAttachCustomer', 1, 0] } },
+          totalCustomerCount: { $sum: 1 },
+        },
+      },
+
+      // Step 9: Format output
+      {
+        $project: {
+          _id: 0,
+          period: '$_id',
+          newCustomerCount: 1,
+          repeatCustomerCount: 1,
+          attachCustomerCount: 1,
+          loyalCustomerCount: 1,
+          totalCustomerCount: 1,
+        },
+      },
+
+      // Step 10: Sort and paginate
+      {
+        $sort: { period: 1 },
+      },
+      {
+        $facet: {
+          paginatedResults: [{ $skip: skip }, { $limit: pageSize }],
+          totalCount: [{ $count: 'count' }],
+        },
+      },
+    ];
+
+    const result = await Order.aggregate(pipeline);
+
+    const reportData = result[0]?.paginatedResults || [];
+    const totalCount = result[0]?.totalCount?.[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: reportData || [],
+      },
+      meta: {
+        page: pageNumber,
+        limit: pageSize,
+        totalCount,
+        totalPages,
       },
     });
   }
