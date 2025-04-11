@@ -81,6 +81,7 @@ export interface IProduct {
   images: IPhoto[];
   flavour?: mongoose.Types.ObjectId[]; // this will be used for specific flavours
   useGlobalFlavors: boolean;
+  duration: string;
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
   fondantMsgOptions?: string[];
@@ -267,6 +268,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: true,
     },
+    duration: String,
     colour: {
       type: [
         {

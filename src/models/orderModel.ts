@@ -61,6 +61,12 @@ interface IDelivery {
   };
 }
 
+interface IMoneyPulling {
+  want: boolean;
+  noteType: string;
+  qty: number;
+}
+
 export interface IProduct {
   product: {
     id: mongoose.Schema.Types.ObjectId;
@@ -94,11 +100,7 @@ export interface IProduct {
   specialInstructions?: string;
   fondantName?: string;
   fondantNumber?: string;
-  moneyPulling?: {
-    want: boolean;
-    noteType: string;
-    qty: number;
-  };
+  moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
 
@@ -114,6 +116,7 @@ export interface IHitpayDetails {
 
 export interface ICorporateProduct {
   name: string;
+  price: number;
   flavour: string;
   size: string;
   quantity: number;
@@ -162,6 +165,7 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 
 const CorporateProductSchema = new mongoose.Schema<ICorporateProduct>({
   name: String,
+  price: Number,
   flavour: String,
   size: String,
   quantity: Number,
@@ -173,6 +177,25 @@ const CorporateProductSchema = new mongoose.Schema<ICorporateProduct>({
   fondantName: String,
   fondantNumber: String,
   complexAccessories: String,
+});
+
+const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
+  want: {
+    type: Boolean,
+    default: false,
+  },
+  noteType: {
+    type: String,
+    enum: notesEnum,
+  },
+  qty: {
+    type: Number,
+    max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
+    validate: {
+      validator: Number.isInteger,
+      message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
+    },
+  },
 });
 
 const ProductSchema = new mongoose.Schema<IProduct>({
@@ -207,26 +230,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
-  moneyPulling: {
-    type: {
-      want: {
-        type: Boolean,
-        default: false,
-      },
-      noteType: {
-        type: String,
-        enum: notesEnum,
-      },
-      qty: {
-        type: Number,
-        max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
-        validate: {
-          validator: Number.isInteger,
-          message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
-        },
-      },
-    },
-  },
+  moneyPulling: [MoneyPullingSchema],
   address: String,
 });
 
