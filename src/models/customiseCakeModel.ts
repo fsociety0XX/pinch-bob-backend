@@ -74,6 +74,11 @@ export interface IHitpayDetails {
   receiptUrl: string;
 }
 
+interface IMoneyPulling {
+  noteType: string;
+  qty: number;
+}
+
 export interface ICustomiseCake {
   _id: string;
   brand: string;
@@ -111,10 +116,7 @@ export interface ICustomiseCake {
   includeCoolerBag: boolean;
   coolerBagSize: string;
   candlesAndSparklers: ICandles[];
-  moneyPulling?: {
-    noteType: string;
-    qty: number;
-  };
+  moneyPulling?: IMoneyPulling[];
   price: number;
   quantity: number;
   size: string;
@@ -132,6 +134,21 @@ export interface ICustomiseCake {
   woodeliveryTaskId: string;
   active: boolean;
 }
+
+const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
+  noteType: {
+    type: String,
+    enum: notesEnum,
+  },
+  qty: {
+    type: Number,
+    max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
+    validate: {
+      validator: Number.isInteger,
+      message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
+    },
+  },
+});
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
   deliveryType: {
@@ -289,22 +306,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     coolerBagSize: String,
     candlesAndSparklers: [CandleSchema],
-    moneyPulling: {
-      type: {
-        noteType: {
-          type: String,
-          enum: notesEnum,
-        },
-        qty: {
-          type: Number,
-          max: [25, ORDER_SCHEMA_VALIDATION.moneyPullingMax],
-          validate: {
-            validator: Number.isInteger,
-            message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
-          },
-        },
-      },
-    },
+    moneyPulling: [MoneyPullingSchema],
     deliveryFee: Number,
     discountedAmt: Number,
     total: Number,
