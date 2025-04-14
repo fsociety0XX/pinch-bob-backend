@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { PipelineStage } from 'mongoose';
+import { PipelineStage, Types } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order from '@src/models/orderModel';
 import AppError from '@src/utils/appError';
@@ -647,3 +647,149 @@ export const aggregatedCustomerReport = catchAsync(
     });
   }
 );
+
+export const productReport = catchAsync(async (req: Request, res: Response) => {
+  const startDate = new Date(req.query.startDate as string);
+  const endDate = new Date(req.query.endDate as string);
+  const brand = req.query.brand as string;
+  const page = +(req.query.page as string) || 1;
+  const limit = +(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+  const sortBy = (req.query.sortBy as string) || 'noOfItems';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+  const search = (req.query.search as string) || '';
+  const category = req.query.category as string;
+  const superCategory = req.query.superCategory as string;
+
+  const aggregationPipeline: PipelineStage[] = [
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate },
+        brand,
+        paid: true,
+      },
+    },
+    { $unwind: '$product' },
+    {
+      $group: {
+        _id: '$product.product',
+        noOfItems: { $sum: '$product.quantity' },
+        totalOrderValue: {
+          $sum: { $multiply: ['$product.price', '$product.quantity'] },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'productDetails',
+      },
+    },
+    { $unwind: '$productDetails' },
+
+    // Optional search and filtering
+    {
+      $match: {
+        ...(search && {
+          'productDetails.name': { $regex: search, $options: 'i' },
+        }),
+        ...(category && {
+          'productDetails.category': new Types.ObjectId(category),
+        }),
+        ...(superCategory && {
+          'productDetails.superCategory': new Types.ObjectId(superCategory),
+        }),
+      },
+    },
+
+    // Single Category lookup
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'productDetails.category',
+        foreignField: '_id',
+        as: 'categoryDetails',
+      },
+    },
+    {
+      $lookup: {
+        from: 'supercategories',
+        localField: 'productDetails.superCategory',
+        foreignField: '_id',
+        as: 'superCategoryDetails',
+      },
+    },
+
+    {
+      $addFields: {
+        productDetails: {
+          _id: '$productDetails._id',
+          name: '$productDetails.name',
+          category: { $arrayElemAt: ['$categoryDetails', 0] },
+          superCategory: { $arrayElemAt: ['$superCategoryDetails', 0] },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        product: {
+          id: { $toString: '$productDetails._id' },
+          name: '$productDetails.name',
+          category: {
+            $cond: [
+              { $ifNull: ['$productDetails.category', false] },
+              {
+                id: { $toString: '$productDetails.category._id' },
+                name: '$productDetails.category.name',
+              },
+              null,
+            ],
+          },
+          superCategory: {
+            $cond: [
+              { $ifNull: ['$productDetails.superCategory', false] },
+              {
+                id: { $toString: '$productDetails.superCategory._id' },
+                name: '$productDetails.superCategory.name',
+              },
+              null,
+            ],
+          },
+        },
+        noOfItems: 1,
+        totalOrderValue: 1,
+      },
+    },
+    {
+      $facet: {
+        data: [
+          { $sort: { [sortBy]: sortOrder } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+        totalCount: [{ $count: 'count' }],
+      },
+    },
+  ];
+
+  const result = await Order.aggregate(aggregationPipeline);
+
+  const reportData = result[0]?.data || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
+
+  res.status(StatusCode.SUCCESS).json({
+    status: 'success',
+    data: {
+      data: reportData,
+    },
+    meta: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+    },
+  });
+});

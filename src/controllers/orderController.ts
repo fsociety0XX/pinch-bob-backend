@@ -877,7 +877,7 @@ export const bulkCreateOrders = catchAsync(
       // Find or create user
       let user = await User.findOne({ email: userData.email });
       if (!user) {
-        user = new User(userData);
+        user = new User({ brand, ...userData });
         await user.save({ validateBeforeSave: false });
       }
       orderData.user = user._id;
