@@ -8,6 +8,7 @@ import {
   getAllOrder,
   getOneOrder,
   getWoodeliveryId,
+  migrateOrders,
   placeOrder,
   triggerOrderFailEmail,
   updateOrder,
@@ -16,6 +17,7 @@ import {
 import {
   BULK_ORDER,
   GET_WOO_ID,
+  MIGRATE,
   PLACE_ORDER,
   TRIGGER_ORDER_FAIL_EMAIL,
   UPDATE_REF_IMG,
@@ -51,5 +53,8 @@ orderRouter
     updateRefImages
   );
 orderRouter.route('/:id').delete(deleteOrder);
+
+// MIGRATION API
+orderRouter.route(MIGRATE).post(migrateOrders);
 
 export default orderRouter;

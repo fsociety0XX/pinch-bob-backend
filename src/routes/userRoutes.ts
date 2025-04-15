@@ -16,8 +16,6 @@ import {
   ADD_TO_WISHLIST,
   MIGRATE,
 } from '@src/constants/routeConstants';
-import addressRouter from './addressRoutes';
-import { migrateAddress } from '@src/controllers/addressController';
 
 const userRouter = express.Router();
 userRouter.use(protect);
@@ -30,6 +28,5 @@ userRouter.route('/:id').get(getOneUser).patch(updateUser).delete(deleteUser);
 
 // MIGRATION API
 userRouter.route(MIGRATE).post(migrateUsers);
-addressRouter.route(MIGRATE).post(migrateAddress);
 
 export default userRouter;

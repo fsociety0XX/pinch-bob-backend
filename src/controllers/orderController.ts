@@ -1199,3 +1199,27 @@ export const hitpayWebhookHandler = catchAsync(
     }
   }
 );
+
+export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
+  const { orders } = req.body || [];
+  const failedIds: number[] = [];
+  const bulkOps = await Promise.all(
+    orders.map(async (order: IOrder) => ({
+      insertOne: { document: order },
+    }))
+  );
+
+  const result = await Order.bulkWrite(bulkOps, { ordered: false });
+
+  if (result?.writeErrors && result.writeErrors?.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result.writeErrors.forEach((err: any) => {
+      failedIds.push(orders[err.index]?.sqlId);
+    });
+  }
+
+  res.status(200).json({
+    message: 'Migration completed',
+    failedIds,
+  });
+});

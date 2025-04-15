@@ -120,6 +120,8 @@ export interface ICustomiseCake {
   price: number;
   quantity: number;
   size: string;
+  orderNotes: string;
+  decorationPoints: string;
   instructions: string;
   coupon: mongoose.Schema.Types.ObjectId;
   formStatus: string;
@@ -313,6 +315,8 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     price: Number,
     quantity: Number,
     size: String,
+    orderNotes: String,
+    decorationPoints: String,
     instructions: String,
     coupon: {
       type: mongoose.Schema.ObjectId,
