@@ -146,7 +146,7 @@ export interface IOrder {
   corporate: boolean;
   moneyReceivedForMoneyPulling: boolean;
   preparationStatus: string;
-  status: string;
+  status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
