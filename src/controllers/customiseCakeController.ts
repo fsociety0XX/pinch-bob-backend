@@ -235,7 +235,7 @@ const generatePaymentLink = async (
 export const submitCustomerForm = catchAsync(
   async (req: Request, res: Response) => {
     const { brand, delivery, user, bakes, images } = req.body;
-    const { email, firstName, lastName, phone } = JSON.parse(user);
+    const { email, firstName, lastName, phone } = user;
 
     // creating user
     const newUser = {
@@ -252,7 +252,7 @@ export const submitCustomerForm = catchAsync(
     req.body.user = result?._id;
 
     if (delivery) {
-      const deliveryObj = JSON.parse(delivery);
+      const deliveryObj = delivery;
       if (deliveryObj.address) {
         const {
           city,
@@ -286,11 +286,11 @@ export const submitCustomerForm = catchAsync(
       req.body.delivery = deliveryObj;
     }
     if (bakes) {
-      const bakesArray = JSON.parse(bakes);
+      const bakesArray = bakes;
       req.body.bakes = bakesArray;
     }
     if (images) {
-      const imagesArray = JSON.parse(images);
+      const imagesArray = images;
       req.body.images = imagesArray;
     }
 
@@ -310,9 +310,20 @@ export const submitCustomerForm = catchAsync(
 
 export const submitAdminForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const { coupon, candlesAndSparklers, bakes } = req.body;
     if (req.file) {
       req.body.baseColourImg = req.file;
     }
+    if (coupon === '') {
+      req.body.coupon = null;
+    }
+    if (candlesAndSparklers === '') {
+      req.body.candlesAndSparklers = [];
+    }
+    if (bakes === '') {
+      req.body.bakes = [];
+    }
+
     const doc = await CustomiseCake.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
