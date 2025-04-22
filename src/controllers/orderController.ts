@@ -8,7 +8,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import mongoose, { ObjectId } from 'mongoose';
+import { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -40,7 +40,7 @@ import {
   ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
-  PRODUCT_NOT_FOUND,
+  REF_IMG_UPDATE,
 } from '@src/constants/messages';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
@@ -465,37 +465,39 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   } = order;
 
   let taskDesc = '';
-  const packages = order.product.map(
-    (
-      {
-        product,
-        quantity,
-        price,
-        size,
-        pieces,
-        flavour,
-        msg,
-        fondantName,
-        fondantNumber,
-      },
-      index
-    ) => {
-      taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
-      return {
-        productId: product.id,
-        orderId: order.orderNumber,
-        quantity,
-        price,
-        field1: size?.name,
-        field2: pieces?.name,
-        field3: flavour?.name,
-        field4: msg || '',
-        field5: `Fondant Name: ${fondantName || ''} and Fondant Number: ${
-          fondantNumber || ''
-        }`,
-      };
-    }
-  );
+  const packages = order?.corporate
+    ? []
+    : order.product.map(
+        (
+          {
+            product,
+            quantity,
+            price,
+            size,
+            pieces,
+            flavour,
+            msg,
+            fondantName,
+            fondantNumber,
+          },
+          index
+        ) => {
+          taskDesc += `${index ? ', ' : ''}${quantity} x ${product.name}`;
+          return {
+            productId: product.id,
+            orderId: order.orderNumber,
+            quantity,
+            price,
+            field1: size?.name,
+            field2: pieces?.name,
+            field3: flavour?.name,
+            field4: msg || '',
+            field5: `Fondant Name: ${fondantName || ''} and Fondant Number: ${
+              fondantNumber || ''
+            }`,
+          };
+        }
+      );
   const task: IWoodeliveryTask = {
     taskTypeId: 1, // Refer to woodelivery swagger
     taskDesc,
@@ -508,7 +510,6 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
     recipientName: recipInfo?.name || '',
     recipientPhone: String(recipInfo?.contact || ''),
     tag1: brand,
-    packages,
     destinationNotes: instructions || '',
   };
   if (address?.id) {
@@ -522,6 +523,9 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   }
   if (recipInfo?.sameAsSender) {
     task.recipientEmail = user?.email;
+  }
+  if (packages.length) {
+    task.packages = packages;
   }
 
   return update
@@ -858,80 +862,61 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const bulkCreateOrders = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     const ordersData = req.body.orders; // Expect an array of orders from Excel
-    const session = await mongoose.startSession();
+    const createdOrders = [];
 
-    try {
-      session.startTransaction();
-      const createdOrders = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const orderData of ordersData) {
+      const {
+        brand,
+        delivery: { address },
+        user: userData,
+      } = orderData;
 
-      // eslint-disable-next-line no-restricted-syntax
-      for (const orderData of ordersData) {
-        const {
-          brand,
-          delivery: { address },
-          user: userData,
-        } = orderData;
-        let user = await User.findOne({ email: userData.email }).session(
-          session
-        );
-
-        if (!user) {
-          user = new User(userData);
-          await user.save({ validateBeforeSave: false, session });
-        }
-
-        orderData.user = user._id;
-
-        // Create address
-        const newAddress = { brand, user: user._id, ...address };
-        const createdAddress = await Address.create([newAddress], { session });
-        orderData.delivery.address = createdAddress[0]._id;
-
-        // Generate order number and create order
-        orderData.orderNumber = generateUniqueIds();
-        const newOrder = await Order.create([orderData], { session });
-        const order = await Order.findById(newOrder[0]._id).lean();
-
-        // Handle Coupons
-        if (order?.pricingSummary?.coupon) {
-          const cUser = await User.findById(order.user).session(session);
-          const couponId = order.pricingSummary.coupon._id;
-          if (cUser && !cUser.usedCoupons?.includes(couponId)) {
-            cUser.usedCoupons.push(couponId);
-            await Coupon.updateOne(
-              { _id: couponId },
-              { $inc: { used: 1 } }
-            ).session(session);
-            await cUser.save({ validateBeforeSave: false, session });
-          }
-        }
-
-        await updateProductAfterPurchase(order);
-        await createDelivery(order._id);
-        await sendOrderConfirmationEmail(userData.email, order);
-
-        createdOrders.push(order);
+      // Find or create user
+      let user = await User.findOne({ email: userData.email });
+      if (!user) {
+        user = new User({ brand, ...userData });
+        await user.save({ validateBeforeSave: false });
       }
+      orderData.user = user._id;
 
-      // Commit transaction
-      await session.commitTransaction();
-      session.endSession();
+      // Create address
+      const newAddress = { brand, user: user._id, ...address };
+      const createdAddress = await Address.create(newAddress);
+      orderData.delivery.address = createdAddress._id;
 
-      res.status(StatusCode.CREATE).json({
-        status: 'success',
-        data: {
-          data: createdOrders,
-        },
-      });
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      return next(
-        new AppError('Error in bulk upload', StatusCode.INTERNAL_SERVER_ERROR)
-      );
+      // Generate order number and create order
+      orderData.orderNumber = generateUniqueIds();
+      const newOrder = await Order.create(orderData);
+      const order = await Order.findById(newOrder?.id).lean();
+
+      // Handle coupons
+      // if (order?.pricingSummary?.coupon) {
+      //   const cUser = await User.findById(order.user);
+      //   const couponId = order.pricingSummary.coupon._id;
+
+      //   if (cUser && !cUser.usedCoupons?.includes(couponId)) {
+      //     cUser.usedCoupons.push(couponId);
+      //     await Coupon.updateOne({ _id: couponId }, { $inc: { used: 1 } });
+      //     await cUser.save({ validateBeforeSave: false });
+      //   }
+      // }
+
+      // await updateProductAfterPurchase(order);
+      await createDelivery(order._id);
+      await sendOrderConfirmationEmail(userData.email, order);
+
+      createdOrders.push(order);
     }
+
+    res.status(StatusCode.CREATE).json({
+      status: 'success',
+      data: {
+        data: createdOrders,
+      },
+    });
   }
 );
 
@@ -966,7 +951,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -978,7 +968,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -990,7 +985,12 @@ export const getAllOrder = catchAsync(
       };
       const products = await Product.find(query);
       if (!products || !products.length) {
-        return next(new AppError(PRODUCT_NOT_FOUND, StatusCode.NOT_FOUND));
+        res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: [],
+          },
+        });
       }
       const productIds = products.map((product) => product._id);
       filter['product.product'] = { $in: productIds };
@@ -999,7 +999,7 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.moneyPulling.want'] = true;
+      filter['product.moneyPulling.want'] = moneyPullingOrders;
     }
     delete req.query.superCategory;
     delete req.query.category;
@@ -1015,6 +1015,9 @@ export const getAllOrder = catchAsync(
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { delivery, recipInfo } = req.body;
+    if (req.files?.length) {
+      req.body.additionalRefImages = req.files;
+    }
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -1033,6 +1036,37 @@ export const updateOrder = catchAsync(
       data: {
         data: order,
       },
+    });
+  }
+);
+
+export const updateRefImages = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { productItemId } = req.body;
+
+    // Ensure files are attached
+    if (!req.files?.length) {
+      return next(new AppError(REF_IMG_UPDATE.noImg, StatusCode.BAD_REQUEST));
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
+    }
+
+    // Find the product item by its _id (subdocument)
+    const productItem = order.product.id(productItemId);
+    if (!productItem) {
+      return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
+    }
+
+    productItem.additionalRefImages.push(...req.files);
+
+    await order.save();
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: REF_IMG_UPDATE.imgUploadSuccess,
     });
   }
 );
@@ -1165,3 +1199,27 @@ export const hitpayWebhookHandler = catchAsync(
     }
   }
 );
+
+export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
+  const { orders } = req.body || [];
+  const failedIds: number[] = [];
+  const bulkOps = await Promise.all(
+    orders.map(async (order: IOrder) => ({
+      insertOne: { document: order },
+    }))
+  );
+
+  const result = await Order.bulkWrite(bulkOps, { ordered: false });
+
+  if (result?.writeErrors && result.writeErrors?.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result.writeErrors.forEach((err: any) => {
+      failedIds.push(orders[err.index]?.sqlId);
+    });
+  }
+
+  res.status(200).json({
+    message: 'Migration completed',
+    failedIds,
+  });
+});

@@ -81,6 +81,7 @@ export interface IProduct {
   images: IPhoto[];
   flavour?: mongoose.Types.ObjectId[]; // this will be used for specific flavours
   useGlobalFlavors: boolean;
+  duration: string;
   colour?: mongoose.Types.ObjectId[];
   cardOptions?: string[];
   fondantMsgOptions?: string[];
@@ -190,7 +191,10 @@ const EdiblePrintSchema = new mongoose.Schema({
 
 const productSchema = new mongoose.Schema<IProduct>(
   {
-    productNumber: String,
+    productNumber: {
+      type: String,
+      unique: true,
+    },
     name: {
       type: String,
       trim: true,
@@ -264,6 +268,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: true,
     },
+    duration: String,
     colour: {
       type: [
         {
@@ -410,11 +415,11 @@ const productSchema = new mongoose.Schema<IProduct>(
 productSchema.index({ price: 1, ratingsAverage: -1 });
 productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
-productSchema.virtual('views', {
-  ref: 'ProductViews',
-  localField: '_id',
-  foreignField: 'product',
-});
+// productSchema.virtual('views', {
+//   ref: 'ProductViews',
+//   localField: '_id',
+//   foreignField: 'product',
+// });
 
 // When reviews are ready
 // productSchema.virtual('reviews', {
@@ -432,7 +437,7 @@ productSchema.pre('save', function (next) {
 
 // Query middleware
 productSchema.pre('find', function (next) {
-  this.populate('views');
+  // this.populate('views');
   this.populate({
     path: 'category superCategory subCategory',
     select: 'name',

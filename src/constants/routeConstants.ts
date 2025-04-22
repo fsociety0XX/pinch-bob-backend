@@ -41,6 +41,7 @@ export const PLACE_ORDER = '/place-order';
 export const GET_WOO_ID = '/woodeliveryId';
 export const TRIGGER_ORDER_FAIL_EMAIL = '/order-failed/:orderId';
 export const BULK_ORDER = '/bulk';
+export const UPDATE_REF_IMG = '/refImages/:id';
 
 // DELIVERY
 export const WOODELIVERY_TASK = `${WOODELIVERY_BASEURL}/tasks`;
@@ -67,3 +68,5 @@ export const SEND_PAYMENT_LINK = '/send/:id';
 // REPORTS
 export const CUSTOMER_ORDER_REPORT = '/customer-order';
 export const CUSTOMER_DELIVERY_REPORT = '/customer-delivery';
+export const AGGREGATE_REPORT = '/aggregate';
+export const PRODUCT_REPORT = '/product';

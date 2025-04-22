@@ -31,6 +31,7 @@ import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
+import { getAll, getOne } from '@src/utils/factoryHandler';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -234,7 +235,7 @@ const generatePaymentLink = async (
 export const submitCustomerForm = catchAsync(
   async (req: Request, res: Response) => {
     const { brand, delivery, user, bakes, images } = req.body;
-    const { email, firstName, lastName, phone } = JSON.parse(user);
+    const { email, firstName, lastName, phone } = user;
 
     // creating user
     const newUser = {
@@ -251,7 +252,7 @@ export const submitCustomerForm = catchAsync(
     req.body.user = result?._id;
 
     if (delivery) {
-      const deliveryObj = JSON.parse(delivery);
+      const deliveryObj = delivery;
       if (deliveryObj.address) {
         const {
           city,
@@ -285,11 +286,11 @@ export const submitCustomerForm = catchAsync(
       req.body.delivery = deliveryObj;
     }
     if (bakes) {
-      const bakesArray = JSON.parse(bakes);
+      const bakesArray = bakes;
       req.body.bakes = bakesArray;
     }
     if (images) {
-      const imagesArray = JSON.parse(images);
+      const imagesArray = images;
       req.body.images = imagesArray;
     }
 
@@ -309,9 +310,20 @@ export const submitCustomerForm = catchAsync(
 
 export const submitAdminForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const { coupon, candlesAndSparklers, bakes } = req.body;
     if (req.file) {
       req.body.baseColourImg = req.file;
     }
+    if (coupon === '') {
+      req.body.coupon = null;
+    }
+    if (candlesAndSparklers === '') {
+      req.body.candlesAndSparklers = [];
+    }
+    if (bakes === '') {
+      req.body.bakes = [];
+    }
+
     const doc = await CustomiseCake.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -596,3 +608,20 @@ export const updateCustomiseCakeForm = catchAsync(
     });
   }
 );
+
+export const getAllCustomiseForm = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { moneyPullingOrders, ...otherQueries } = req.query;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: any = { ...otherQueries };
+
+    if (moneyPullingOrders) {
+      filter.moneyPulling = { $exists: moneyPullingOrders };
+    }
+    req.query = filter;
+    await getAll(CustomiseCake)(req, res, next);
+  }
+);
+
+export const getOneCustomiseCakeForm = getOne(CustomiseCake);

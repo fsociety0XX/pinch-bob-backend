@@ -8,6 +8,7 @@ import AppError from '@src/utils/appError';
 
 export interface IAddress {
   brand: string;
+  sqlId: number;
   firstName: string;
   lastName: string;
   city: string;
@@ -29,6 +30,10 @@ const addressSchema = new mongoose.Schema<IAddress>(
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.brand],
       enum: brandEnum,
+    },
+    sqlId: {
+      type: Number,
+      unique: true,
     },
     firstName: {
       type: String,

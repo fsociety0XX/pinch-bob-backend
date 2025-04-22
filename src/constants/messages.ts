@@ -207,10 +207,16 @@ export const SUBCATEGORY_SCHEMA_VALIDATION = {
   category: 'A category is required.',
 };
 
-export const PRODUCT_NOT_FOUND =
-  'No product belongs to the given super category id';
+export const PRODUCT_NOT_FOUND = 'No product belongs to the given id';
 
 export const DELIVERY_COLLECTION_TIME = {
   collectionTime: 'CollectionTime is required',
   timeFormat: "Invalid collectionTime format. Use '9am-1pm' format",
+};
+
+export const REF_IMG_UPDATE = {
+  noImg: 'No images uploaded',
+  noOrder: 'Order not found',
+  noProduct: 'Product item not found',
+  imgUploadSuccess: 'Images uploaded successfully',
 };

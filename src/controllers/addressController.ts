@@ -1,5 +1,7 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck - Added only for migration controller function and need to remove it later
 import { NextFunction, Request, Response } from 'express';
-import Address from '@src/models/addressModel';
+import Address, { IAddress } from '@src/models/addressModel';
 import catchAsync from '@src/utils/catchAsync';
 import {
   createOne,
@@ -40,5 +42,31 @@ export const getAllAddress = catchAsync(
       };
     }
     await getAll(Address)(req, res, next);
+  }
+);
+
+export const migrateAddress = catchAsync(
+  async (req: Request, res: Response) => {
+    const { addresses } = req.body || [];
+    const failedIds: number[] = [];
+    const bulkOps = await Promise.all(
+      addresses.map(async (address: IAddress) => ({
+        insertOne: { document: address },
+      }))
+    );
+
+    const result = await Address.bulkWrite(bulkOps, { ordered: false });
+
+    if (result?.writeErrors && result.writeErrors?.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result.writeErrors.forEach((err: any) => {
+        failedIds.push(addresses[err.index]?.sqlId);
+      });
+    }
+
+    res.status(200).json({
+      message: 'Migration completed',
+      failedIds,
+    });
   }
 );

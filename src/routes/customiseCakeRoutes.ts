@@ -2,6 +2,8 @@ import express from 'express';
 import { protect, roleRistriction } from '@src/controllers/authController';
 import { Role } from '@src/types/customTypes';
 import {
+  getAllCustomiseForm,
+  getOneCustomiseCakeForm,
   sendPaymentLink,
   submitAdminForm,
   submitCustomerForm,
@@ -25,6 +27,8 @@ customiseCakeRouter
 customiseCakeRouter.use(protect);
 customiseCakeRouter.use(roleRistriction(Role.ADMIN));
 
+customiseCakeRouter.route('/').get(getAllCustomiseForm);
+
 customiseCakeRouter
   .route('/:id')
   .patch(
@@ -32,7 +36,8 @@ customiseCakeRouter
       'baseColourImg'
     ),
     submitAdminForm
-  );
+  )
+  .get(getOneCustomiseCakeForm);
 
 customiseCakeRouter.route(UPDATE_FORM).patch(
   uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
