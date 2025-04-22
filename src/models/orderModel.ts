@@ -114,7 +114,7 @@ export interface IHitpayDetails {
   receiptUrl: string;
 }
 
-export interface ICorporateProduct {
+export interface IOtherProduct {
   name: string;
   price: number;
   flavour: string;
@@ -128,6 +128,7 @@ export interface ICorporateProduct {
   fondantName?: string;
   fondantNumber?: string;
   complexAccessories?: string;
+  moneyPulling: IMoneyPulling[];
 }
 
 export interface IOrder {
@@ -137,7 +138,7 @@ export interface IOrder {
   brand: string;
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
-  corporateProduct: ICorporateProduct[];
+  otherProduct: IOtherProduct[];
   user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
@@ -163,22 +164,6 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
   location: String,
 });
 
-const CorporateProductSchema = new mongoose.Schema<ICorporateProduct>({
-  name: String,
-  price: Number,
-  flavour: String,
-  size: String,
-  quantity: Number,
-  specialInstructions: String,
-  ediblePrints: String,
-  refImages: [String],
-  giftCardMsg: String,
-  notes: String,
-  fondantName: String,
-  fondantNumber: String,
-  complexAccessories: String,
-});
-
 const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
   want: {
     type: Boolean,
@@ -196,6 +181,23 @@ const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
       message: ORDER_SCHEMA_VALIDATION.moneyPullingQty,
     },
   },
+});
+
+const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
+  name: String,
+  price: Number,
+  flavour: String,
+  size: String,
+  quantity: Number,
+  specialInstructions: String,
+  ediblePrints: String,
+  refImages: [String],
+  giftCardMsg: String,
+  notes: String,
+  fondantName: String,
+  fondantNumber: String,
+  complexAccessories: String,
+  moneyPulling: [MoneyPullingSchema],
 });
 
 const ProductSchema = new mongoose.Schema<IProduct>({
@@ -283,7 +285,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
         required: [true, ORDER_SCHEMA_VALIDATION.product],
       },
     ],
-    corporateProduct: [CorporateProductSchema],
+    otherProduct: [OtherProductSchema],
     user: {
       type: mongoose.Schema.ObjectId,
       ref: 'User',
@@ -338,7 +340,9 @@ const orderSchema = new mongoose.Schema<IOrder>(
 );
 
 orderSchema.pre('save', function (next) {
-  this.orderNumber = generateUniqueIds();
+  if (!this.orderNumber) {
+    this.orderNumber = generateUniqueIds();
+  }
   next();
 });
 
