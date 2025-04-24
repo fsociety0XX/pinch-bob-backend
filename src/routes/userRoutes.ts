@@ -10,6 +10,8 @@ import {
   addToWishlist,
   addToCart,
   migrateUsers,
+  deduplicateUsersByEmail,
+  deduplicateUsersByPhone,
 } from '@src/controllers/userController';
 import {
   ADD_TO_CART,
@@ -28,5 +30,9 @@ userRouter.route('/:id').get(getOneUser).patch(updateUser).delete(deleteUser);
 
 // MIGRATION API
 userRouter.route(MIGRATE).post(migrateUsers);
+
+// REMOVE DUPLICATE ACCOUNTS
+userRouter.route('/merge-duplicates-email').post(deduplicateUsersByEmail);
+userRouter.route('/merge-duplicates-phone').post(deduplicateUsersByPhone);
 
 export default userRouter;

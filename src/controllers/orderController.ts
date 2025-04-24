@@ -1055,7 +1055,7 @@ export const updateRefImages = catchAsync(
     }
 
     // Find the product item by its _id (subdocument)
-    const productItem = order.product.id(productItemId);
+    const productItem = order.product[productItemId];
     if (!productItem) {
       return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
     }
