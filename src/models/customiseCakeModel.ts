@@ -291,10 +291,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     fondantFigurine: String,
     toys: String,
     nonFondantDecor: String,
-    simpleFonAcc: {
-      type: String,
-      enum: customiseOrderEnums.simpleFondAcc,
-    },
+    simpleFonAcc: String,
     complexFonAcc: String,
     complexFonAccHr: Number,
     includeGiftCard: {

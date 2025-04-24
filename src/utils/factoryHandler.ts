@@ -148,7 +148,11 @@ export const getAll = (
       if (req.user?.role === Role.CUSTOMER) req.query.active = 'true';
 
       // Special case for handling search query for name with single/multiple values
-      if (req.query.name && typeof req.query.name === 'string') {
+      if (
+        req.query.name &&
+        typeof req.query.name === 'string' &&
+        !req.query.exact // this is used if we want to match exact name
+      ) {
         const names = req.query?.name?.split(',');
         // Create an $or condition for all names
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -173,9 +177,9 @@ export const getAll = (
             },
           },
         }));
-
         delete req.query.name;
       }
+      delete req.query.exact; // this is used if we want to match exact name
       const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter()
         .sort()

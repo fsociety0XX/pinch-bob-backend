@@ -180,6 +180,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       required: [true, USER_SCHEMA_VALIDATION.email],
       lowercase: true,
       validate: [validator.isEmail, USER_SCHEMA_VALIDATION.invalidEmail],
+      default: null,
     },
     password: {
       type: String,
@@ -190,7 +191,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     phone: {
       type: String,
-      sparse: true,
+      default: null,
     },
     photo: {
       key: String,
@@ -254,8 +255,27 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
   }
 );
 
-// This is a compound index which ensures that same email can exist in both brands but within specific brands emails should always be unique.
-userSchema.index({ email: 1, phone: 1, brand: 1 }, { unique: true });
+// Unique email per brand (only when email exists and is not empty/null)
+userSchema.index(
+  { brand: 1, email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      email: { $type: 'string' },
+    },
+  }
+);
+
+// Unique phone per brand (only when phone exists and is not empty/null)
+userSchema.index(
+  { brand: 1, phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      phone: { $type: 'string' },
+    },
+  }
+);
 
 userSchema.pre('save', async function (next) {
   this.userId = generateUniqueIds();

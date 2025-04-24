@@ -154,12 +154,6 @@ export const customiseOrderEnums = {
     'Gold Fondant number (Wall)',
     'Other',
   ],
-  simpleFondAcc: [
-    'Gold Cai (Wall)',
-    'Gold Shou (Stand)',
-    'Gold Shou (Wall)',
-    'Red Shou (Wall)',
-  ],
   formStatusEnum: ['New', 'Completed', 'Dismissed'],
   enquiryTypeEnum: ['Regular', 'Business'],
   qtyType: ['Pieces', 'Dozen'],
