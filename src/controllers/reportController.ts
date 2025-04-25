@@ -648,6 +648,10 @@ export const aggregatedCustomerReport = catchAsync(
   }
 );
 
+const escapeRegex = (str: string) => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 export const productReport = catchAsync(async (req: Request, res: Response) => {
   const startDate = new Date(req.query.startDate as string);
   const endDate = new Date(req.query.endDate as string);
@@ -693,7 +697,7 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
     {
       $match: {
         ...(search && {
-          'productDetails.name': { $regex: search, $options: 'i' },
+          'productDetails.name': { $regex: escapeRegex(search), $options: 'i' },
         }),
         ...(category && {
           'productDetails.category': new Types.ObjectId(category),

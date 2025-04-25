@@ -60,6 +60,7 @@ import {
   SELF_COLLECT_ADDRESS,
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
+import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -138,7 +139,24 @@ const sendOrderPrepEmail = async (res: Response) => {
       })
     );
 
+    const smsPromises = ordersToNotify.map((order: IOrder) => {
+      const body = '';
+      const phone =
+        order.recipInfo?.contact ||
+        order.delivery.address.phone ||
+        order.user.phone;
+
+      return sendOtpViaTwilio(body, phone).catch((error) => {
+        console.error(
+          ORDER_PREP_EMAIL.emailFailed(order?.orderNumber || ''),
+          error
+        );
+        return { orderNumber: order?.orderNumber, success: false, error };
+      });
+    });
+
     await Promise.allSettled(emailPromises);
+    await Promise.allSettled(smsPromises);
 
     // // Log successful and failed email results
     // results.forEach((result, index) => {
@@ -269,6 +287,13 @@ const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
     orderConfirm: { subject, template, previewText },
   } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
 
+  const body = '';
+  const phone =
+    order.recipInfo?.contact ||
+    order.delivery.address.phone ||
+    order.user.phone;
+
+  await sendOtpViaTwilio(body, phone as string);
   await sendEmail({
     email,
     subject,
@@ -705,6 +730,13 @@ export const triggerOrderFailEmail = catchAsync(
       orderFail: { subject, template, previewText },
     } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
 
+    const body = '';
+    const phone =
+      order.recipInfo?.contact ||
+      order.delivery.address.phone ||
+      order.user.phone;
+
+    await sendOtpViaTwilio(body, phone as string);
     await sendEmail({
       email: email! || order.user.email,
       subject,

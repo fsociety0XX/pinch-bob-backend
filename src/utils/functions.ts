@@ -84,6 +84,7 @@ export const generateUniqueIds = (): string => {
   return nanoid();
 };
 
+// TODO: update this logic after we change delivery date format at all places
 export const getDateOneDayFromNow = (): String => {
   const today = new Date();
   const oneDayFromNow = new Date(today);
@@ -94,3 +95,11 @@ export const getDateOneDayFromNow = (): String => {
   const utcDate = new Date(oneDayFromNow.getTime() - 8 * 60 * 60 * 1000);
   return utcDate.toISOString();
 };
+
+export function formatPhoneNumber(phone: string): string {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith('+')) {
+    return trimmed;
+  }
+  return `+65${trimmed}`;
+}

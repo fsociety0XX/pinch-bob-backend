@@ -62,7 +62,6 @@ interface IDelivery {
 }
 
 interface IMoneyPulling {
-  want: boolean;
   noteType: string;
   qty: number;
 }
@@ -100,6 +99,7 @@ export interface IProduct {
   specialInstructions?: string;
   fondantName?: string;
   fondantNumber?: string;
+  wantMoneyPulling?: boolean;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -165,10 +165,6 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 });
 
 const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
-  want: {
-    type: Boolean,
-    default: false,
-  },
   noteType: {
     type: String,
     enum: notesEnum,
@@ -232,6 +228,10 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
+  wantMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
   moneyPulling: [MoneyPullingSchema],
   address: String,
 });
@@ -354,7 +354,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
-    select: 'name images inventory updatedAt',
+    select: 'name images inventory updatedAt duration',
   });
   this.populate({
     path: 'user',

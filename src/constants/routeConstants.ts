@@ -27,7 +27,9 @@ export const SEARCH = `${VERSION1}/search`;
 export const SIGN_UP = `/signup`;
 export const SIGN_IN = `/signin`;
 export const SEND_OTP = `/send-otp`;
+export const SEND_PHONE_OTP = `/send-phone-otp`;
 export const VERIFY_OTP = `/verify-otp`;
+export const VERIFY_PHONE_OTP = `/verify-phone-otp`;
 export const FORGOT_PASSWORD = `/forgot-password`;
 export const RESET_PASSWORD = `/reset-password/:token`;
 

@@ -23,6 +23,7 @@ import {
   PINCH_EMAILS,
 } from '@src/constants/messages';
 import AppError from '@src/utils/appError';
+import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
@@ -127,6 +128,13 @@ export const updateOrderStatus = catchAsync(
 
     // Send order delivered email and ask for google review from cx
     if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
+      const body = '';
+      const phone =
+        order.recipInfo?.contact ||
+        order.delivery.address.phone ||
+        order.user.phone;
+
+      await sendOtpViaTwilio(body, phone as string);
       await sendEmail({
         email: order?.user?.email,
         subject,
