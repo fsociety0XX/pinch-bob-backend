@@ -27,7 +27,11 @@ import {
   UNAUTHORISED_ROLE,
   BOB_EMAILS,
   GOOGLE_REVIEWS_ERROR,
+  PHONE_BRAND_REQ,
+  PHONE_BRAND_OTP_REQ,
+  INVALID_PHONE_OTP,
 } from '@src/constants/messages';
+import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 interface ICookieOptions {
   expires: Date;
@@ -142,6 +146,10 @@ const sendWelcomeEmail = async (newUser: IUser) => {
     template,
     context: { previewText },
   });
+  if (newUser.phone) {
+    const body = 'Welcome';
+    await sendOtpViaTwilio(body, newUser.phone);
+  }
 };
 export const signup = catchAsync(
   async (req: MulterRequest, res: Response, next: NextFunction) => {
@@ -341,5 +349,81 @@ export const fetchReviews = catchAsync(
       status: 'success',
       data: reviews,
     });
+  }
+);
+
+export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
+  const { phone, brand } = req.body;
+
+  if (!phone || !brand) {
+    return res.status(StatusCode.BAD_REQUEST).json({
+      status: 'fail',
+      message: PHONE_BRAND_REQ,
+    });
+  }
+  const otp = otpGenerator.generate(6, {
+    digits: true,
+    lowerCaseAlphabets: false,
+    upperCaseAlphabets: false,
+    specialChars: false,
+  });
+  const otpTimestamp = new Date();
+
+  // Update/create user with phone OTP
+  await User.findOneAndUpdate(
+    { phone, brand },
+    { otp, otpTimestamp },
+    { upsert: true, new: true }
+  );
+
+  // Send via Twilio
+  const body = `Your verification code for ${otp}`;
+  await sendOtpViaTwilio(body, phone);
+
+  res.status(StatusCode.SUCCESS).json({
+    status: 'success',
+    message: OTP_SENT,
+  });
+});
+
+export const verifyPhoneOtp = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { otp, phone, brand } = req.body;
+
+    if (!phone || !brand || !otp) {
+      return res.status(StatusCode.BAD_REQUEST).json({
+        status: 'fail',
+        message: PHONE_BRAND_OTP_REQ,
+      });
+    }
+
+    const user = await User.findOne({ phone, otp, brand });
+
+    if (!user) {
+      return res.status(StatusCode.NOT_FOUND).json({
+        status: 'fail',
+        message: INVALID_PHONE_OTP,
+      });
+    }
+
+    if (user) {
+      const currentTime = new Date();
+      const otpTimestamp = user?.otpTimestamp;
+      const timeDifference = currentTime.getTime() - otpTimestamp!.getTime();
+      const tenMinutesInMillis = 10 * 60 * 1000;
+
+      if (timeDifference <= tenMinutesInMillis) {
+        const currentUser = await User.findOneAndUpdate(
+          { phone },
+          { $unset: { otp: 1, otpTimestamp: 1 } },
+          { new: true }
+        );
+        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res);
+      }
+
+      return next(new AppError(OTP_EXPIRED, StatusCode.BAD_REQUEST));
+    }
+
+    return next(new AppError(INVALID_OTP, StatusCode.BAD_REQUEST));
   }
 );

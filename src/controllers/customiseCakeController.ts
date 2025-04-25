@@ -32,6 +32,7 @@ import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
+import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -474,6 +475,9 @@ const sendOrderConfirmationEmail = async (
     woodeliveryTaskId,
   } = customiseCakeOrder;
 
+  const body = '';
+  const phone = delivery.recipientPhone || delivery.address.phone || user.phone;
+  await sendOtpViaTwilio(body, phone as string);
   await sendEmail({
     email,
     subject,

@@ -163,8 +163,20 @@ export const getAll = (
               input: {
                 $toLower: {
                   $replaceAll: {
-                    input: '$name', // Ensure this is a string
-                    find: "'", // Replace specific characters (adjust as needed)
+                    input: {
+                      $replaceAll: {
+                        input: {
+                          $replaceAll: {
+                            input: '$name',
+                            find: '(',
+                            replacement: '',
+                          },
+                        },
+                        find: ')',
+                        replacement: '',
+                      },
+                    },
+                    find: "'",
                     replacement: '',
                   },
                 },
