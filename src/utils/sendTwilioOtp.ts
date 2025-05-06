@@ -5,7 +5,7 @@ import { formatPhoneNumber } from './functions';
 dotenv.config({ path: `.env.${process.env.NODE_ENV}` });
 const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
-const sendOtpViaTwilio = async (body: string, phone: string): Promise<void> => {
+const sendSms = async (body: string, phone: string): Promise<void> => {
   const phoneNumber = formatPhoneNumber(phone);
 
   await client.messages.create({
@@ -15,4 +15,4 @@ const sendOtpViaTwilio = async (body: string, phone: string): Promise<void> => {
   });
 };
 
-export default sendOtpViaTwilio;
+export default sendSms;

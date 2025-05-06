@@ -26,7 +26,7 @@ interface IPhoto {
 interface IRecipInfo {
   sameAsSender: boolean;
   name: string;
-  contact: number;
+  contact: string;
 }
 
 interface IPricingSummary {
@@ -39,7 +39,7 @@ interface IPricingSummary {
 }
 
 interface IDelivery {
-  date: string;
+  date: Date;
   method: {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
@@ -237,7 +237,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
 });
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
-  date: String,
+  date: Date,
   method: {
     type: mongoose.Schema.ObjectId,
     ref: 'DeliveryMethod',
@@ -301,7 +301,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     recipInfo: {
       sameAsSender: Boolean,
       name: String,
-      contact: Number,
+      contact: String,
     },
     paid: {
       type: Boolean,

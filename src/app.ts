@@ -62,6 +62,8 @@ import { globalTableSearch } from './controllers/globalSearchController';
 import couponRouter from './routes/couponRoutes';
 import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
+import '@src/crons/orderCron';
+import '@src/crons/mailchimpCron';
 import subCategoryRouter from './routes/subCategoryRoutes';
 import reportRouter from './routes/reportRoutes';
 

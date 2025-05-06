@@ -19,9 +19,9 @@ import { COUPON_SCHEMA_VALIDATION } from '@src/constants/messages';
 
 export const applyCoupon = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const { code, ids, subTotal, totalProductQty } = req.body;
+    const { code, ids, subTotal, totalProductQty, brand } = req.body;
     const usedCoupons = req.user?.usedCoupons || [];
-    const coupon = await Coupon.findOne({ code });
+    const coupon = await Coupon.findOne({ code, brand });
 
     // 1. check if coupon is valid and active
     if (
