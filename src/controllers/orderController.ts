@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable prefer-destructuring */
 /* eslint-disable camelcase */
@@ -37,7 +38,6 @@ import {
   ORDER_AUTH_ERR,
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
-  ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
   REF_IMG_UPDATE,
@@ -47,7 +47,7 @@ import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
   generateUniqueIds,
-  getDateOneDayFromNow,
+  toUtcDateOnly,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
@@ -56,11 +56,9 @@ import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 import {
-  PRODUCTION,
   SELF_COLLECT_ADDRESS,
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
-import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -105,88 +103,7 @@ interface IDeliveryData {
   address?: ObjectId;
 }
 
-const sendOrderPrepEmail = async (res: Response) => {
-  try {
-    const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
-    const targetDate = getDateOneDayFromNow();
-    const query = { 'delivery.date': targetDate, paid: true };
-
-    const ordersToNotify = await Order.find(query);
-
-    if (!ordersToNotify.length) {
-      console.log(ORDER_PREP_EMAIL.noOrdersFound);
-      return;
-    }
-    // Prepare email sending promises
-    const emailPromises = ordersToNotify.map((order: IOrder) =>
-      sendEmail({
-        email: order?.user?.email,
-        subject,
-        template,
-        context: {
-          previewText,
-          orderNo: order?.orderNumber,
-          customerName: `${order?.user?.firstName || ''} ${
-            order?.user?.lastName || ''
-          }`,
-        },
-      }).catch((error) => {
-        console.error(
-          ORDER_PREP_EMAIL.emailFailed(order?.orderNumber || ''),
-          error
-        );
-        return { orderNumber: order?.orderNumber, success: false, error };
-      })
-    );
-
-    const smsPromises = ordersToNotify.map((order: IOrder) => {
-      const body = '';
-      const phone =
-        order.recipInfo?.contact ||
-        order.delivery.address.phone ||
-        order.user.phone;
-
-      return sendOtpViaTwilio(body, phone).catch((error) => {
-        console.error(
-          ORDER_PREP_EMAIL.emailFailed(order?.orderNumber || ''),
-          error
-        );
-        return { orderNumber: order?.orderNumber, success: false, error };
-      });
-    });
-
-    await Promise.allSettled(emailPromises);
-    await Promise.allSettled(smsPromises);
-
-    // // Log successful and failed email results
-    // results.forEach((result, index) => {
-    //   if (result.status === 'fulfilled') {
-    //     console.log(
-    //       `Email sent successfully to order ${ordersToNotify[index].orderNumber}`
-    //     );
-    //   } else {
-    //     console.error(
-    //       `Failed to send email to order ${ordersToNotify[index].orderNumber}:`,
-    //       result.reason
-    //     );
-    //   }
-    // });
-
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-    });
-    console.log(ORDER_PREP_EMAIL.allTaskCompleted);
-  } catch (err) {
-    console.error(ORDER_PREP_EMAIL.errorInSendingEmails, err);
-  }
-};
-
-// Cron scheduled task that runs once a day at midnight
-cron.schedule('0 0 * * *', async () => {
-  if (process.env.NODE_ENV === PRODUCTION) sendOrderPrepEmail();
-});
-
-// Cron scheduled task to run after 30 mins of placing order if the payment failed
+// CRON scheduled task to run after 30 mins of placing order if the payment failed
 function cancelOrder(id: string) {
   const currentTime = new Date();
   const thirtyMinutesAfterCurrentTime = new Date(
@@ -287,13 +204,6 @@ const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
     orderConfirm: { subject, template, previewText },
   } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
 
-  const body = '';
-  const phone =
-    order.recipInfo?.contact ||
-    order.delivery.address.phone ||
-    order.user.phone;
-
-  await sendOtpViaTwilio(body, phone as string);
   await sendEmail({
     email,
     subject,
@@ -455,7 +365,7 @@ export const placeOrder = catchAsync(
           phone: customer?.phone,
         });
       }
-
+      req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
       const order = await Order.create(req.body);
       orderId = order.id;
     }
@@ -730,13 +640,6 @@ export const triggerOrderFailEmail = catchAsync(
       orderFail: { subject, template, previewText },
     } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
 
-    const body = '';
-    const phone =
-      order.recipInfo?.contact ||
-      order.delivery.address.phone ||
-      order.user.phone;
-
-    await sendOtpViaTwilio(body, phone as string);
     await sendEmail({
       email: email! || order.user.email,
       subject,
@@ -831,7 +734,7 @@ export const authenticateOrderAccess = catchAsync(
 export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const {
     brand,
-    delivery: { address },
+    delivery: { address, date },
   } = req?.body;
   const { email, firstName, lastName, phone } = req?.body?.user;
 
@@ -857,6 +760,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
   req.body.orderNumber = generateUniqueIds();
+  req.body.delivery.date = toUtcDateOnly(date);
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -902,7 +806,7 @@ export const bulkCreateOrders = catchAsync(
     for (const orderData of ordersData) {
       const {
         brand,
-        delivery: { address },
+        delivery: { address, date },
         user: userData,
       } = orderData;
 
@@ -918,6 +822,7 @@ export const bulkCreateOrders = catchAsync(
       const newAddress = { brand, user: user._id, ...address };
       const createdAddress = await Address.create(newAddress);
       orderData.delivery.address = createdAddress._id;
+      orderData.delivery.date = toUtcDateOnly(date);
 
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
@@ -1031,7 +936,7 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.moneyPulling.want'] = moneyPullingOrders;
+      filter['product.wantMoneyPulling'] = moneyPullingOrders;
     }
     delete req.query.superCategory;
     delete req.query.category;
@@ -1049,6 +954,9 @@ export const updateOrder = catchAsync(
     const { delivery, recipInfo } = req.body;
     if (req.files?.length) {
       req.body.additionalRefImages = req.files;
+    }
+    if (delivery) {
+      req.body.delivery.date = toUtcDateOnly(delivery.date);
     }
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -1235,11 +1143,16 @@ export const hitpayWebhookHandler = catchAsync(
 export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
   const { orders } = req.body || [];
   const failedIds: number[] = [];
-  const bulkOps = await Promise.all(
-    orders.map(async (order: IOrder) => ({
+  const bulkOps = orders.map((order: IOrder) => {
+    if (order.delivery?.date) {
+      // ensure delivery.date is a Date at UTC‐midnight
+      order.delivery.date = toUtcDateOnly(order.delivery.date);
+      order.orderNumber = generateUniqueIds();
+    }
+    return {
       insertOne: { document: order },
-    }))
-  );
+    };
+  });
 
   const result = await Order.bulkWrite(bulkOps, { ordered: false });
 

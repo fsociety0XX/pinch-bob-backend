@@ -15,6 +15,7 @@ import User from '@src/models/userModel';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
+  toUtcDateOnly,
 } from '@src/utils/functions';
 import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
@@ -32,7 +33,6 @@ import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
-import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -283,7 +283,7 @@ export const submitCustomerForm = catchAsync(
         const createdAddress = await Address.create(newAddress);
         deliveryObj.address = createdAddress._id;
       }
-
+      deliveryObj.date = toUtcDateOnly(deliveryObj.date);
       req.body.delivery = deliveryObj;
     }
     if (bakes) {
@@ -306,43 +306,6 @@ export const submitCustomerForm = catchAsync(
         data: doc,
       },
     });
-  }
-);
-
-export const submitAdminForm = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { coupon, candlesAndSparklers, bakes } = req.body;
-    if (req.file) {
-      req.body.baseColourImg = req.file;
-    }
-    if (coupon === '') {
-      req.body.coupon = null;
-    }
-    if (candlesAndSparklers === '') {
-      req.body.candlesAndSparklers = [];
-    }
-    if (bakes === '') {
-      req.body.bakes = [];
-    }
-
-    const doc = await CustomiseCake.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!doc) {
-      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
-    }
-
-    await generatePaymentLink(req, String(doc._id), next);
-
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      data: {
-        data: doc,
-      },
-    });
-    return false;
   }
 );
 
@@ -455,6 +418,68 @@ const createDelivery = async (
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
 };
 
+export const submitAdminForm = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
+
+    if (req.files) {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      if (files.images?.length) {
+        req.body.images = files.images; // Multiple images
+      }
+
+      if (files.baseColourImg?.length) {
+        req.body.baseColourImg = files.baseColourImg[0]; // Single image
+      }
+    }
+
+    if (coupon === '') {
+      req.body.coupon = null;
+    }
+    if (candlesAndSparklers === '') {
+      req.body.candlesAndSparklers = [];
+    }
+    if (bakes === '') {
+      req.body.bakes = [];
+    }
+    if (delivery?.date) {
+      req.body.delivery.date = toUtcDateOnly(delivery.date);
+    }
+
+    const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    await generatePaymentLink(req, String(customiseCakeOrder._id), next);
+
+    if (user) {
+      await User.findByIdAndUpdate(customiseCakeOrder.user?._id, user);
+    }
+
+    // Updating delivery & woodelivery data
+    if (req.body?.delivery) {
+      createDelivery(customiseCakeOrder, true);
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      data: {
+        data: customiseCakeOrder,
+      },
+    });
+    return false;
+  }
+);
+
 const sendOrderConfirmationEmail = async (
   customiseCakeOrder: ICustomiseCake,
   email: string
@@ -475,9 +500,6 @@ const sendOrderConfirmationEmail = async (
     woodeliveryTaskId,
   } = customiseCakeOrder;
 
-  const body = '';
-  const phone = delivery.recipientPhone || delivery.address.phone || user.phone;
-  await sendOtpViaTwilio(body, phone as string);
   await sendEmail({
     email,
     subject,
@@ -568,47 +590,6 @@ export const sendPaymentLink = catchAsync(
       status: 'success',
       message: COUPON_SCHEMA_VALIDATION.paymentLinkSent,
       data: paymentLink, // TODO: Send this via email
-    });
-  }
-);
-
-export const updateCustomiseCakeForm = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req.body;
-
-    if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.images?.length) {
-        req.body.images = files.images; // Multiple images
-      }
-
-      if (files.baseColourImg?.length) {
-        req.body.baseColourImg = files.baseColourImg[0]; // Single image
-      }
-    }
-    const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
-      req.params.id,
-      { new: true }
-    );
-
-    if (!customiseCakeOrder) {
-      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
-    }
-
-    if (user) {
-      await User.findByIdAndUpdate(customiseCakeOrder.user?._id, user);
-    }
-
-    // Updating delivery & woodelivery data
-    if (req.body?.delivery) {
-      createDelivery(customiseCakeOrder, true);
-    }
-
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      data: {
-        data: customiseCakeOrder,
-      },
     });
   }
 );

@@ -7,10 +7,9 @@ import {
   sendPaymentLink,
   submitAdminForm,
   submitCustomerForm,
-  updateCustomiseCakeForm,
 } from '@src/controllers/customiseCakeController';
 import uploadImage from '@src/utils/uploadImage';
-import { SEND_PAYMENT_LINK, UPDATE_FORM } from '@src/constants/routeConstants';
+import { SEND_PAYMENT_LINK } from '@src/constants/routeConstants';
 
 const customiseCakeRouter = express.Router();
 
@@ -32,20 +31,13 @@ customiseCakeRouter.route('/').get(getAllCustomiseForm);
 customiseCakeRouter
   .route('/:id')
   .patch(
-    uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).single(
-      'baseColourImg'
-    ),
+    uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
+      { name: 'images', maxCount: 5 },
+      { name: 'baseColourImg', maxCount: 1 },
+    ]),
     submitAdminForm
   )
   .get(getOneCustomiseCakeForm);
-
-customiseCakeRouter.route(UPDATE_FORM).patch(
-  uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
-    { name: 'images', maxCount: 5 },
-    { name: 'baseColourImg', maxCount: 1 },
-  ]),
-  updateCustomiseCakeForm
-);
 
 customiseCakeRouter.route(SEND_PAYMENT_LINK).get(sendPaymentLink);
 

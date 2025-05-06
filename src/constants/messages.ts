@@ -181,6 +181,11 @@ export const BOB_EMAILS = {
     template: 'orderFailure',
     previewText: 'Attention required',
   },
+  orderPrepare: {
+    subject: 'Your order is being prepared',
+    template: 'orderPrepare',
+    previewText: 'The wait is almost over',
+  },
 };
 export const COUPON_SCHEMA_VALIDATION = {
   code: 'Coupon name is required',
@@ -222,4 +227,13 @@ export const REF_IMG_UPDATE = {
   noOrder: 'Order not found',
   noProduct: 'Product item not found',
   imgUploadSuccess: 'Images uploaded successfully',
+};
+
+export const BOB_SMS_CONTENT = {
+  otp: (otp: string): string =>
+    `<BobTheBakerBoy> Please use ${otp} for your login`,
+  corporateDelivered:
+    '<BobTheBakerBoy> All orders delivered. Contact 88623327 for assistance. Have a great day!',
+  regularDelivered: (name: string): string =>
+    `<BobTheBakerBoy> Hi ${name}, how was your experience ? Please share your feedback on Google: https://bit.ly/2VG9Md5. Get 10% off your next purchase with code WELCOMEBACK.`,
 };

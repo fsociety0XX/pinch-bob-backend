@@ -30,8 +30,9 @@ import {
   PHONE_BRAND_REQ,
   PHONE_BRAND_OTP_REQ,
   INVALID_PHONE_OTP,
+  BOB_SMS_CONTENT,
 } from '@src/constants/messages';
-import sendOtpViaTwilio from '@src/utils/sendTwilioOtp';
+import sendSms from '@src/utils/sendTwilioOtp';
 
 interface ICookieOptions {
   expires: Date;
@@ -146,11 +147,8 @@ const sendWelcomeEmail = async (newUser: IUser) => {
     template,
     context: { previewText },
   });
-  if (newUser.phone) {
-    const body = 'Welcome';
-    await sendOtpViaTwilio(body, newUser.phone);
-  }
 };
+
 export const signup = catchAsync(
   async (req: MulterRequest, res: Response, next: NextFunction) => {
     if (!req.body || !Object.keys(req.body).length) {
@@ -376,9 +374,12 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
     { upsert: true, new: true }
   );
 
-  // Send via Twilio
-  const body = `Your verification code for ${otp}`;
-  await sendOtpViaTwilio(body, phone);
+  // Send SMS via Twilio for Bob
+  let body = '';
+  if (brand === brandEnum[1]) {
+    body = BOB_SMS_CONTENT.otp(otp);
+  }
+  await sendSms(body, phone);
 
   res.status(StatusCode.SUCCESS).json({
     status: 'success',
