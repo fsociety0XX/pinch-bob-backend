@@ -134,6 +134,7 @@ export interface IOtherProduct {
 export interface IOrder {
   id: string;
   orderNumber?: string;
+  sqlId: number;
   gaClientId?: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
@@ -266,6 +267,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
   {
     orderNumber: {
       type: String,
+      unique: true,
+    },
+    sqlId: {
+      type: Number,
       unique: true,
     },
     gaClientId: String,
