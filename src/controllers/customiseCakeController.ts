@@ -7,6 +7,8 @@ import { Express, NextFunction, Request, Response } from 'express';
 import catchAsync from '@src/utils/catchAsync';
 import {
   HITPAY_PAYMENT_PURPOSE,
+  REGULAR_DELIVERY,
+  SELF_COLLECT,
   StatusCode,
   brandEnum,
   customiseOrderEnums,
@@ -33,6 +35,7 @@ import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
+import DeliveryMethod from '@src/models/deliveryMethodModel';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -316,18 +319,28 @@ const createDeliveryDocument = async (
   update = false
 ) => {
   const {
+    brand,
     delivery: { address, date, time, recipientName, recipientPhone },
     user,
   } = customiseCake;
   const currentUser = await User.findById(user);
+  const selfCollectDetails = await DeliveryMethod.findOne({
+    name: SELF_COLLECT,
+    brand,
+  });
+  const regularDeliveryDetails = await DeliveryMethod.findOne({
+    name: REGULAR_DELIVERY,
+    brand,
+  });
+  const selfCollectId = selfCollectDetails?.id || selfCollectDetails?._id;
+  const regularDeliveryId =
+    regularDeliveryDetails?.id || regularDeliveryDetails?._id;
 
   const data: IDeliveryData = {
     brand: customiseCake.brand,
     customiseCakeOrder: customiseCake?._id,
     deliveryDate: new Date(date),
-    method: isSelfCollect
-      ? process.env.SELF_COLLECT_DELIVERY_METHOD_ID!
-      : process.env.REGULAR_DELIVERY_METHOD_ID!,
+    method: isSelfCollect ? selfCollectId : regularDeliveryId,
     collectionTime: time,
     recipientName: recipientName || currentUser?.firstName,
     recipientPhone: +recipientPhone || +currentUser!.phone!,
@@ -466,8 +479,16 @@ export const submitAdminForm = catchAsync(
     }
 
     // Updating delivery & woodelivery data
-    if (req.body?.delivery) {
+    if (delivery) {
       createDelivery(customiseCakeOrder, true);
+      // If delivery type got changed from delivery to self-collect then delete the address
+      if (
+        delivery?.deliveryType === customiseOrderEnums.deliveryType[0] &&
+        delivery.address
+      ) {
+        await Address.findByIdAndDelete(delivery.address);
+        delete req.body.delivery.address;
+      }
     }
 
     res.status(StatusCode.SUCCESS).json({

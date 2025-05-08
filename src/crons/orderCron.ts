@@ -5,7 +5,7 @@
 import cron from 'node-cron';
 import { FilterQuery } from 'mongoose';
 import Order, { IOrder } from '@src/models/orderModel';
-import { brandEnum, CANCELLED } from '@src/types/customTypes';
+import { brandEnum, CANCELLED, SELF_COLLECT } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
 import { PINCH_EMAILS, BOB_EMAILS } from '@src/constants/messages';
 import {
@@ -68,12 +68,12 @@ const brandConfigs = [
   {
     name: brandEnum[1],
     smsEnabled: true,
-    selfCollectMethodName: 'Self-collect',
+    selfCollectMethodName: SELF_COLLECT,
   },
   {
     name: brandEnum[0],
     smsEnabled: false,
-    selfCollectMethodName: 'Self-collect',
+    selfCollectMethodName: SELF_COLLECT,
   },
 ];
 
