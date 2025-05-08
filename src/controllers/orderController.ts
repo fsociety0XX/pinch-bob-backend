@@ -1140,31 +1140,36 @@ export const hitpayWebhookHandler = catchAsync(
   }
 );
 
-export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
-  const { orders } = req.body || [];
+export const migrateOrders = catchAsync(async (req, res) => {
+  const orders: IOrder[] = Array.isArray(req.body.orders)
+    ? req.body.orders
+    : [];
   const failedIds: number[] = [];
-  const bulkOps = orders.map((order: IOrder) => {
+
+  // build the native unordered bulk
+  const bulk = Order.collection.initializeUnorderedBulkOp();
+  orders.forEach((order) => {
     if (order.delivery?.date) {
-      // ensure delivery.date is a Date at UTC‐midnight
       order.delivery.date = toUtcDateOnly(order.delivery.date);
       order.orderNumber = generateUniqueIds();
     }
-    return {
-      insertOne: { document: order },
-    };
+    bulk.insert(order);
   });
 
-  const result = await Order.bulkWrite(bulkOps, { ordered: false });
+  // execute() never throws — it always returns a result you can inspect
+  const result = await bulk.execute();
+  console.log('Unordered bulk result:', result);
 
-  if (result?.writeErrors && result.writeErrors?.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    result.writeErrors.forEach((err: any) => {
-      failedIds.push(orders[err.index]?.sqlId);
-    });
-  }
+  // pull out failures and successes
+  result.getWriteErrors().forEach((we) => {
+    const bad = orders[we.index]?.sqlId;
+    if (bad != null) failedIds.push(bad);
+  });
+  const insertedCount = result.insertedCount;
 
   res.status(200).json({
     message: 'Migration completed',
+    insertedCount,
     failedIds,
   });
 });
