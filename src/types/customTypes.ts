@@ -165,5 +165,6 @@ export const checkoutSessionFor = {
 };
 
 export const SELF_COLLECT = 'Self-collect';
+export const REGULAR_DELIVERY = 'Regular Delivery';
 
 export const HITPAY_PAYMENT_PURPOSE = ['standard', 'customised'];

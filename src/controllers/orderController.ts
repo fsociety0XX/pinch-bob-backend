@@ -59,6 +59,7 @@ import {
   SELF_COLLECT_ADDRESS,
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
+import DeliveryMethod from '@src/models/deliveryMethodModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -462,6 +463,9 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   if (packages.length) {
     task.packages = packages;
   }
+  if (order?.woodeliveryTaskId) {
+    task.taskGuid = order?.woodeliveryTaskId;
+  }
 
   return update
     ? fetchAPI(`${WOODELIVERY_TASK}/${order?.woodeliveryTaskId}`, 'PUT', task)
@@ -511,10 +515,16 @@ const createDelivery = async (id: string, update = false) => {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
   const {
+    brand,
     delivery: { method },
   } = order;
+  const selfCollectDetails = await DeliveryMethod.findOne({
+    name: SELF_COLLECT,
+    brand,
+  });
   const isSelfCollect =
-    String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
+    String(method.id) ===
+    String(selfCollectDetails?.id || selfCollectDetails?._id);
 
   if (isSelfCollect) {
     createDeliveryDocument(order, undefined, update);
