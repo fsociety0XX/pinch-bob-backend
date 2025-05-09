@@ -221,7 +221,8 @@ export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { slug } = req.params;
-    const doc = await Product.findOne({ slug });
+    const { brand } = req.body;
+    const doc = await Product.findOne({ slug, brand });
     if (!doc) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }

@@ -64,7 +64,7 @@ export const MIGRATE = `/migrate`;
 export const GA_URL = `https://www.google-analytics.com/mp/collect`;
 
 // CUSTOMISE CAKE
-export const SEND_PAYMENT_LINK = '/send/:id';
+export const SEND_PAYMENT_SMS = '/sendSms/:id';
 
 // REPORTS
 export const CUSTOMER_ORDER_REPORT = '/customer-order';

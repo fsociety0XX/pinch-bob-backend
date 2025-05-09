@@ -23,11 +23,12 @@ import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
 import AppError from '@src/utils/appError';
 import {
-  COUPON_SCHEMA_VALIDATION,
   DELIVERY_CREATE_ERROR,
   PINCH_EMAILS,
   NO_DATA_FOUND,
   BOB_EMAILS,
+  BOB_SMS_CONTENT,
+  SMS_SENT,
 } from '@src/constants/messages';
 import sendEmail from '@src/utils/sendEmail';
 import Coupon from '@src/models/couponModel';
@@ -36,6 +37,7 @@ import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
+import sendSms from '@src/utils/sendTwilioOtp';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -243,14 +245,15 @@ export const submitCustomerForm = catchAsync(
 
     // creating user
     const newUser = {
+      brand,
       email,
       firstName,
       lastName,
       phone,
     };
-    const filter = { email };
-    const update = { $setOnInsert: newUser };
-    const options = { upsert: true, returnOriginal: false };
+    const filter = { email, brand };
+    const update = { $set: newUser };
+    const options = { upsert: true, new: true };
     const result = await User.findOneAndUpdate(filter, update, options);
 
     req.body.user = result?._id;
@@ -594,7 +597,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   sendOrderConfirmationEmail(customiseCakeOrder, email);
 };
 
-export const sendPaymentLink = catchAsync(
+export const sendPaymentSms = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     let paymentLink = '';
     const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
@@ -607,10 +610,24 @@ export const sendPaymentLink = catchAsync(
       paymentLink = await generatePaymentLink(req, req.params.id, next);
     }
 
+    let body = '';
+    const phone =
+      customiseCakeOrder.delivery.recipientPhone ||
+      customiseCakeOrder.delivery.address.phone ||
+      customiseCakeOrder.user.phone;
+
+    if (customiseCakeOrder.brand === brandEnum[1]) {
+      body = BOB_SMS_CONTENT.paymentReminder(
+        paymentLink,
+        customiseCakeOrder.orderNumber
+      );
+      console.log(body, phone, '00999');
+      await sendSms(body, phone as string);
+    }
+
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
-      message: COUPON_SCHEMA_VALIDATION.paymentLinkSent,
-      data: paymentLink, // TODO: Send this via email
+      message: SMS_SENT,
     });
   }
 );
