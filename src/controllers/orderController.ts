@@ -9,7 +9,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { ObjectId } from 'mongoose';
+import mongoose, { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -49,7 +49,7 @@ import {
   generateUniqueIds,
   toUtcDateOnly,
 } from '@src/utils/functions';
-import Delivery from '@src/models/deliveryModel';
+import Delivery, { IDelivery } from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
@@ -1150,36 +1150,73 @@ export const hitpayWebhookHandler = catchAsync(
   }
 );
 
-export const migrateOrders = catchAsync(async (req, res) => {
+export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
   const orders: IOrder[] = Array.isArray(req.body.orders)
     ? req.body.orders
     : [];
-  const failedIds: number[] = [];
+  const failedOrderIds: number[] = [];
+  const failedDeliveryIds: number[] = [];
 
-  // build the native unordered bulk
-  const bulk = Order.collection.initializeUnorderedBulkOp();
+  // 1) Pre‐assign an _id & normalize each order
   orders.forEach((order) => {
+    order._id = new mongoose.Types.ObjectId();
     if (order.delivery?.date) {
       order.delivery.date = toUtcDateOnly(order.delivery.date);
       order.orderNumber = generateUniqueIds();
     }
-    bulk.insert(order);
   });
 
-  // execute() never throws — it always returns a result you can inspect
-  const result = await bulk.execute();
-  console.log('Unordered bulk result:', result);
+  // 2) Bulk‐insert Orders
+  const orderBulk = Order.collection.initializeUnorderedBulkOp();
+  orders.forEach((order) => orderBulk.insert(order));
+  const orderResult = await orderBulk.execute();
+  console.log('Order bulk result:', orderResult);
 
-  // pull out failures and successes
-  result.getWriteErrors().forEach((we) => {
-    const bad = orders[we.index]?.sqlId;
-    if (bad != null) failedIds.push(bad);
+  // 3) Record any order‐level failures
+  orderResult.getWriteErrors().forEach((we) => {
+    const sqlId = orders[we.index]?.sqlId;
+    if (sqlId != null) failedOrderIds.push(sqlId);
   });
-  const insertedCount = result.insertedCount;
 
+  // 4) Build & Bulk‐insert Deliveries for successful Orders
+  const deliveryBulk = Delivery.collection.initializeUnorderedBulkOp();
+  orders.forEach((order, idx) => {
+    // skip failed orders
+    if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
+
+    const d = order.delivery!;
+    const deliveryDoc: Partial<IDelivery> = {
+      brand: order.brand,
+      order: order._id,
+      deliveryDate: d.date,
+      method: d.method,
+      collectionTime: d.collectionTime,
+      address: d.address,
+      recipientName: order.recipInfo?.name,
+      recipientPhone: order.recipInfo?.contact,
+      recipientEmail: d.recipientEmail,
+      woodeliveryTaskId: order.woodeliveryTaskId,
+      instructions: d.instructions,
+      customiseCakeForm: order.customiseCakeForm ?? false,
+    };
+    deliveryBulk.insert(deliveryDoc);
+  });
+  const deliveryResult = await deliveryBulk.execute();
+  console.log('Delivery bulk result:', deliveryResult);
+
+  // 5) Record any delivery‐level failures
+  deliveryResult.getWriteErrors().forEach((we) => {
+    // use same sqlId index mapping
+    const sqlId = orders[we.index]?.sqlId;
+    if (sqlId != null) failedDeliveryIds.push(sqlId);
+  });
+
+  // Respond with counts and any failures
   res.status(200).json({
     message: 'Migration completed',
-    insertedCount,
-    failedIds,
+    insertedOrders: orderResult.insertedCount,
+    insertedDeliveries: deliveryResult.insertedCount,
+    failedOrderIds,
+    failedDeliveryIds,
   });
 });
