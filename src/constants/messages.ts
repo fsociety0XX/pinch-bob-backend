@@ -200,8 +200,9 @@ export const COUPON_SCHEMA_VALIDATION = {
   minPurchaseValue: 'Your cart value is low for this coupon',
   minQty: 'Your product quantity in cart is low for this coupon',
   notForYourCart: 'This coupon is not applicable on the products in your cart.',
-  paymentLinkSent: 'An email has been sent to the customer with payment link',
 };
+
+export const SMS_SENT = 'SMS sent successfully';
 
 export const ORDER_PREP_EMAIL = {
   noOrdersFound: 'No orders found for the target date.',
@@ -236,4 +237,6 @@ export const BOB_SMS_CONTENT = {
     '<BobTheBakerBoy> All orders delivered. Contact 88623327 for assistance. Have a great day!',
   regularDelivered: (name: string): string =>
     `<BobTheBakerBoy> Hi ${name}, how was your experience ? Please share your feedback on Google: https://bit.ly/2VG9Md5. Get 10% off your next purchase with code WELCOMEBACK.`,
+  paymentReminder: (link: string, orderNumber: string): string =>
+    `<BobTheBakerBoy> Your celebration is coming, but your order #${orderNumber} is not confirmed yet! Finish payment here: ${link}. For help, WhatsApp 88623327.`,
 };

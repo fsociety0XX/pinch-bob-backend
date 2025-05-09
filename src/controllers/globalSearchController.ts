@@ -5,315 +5,232 @@ import { StatusCode } from '@src/types/customTypes';
 import Order from '@src/models/orderModel';
 import Delivery from '@src/models/deliveryModel';
 
-const userFieldsToRemove = {
-  'user.password': 0,
-  'user.brand': 0,
-  'user.role': 0,
-  'user.wishlist': 0,
-  'user.cart': 0,
-  'user.active': 0,
-  'user.createdAt': 0,
-  'user.updatedAt': 0,
-  'user.__v': 0,
-};
+type Mode = 'order' | 'delivery';
 
-const productFieldsToRemove = {
-  'product.product.brand': 0,
-  'product.product.ratingsAvg': 0,
-  'product.product.totalRatings': 0,
-  'product.product.type': 0,
-  'product.product.pinchDetails': 0,
-  'product.product.bobDetails': 0,
-  'product.product.preparationDays': 0,
-  'product.product.recommended': 0,
-  'product.product.category': 0,
-  'product.product.superCategory': 0,
-  'product.product.subCategory': 0,
-  'product.product.fbt': 0,
-  'product.product.active': 0,
-  'product.product.createdAt': 0,
-  'product.product.updatedAt': 0,
-  'product.product.__v': 0,
-  'product.product.sold': 0,
-};
+interface LookupOpts {
+  from: string;
+  letLocal: string;
+  as: string;
+  project: Record<string, 0 | 1>;
+}
 
-const orderFieldsToRemove = {
-  'order.brand': 0,
-  'order.deliveryType': 0,
-  'order.pricingSummary': 0,
-  'order.user': 0,
-  'order.recipInfo': 0,
-  'order.paid': 0,
-  'order.active': 0,
-  'order.createdAt': 0,
-  'order.updatedAt': 0,
-  'order.__v': 0,
-  'order.woodeliveryTaskId': 0,
-};
+/**
+ * Returns a $lookup + safe $unwind for a single field
+ */
+const makeLookup = ({ from, letLocal, as, project }: LookupOpts) => [
+  {
+    $lookup: {
+      from,
+      let: { localId: `$${letLocal}` },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$localId'] } } },
+        { $project: project },
+      ],
+      as,
+    },
+  },
+  {
+    $unwind: { path: `$${as}`, preserveNullAndEmptyArrays: true },
+  },
+];
 
 export const createSearchQuery = (
-  mode: string,
+  mode: Mode,
   search: string,
   brand: string
-): { pipeline: any; model: any } => {
-  let pipeline;
-  let model;
+): { pipeline: any[]; model: any } => {
+  // case-insensitive regex for matching
   const s = { $regex: new RegExp(search, 'i') };
 
-  if (mode === 'order') {
-    pipeline = [
-      {
-        $match: {
-          brand,
-        },
-      },
-      {
-        $unwind: '$product', // Deconstruct the product array
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'product.product',
-          foreignField: '_id',
-          as: 'productDetails',
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      {
-        $lookup: {
-          from: 'deliverymethods',
-          localField: 'delivery.method',
-          foreignField: '_id',
-          as: 'delivery.method',
-        },
-      },
-      {
-        $unwind: '$delivery.method',
-      },
-      {
-        $unwind: '$productDetails',
-      },
-      {
-        $addFields: {
-          'product.product': '$productDetails',
-        },
-      },
-      {
-        $addFields: {
-          user: {
-            $arrayElemAt: ['$user', 0],
-          },
-        },
-      },
-      {
-        $match: {
-          $or: [
-            { orderNumber: s },
-            { 'user.firstName': s },
-            { 'user.lastName': s },
-            { 'user.email': s },
-            { 'user.phone': s },
-            { 'recipInfo.name': s },
-            { woodeliveryTaskId: s },
-            {
-              'recipInfo.contact': {
-                $in: [search, parseInt(String(search), 10)],
-              },
-            },
-          ],
-        },
-      },
-      {
-        $group: {
-          // Group back to original document structure
-          _id: '$_id',
-          brand: { $first: '$brand' },
-          orderNumber: { $first: '$orderNumber' },
-          deliveryType: { $first: '$deliveryType' },
-          product: { $push: '$product' },
-          user: { $first: '$user' },
-          delivery: { $first: '$delivery' },
-          pricingSummary: {
-            $first: '$pricingSummary',
-          },
-          recipInfo: { $first: '$recipInfo' },
-          paid: { $first: '$paid' },
-          active: { $first: '$active' },
-          createdAt: { $first: '$createdAt' },
-          updatedAt: { $first: '$updatedAt' },
-          __v: { $first: '$__v' },
-          woodeliveryTaskId: {
-            $first: '$woodeliveryTaskId',
-          },
-          status: { $first: '$status' },
-        },
-      },
-      {
-        $sort: { createdAt: -1 }, // Sort documents by createdAt in descending order
-      },
-      {
-        $project: { ...userFieldsToRemove, ...productFieldsToRemove },
-      },
-    ];
+  // start with brand filter
+  const pipeline: any[] = [{ $match: { brand } }];
 
-    model = Order;
-  }
   if (mode === 'delivery') {
-    pipeline = [
-      {
-        $match: {
-          brand,
-        },
+    // 1) lookup delivery method
+    pipeline.push(
+      ...makeLookup({
+        from: 'deliverymethods',
+        letLocal: 'method',
+        as: 'method',
+        project: { name: 1, price: 1 },
+      })
+    );
+
+    // 2) lookup order basics
+    pipeline.push(
+      ...makeLookup({
+        from: 'orders',
+        letLocal: 'order',
+        as: 'order',
+        project: { orderNumber: 1, user: 1 },
+      })
+    );
+
+    // 3) lookup user
+    pipeline.push(
+      ...makeLookup({
+        from: 'users',
+        letLocal: 'order.user',
+        as: 'user',
+        project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
+      })
+    );
+
+    // 4) unwind and lookup products
+    pipeline.push(
+      { $unwind: { path: '$order.product', preserveNullAndEmptyArrays: true } },
+      ...makeLookup({
+        from: 'products',
+        letLocal: 'order.product.product',
+        as: 'order.product',
+        project: { name: 1, price: 1 },
+      })
+    );
+
+    // 5) lookup address
+    pipeline.push(
+      ...makeLookup({
+        from: 'addresses',
+        letLocal: 'address',
+        as: 'address',
+        project: { address1: 1, address2: 1, postalCode: 1 },
+      })
+    );
+
+    // 6) match across all searchable fields
+    pipeline.push({
+      $match: {
+        $or: [
+          { 'order.orderNumber': s },
+          { 'user.firstName': s },
+          { 'user.lastName': s },
+          { 'user.email': s },
+          { 'user.phone': s },
+          { recipientName: s },
+          { recipientPhone: s },
+          { woodeliveryTaskId: s },
+        ],
       },
-      {
-        $lookup: {
-          from: 'orders',
-          localField: 'order',
-          foreignField: '_id',
-          as: 'order',
-        },
+    });
+
+    // 7) group back into full delivery docs
+    pipeline.push({
+      $group: {
+        _id: '$_id',
+        brand: { $first: '$brand' },
+        order: { $first: '$order' },
+        user: { $first: '$user' },
+        method: { $first: '$method' },
+        product: { $push: '$order.product' },
+        address: { $first: '$address' },
+        deliveryDate: { $first: '$deliveryDate' },
+        collectionTime: { $first: '$collectionTime' },
+        recipientName: { $first: '$recipientName' },
+        recipientPhone: { $first: '$recipientPhone' },
+        recipientEmail: { $first: '$recipientEmail' },
+        woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
+        driverDetails: { $first: '$driverDetails' },
+        status: { $first: '$status' },
+        active: { $first: '$active' },
+        createdAt: { $first: '$createdAt' },
+        updatedAt: { $first: '$updatedAt' },
       },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'order.user',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      {
-        $lookup: {
-          from: 'deliverymethods',
-          localField: 'method',
-          foreignField: '_id',
-          as: 'method',
-        },
-      },
-      {
-        $lookup: {
-          from: 'addresses',
-          localField: 'address',
-          foreignField: '_id',
-          as: 'address',
-        },
-      },
-      {
-        $unwind: '$method',
-      },
-      {
-        $unwind: '$address',
-      },
-      {
-        $addFields: {
-          order: {
-            $arrayElemAt: ['$order', 0],
-          },
-          user: {
-            $arrayElemAt: ['$user', 0],
-          },
-        },
-      },
-      {
-        $unwind: '$order.product',
-      },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'order.product.product',
-          foreignField: '_id',
-          as: 'order.productDetails',
-        },
-      },
-      {
-        $unwind: '$order.productDetails',
-      },
-      {
-        $addFields: {
-          'order.product.product': '$order.productDetails',
-        },
-      },
-      {
-        $group: {
-          // Group back to original document structure
-          _id: '$_id',
-          brand: { $first: '$brand' },
-          order: { $first: '$order' },
-          product: {
-            $push: '$order.product',
-          },
-          deliveryDate: { $first: '$deliveryDate' },
-          method: { $first: '$method' },
-          collectionTime: { $first: '$collectionTime' },
-          address: { $first: '$address' },
-          recipientName: { $first: '$recipientName' },
-          recipientPhone: { $first: '$recipientPhone' },
-          recipientEmail: { $first: '$recipientEmail' },
-          woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
-          active: { $first: '$active' },
-          createdAt: { $first: '$createdAt' },
-          updatedAt: { $first: '$updatedAt' },
-          __v: { $first: '$__v' },
-          status: { $first: '$status' },
-          driverDetails: { $first: '$driverDetails' },
-          user: { $first: '$user' },
-        },
-      },
-      {
-        $match: {
-          $or: [
-            { 'order.orderNumber': s },
-            { 'user.firstName': s },
-            { 'user.lastName': s },
-            { 'user.email': s },
-            { 'user.phone': s },
-            { recipientName: s },
-            { recipientPhone: s },
-            { woodeliveryTaskId: s },
-          ],
-        },
-      },
-      {
-        $sort: { createdAt: -1 }, // Sort documents by createdAt in descending order
-      },
-      {
-        $project: {
-          'order.product': 0,
-          'order.productDetails': 0,
-          ...userFieldsToRemove,
-          ...orderFieldsToRemove,
-          ...productFieldsToRemove,
-        },
-      },
-    ];
-    model = Delivery;
+    });
+
+    // 8) final sort
+    pipeline.push({ $sort: { createdAt: -1 } });
+
+    return { pipeline, model: Delivery };
   }
 
-  return { pipeline, model };
+  // ----- ORDER branch -----
+
+  // 1) lookup user
+  pipeline.push(
+    ...makeLookup({
+      from: 'users',
+      letLocal: 'user',
+      as: 'user',
+      project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
+    })
+  );
+
+  // 2) lookup delivery method
+  pipeline.push(
+    ...makeLookup({
+      from: 'deliverymethods',
+      letLocal: 'delivery.method',
+      as: 'delivery.method',
+      project: { name: 1, price: 1 },
+    })
+  );
+
+  // 3) unwind & lookup products
+  pipeline.push(
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+    ...makeLookup({
+      from: 'products',
+      letLocal: 'product.product',
+      as: 'product.product',
+      project: { name: 1, price: 1 },
+    })
+  );
+
+  // 4) match across order fields
+  pipeline.push({
+    $match: {
+      $or: [
+        { orderNumber: s },
+        { 'user.firstName': s },
+        { 'user.lastName': s },
+        { 'user.email': s },
+        { 'user.phone': s },
+        { 'recipInfo.name': s },
+        { woodeliveryTaskId: s },
+        { 'recipInfo.contact': { $in: [search, parseInt(search, 10)] } },
+      ],
+    },
+  });
+
+  // 5) group back into full order docs
+  pipeline.push({
+    $group: {
+      _id: '$_id',
+      brand: { $first: '$brand' },
+      orderNumber: { $first: '$orderNumber' },
+      user: { $first: '$user' },
+      delivery: { $first: '$delivery' },
+      product: { $push: '$product' },
+      recipInfo: { $first: '$recipInfo' },
+      pricingSummary: { $first: '$pricingSummary' },
+      paid: { $first: '$paid' },
+      active: { $first: '$active' },
+      status: { $first: '$status' },
+      woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
+      createdAt: { $first: '$createdAt' },
+      updatedAt: { $first: '$updatedAt' },
+    },
+  });
+
+  // 6) final sort
+  pipeline.push({ $sort: { createdAt: -1 } });
+
+  return { pipeline, model: Order };
 };
 
 export const globalTableSearch = catchAsync(
   async (req: Request, res: Response) => {
-    const searchTerm = (req.query.search as string) || '';
-    const mode = (req.query.mode as string) || '';
-    const brand = (req.query.brand as string) || '';
-    const { pipeline, model } = createSearchQuery(mode, searchTerm, brand);
+    const searchTerm = String(req.query.search || '');
+    const mode = String(req.query.mode || '') as Mode;
+    const brand = String(req.query.brand || '');
 
-    const docs = await model.aggregate(pipeline);
+    const { pipeline, model } = createSearchQuery(mode, searchTerm, brand);
+    const docs = await model.aggregate(pipeline).allowDiskUse(true);
+
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
-      data: {
-        data: docs,
-      },
-      meta: {
-        totalDataCount: docs?.length,
-      },
+      data: { data: docs },
+      meta: { totalDataCount: docs.length },
     });
   }
 );

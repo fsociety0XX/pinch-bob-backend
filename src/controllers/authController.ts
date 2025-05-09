@@ -316,7 +316,7 @@ export const verifyOtp = catchAsync(
       if (timeDifference <= tenMinutesInMillis) {
         // Clear the OTP after successful verification
         const currentUser = await User.findOneAndUpdate(
-          { email },
+          { email, brand },
           { $unset: { otp: 1, otpTimestamp: 1 } },
           { new: true }
         );
@@ -371,7 +371,7 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
   await User.findOneAndUpdate(
     { phone, brand },
     { otp, otpTimestamp },
-    { upsert: true, new: true }
+    { upsert: true }
   );
 
   // Send SMS via Twilio for Bob
@@ -415,7 +415,7 @@ export const verifyPhoneOtp = catchAsync(
 
       if (timeDifference <= tenMinutesInMillis) {
         const currentUser = await User.findOneAndUpdate(
-          { phone },
+          { phone, brand },
           { $unset: { otp: 1, otpTimestamp: 1 } },
           { new: true }
         );

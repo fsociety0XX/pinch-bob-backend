@@ -4,12 +4,12 @@ import { Role } from '@src/types/customTypes';
 import {
   getAllCustomiseForm,
   getOneCustomiseCakeForm,
-  sendPaymentLink,
+  sendPaymentSms,
   submitAdminForm,
   submitCustomerForm,
 } from '@src/controllers/customiseCakeController';
 import uploadImage from '@src/utils/uploadImage';
-import { SEND_PAYMENT_LINK } from '@src/constants/routeConstants';
+import { SEND_PAYMENT_SMS } from '@src/constants/routeConstants';
 
 const customiseCakeRouter = express.Router();
 
@@ -39,6 +39,6 @@ customiseCakeRouter
   )
   .get(getOneCustomiseCakeForm);
 
-customiseCakeRouter.route(SEND_PAYMENT_LINK).get(sendPaymentLink);
+customiseCakeRouter.route(SEND_PAYMENT_SMS).get(sendPaymentSms);
 
 export default customiseCakeRouter;
