@@ -61,7 +61,7 @@ export interface IInventory {
   track: boolean;
   totalQty: number;
   remainingQty: number;
-  available: boolean; // will be used to show 'sold out' tags
+  available: boolean; // will be used in admin panel to track product quantity
   status: string;
 }
 
@@ -141,6 +141,7 @@ export interface IProduct {
   fondantFig: string;
   fondantLvl: string;
   metaDesc: string;
+  available: boolean; // will be used in FE to show "Out of stock"
 }
 
 const ProductImageSchema = new mongoose.Schema({
@@ -400,6 +401,10 @@ const productSchema = new mongoose.Schema<IProduct>(
     fondantFig: String,
     fondantLvl: String,
     metaDesc: String,
+    available: {
+      type: Boolean,
+      default: true,
+    },
     active: {
       type: Boolean,
       default: true,
