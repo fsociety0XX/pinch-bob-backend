@@ -358,12 +358,12 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (!user?.firstName || !user?.lastName || !user?.phone) {
+      if (!user?.firstName || !user?.lastName || !user?.email) {
         const { customer } = req.body;
         await User.findByIdAndUpdate(req.user?._id, {
-          firstName: user?.firstName || customer?.firstName,
-          lastName: user?.lastName || customer?.lastName,
-          phone: user?.phone || customer?.phone,
+          firstName: customer?.firstName,
+          lastName: customer?.lastName,
+          email: user?.email || customer?.email,
         });
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
