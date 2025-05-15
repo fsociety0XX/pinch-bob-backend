@@ -10,9 +10,9 @@ import { PRODUCTION } from '@src/constants/static';
 const { MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID } =
   process.env;
 
-if (!MAILCHIMP_API_KEY || !MAILCHIMP_SERVER_PREFIX || !MAILCHIMP_LIST_ID) {
-  throw new Error('Mailchimp environment variables are not set');
-}
+// if (!MAILCHIMP_API_KEY || !MAILCHIMP_SERVER_PREFIX || !MAILCHIMP_LIST_ID) {
+//   throw new Error('Mailchimp environment variables are not set');
+// }
 
 // Configure Mailchimp SDK
 mailchimpClient.setConfig({
