@@ -102,6 +102,7 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  status?: string;
 }
 
 // CRON scheduled task to run after 30 mins of placing order if the payment failed
@@ -494,6 +495,7 @@ const createDeliveryDocument = async (
   };
   if (task) {
     data.woodeliveryTaskId = task?.data?.guid;
+    data.status = WOODELIVERY_STATUS[task?.data?.statusId];
   }
   if (address?.id) {
     data.address = address.id;
