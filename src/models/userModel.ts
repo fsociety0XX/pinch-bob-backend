@@ -168,16 +168,15 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     firstName: {
       type: String,
       trim: true,
-      required: [true, USER_SCHEMA_VALIDATION.firstName],
+      default: 'Guest',
     },
     lastName: {
       type: String,
       trim: true,
-      required: [true, USER_SCHEMA_VALIDATION.lastName],
+      default: 'User',
     },
     email: {
       type: String,
-      required: [true, USER_SCHEMA_VALIDATION.email],
       lowercase: true,
       validate: [validator.isEmail, USER_SCHEMA_VALIDATION.invalidEmail],
       default: null,

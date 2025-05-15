@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable prefer-destructuring */
 /* eslint-disable camelcase */
@@ -8,7 +9,7 @@ import Stripe from 'stripe';
 import cron from 'node-cron';
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { ObjectId } from 'mongoose';
+import mongoose, { ObjectId } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order, { IHitpayDetails, IOrder } from '@src/models/orderModel';
 import { IRequestWithUser } from './authController';
@@ -37,7 +38,6 @@ import {
   ORDER_AUTH_ERR,
   ORDER_NOT_FOUND,
   ORDER_DELIVERY_DATE_ERR,
-  ORDER_PREP_EMAIL,
   BOB_EMAILS,
   ORDER_FAIL_EMAIL,
   REF_IMG_UPDATE,
@@ -47,19 +47,19 @@ import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
   generateUniqueIds,
-  getDateOneDayFromNow,
+  toUtcDateOnly,
 } from '@src/utils/functions';
-import Delivery from '@src/models/deliveryModel';
+import Delivery, { IDelivery } from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 import {
-  PRODUCTION,
   SELF_COLLECT_ADDRESS,
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
+import DeliveryMethod from '@src/models/deliveryMethodModel';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -104,71 +104,7 @@ interface IDeliveryData {
   address?: ObjectId;
 }
 
-const sendOrderPrepEmail = async (res: Response) => {
-  try {
-    const { subject, template, previewText } = PINCH_EMAILS.orderPrepare;
-    const targetDate = getDateOneDayFromNow();
-    const query = { 'delivery.date': targetDate, paid: true };
-
-    const ordersToNotify = await Order.find(query);
-
-    if (!ordersToNotify.length) {
-      console.log(ORDER_PREP_EMAIL.noOrdersFound);
-      return;
-    }
-    // Prepare email sending promises
-    const emailPromises = ordersToNotify.map((order: IOrder) =>
-      sendEmail({
-        email: order?.user?.email,
-        subject,
-        template,
-        context: {
-          previewText,
-          orderNo: order?.orderNumber,
-          customerName: `${order?.user?.firstName || ''} ${
-            order?.user?.lastName || ''
-          }`,
-        },
-      }).catch((error) => {
-        console.error(
-          ORDER_PREP_EMAIL.emailFailed(order?.orderNumber || ''),
-          error
-        );
-        return { orderNumber: order?.orderNumber, success: false, error };
-      })
-    );
-
-    await Promise.allSettled(emailPromises);
-
-    // // Log successful and failed email results
-    // results.forEach((result, index) => {
-    //   if (result.status === 'fulfilled') {
-    //     console.log(
-    //       `Email sent successfully to order ${ordersToNotify[index].orderNumber}`
-    //     );
-    //   } else {
-    //     console.error(
-    //       `Failed to send email to order ${ordersToNotify[index].orderNumber}:`,
-    //       result.reason
-    //     );
-    //   }
-    // });
-
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-    });
-    console.log(ORDER_PREP_EMAIL.allTaskCompleted);
-  } catch (err) {
-    console.error(ORDER_PREP_EMAIL.errorInSendingEmails, err);
-  }
-};
-
-// Cron scheduled task that runs once a day at midnight
-cron.schedule('0 0 * * *', async () => {
-  if (process.env.NODE_ENV === PRODUCTION) sendOrderPrepEmail();
-});
-
-// Cron scheduled task to run after 30 mins of placing order if the payment failed
+// CRON scheduled task to run after 30 mins of placing order if the payment failed
 function cancelOrder(id: string) {
   const currentTime = new Date();
   const thirtyMinutesAfterCurrentTime = new Date(
@@ -422,15 +358,15 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (!user?.firstName && !user?.lastName && !user?.phone) {
+      if (!user?.firstName || !user?.lastName || !user?.email) {
         const { customer } = req.body;
         await User.findByIdAndUpdate(req.user?._id, {
           firstName: customer?.firstName,
           lastName: customer?.lastName,
-          phone: customer?.phone,
+          email: user?.email || customer?.email,
         });
       }
-
+      req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
       const order = await Order.create(req.body);
       orderId = order.id;
     }
@@ -527,6 +463,9 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
   if (packages.length) {
     task.packages = packages;
   }
+  if (order?.woodeliveryTaskId) {
+    task.taskGuid = order?.woodeliveryTaskId;
+  }
 
   return update
     ? fetchAPI(`${WOODELIVERY_TASK}/${order?.woodeliveryTaskId}`, 'PUT', task)
@@ -576,10 +515,16 @@ const createDelivery = async (id: string, update = false) => {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
   const {
+    brand,
     delivery: { method },
   } = order;
+  const selfCollectDetails = await DeliveryMethod.findOne({
+    name: SELF_COLLECT,
+    brand,
+  });
   const isSelfCollect =
-    String(method.id) === String(process.env.SELF_COLLECT_DELIVERY_METHOD_ID);
+    String(method.id) ===
+    String(selfCollectDetails?.id || selfCollectDetails?._id);
 
   if (isSelfCollect) {
     createDeliveryDocument(order, undefined, update);
@@ -799,7 +744,7 @@ export const authenticateOrderAccess = catchAsync(
 export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const {
     brand,
-    delivery: { address },
+    delivery: { address, date },
   } = req?.body;
   const { email, firstName, lastName, phone } = req?.body?.user;
 
@@ -825,6 +770,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
   req.body.orderNumber = generateUniqueIds();
+  req.body.delivery.date = toUtcDateOnly(date);
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -870,12 +816,12 @@ export const bulkCreateOrders = catchAsync(
     for (const orderData of ordersData) {
       const {
         brand,
-        delivery: { address },
+        delivery: { address, date },
         user: userData,
       } = orderData;
 
       // Find or create user
-      let user = await User.findOne({ email: userData.email });
+      let user = await User.findOne({ email: userData.email, brand });
       if (!user) {
         user = new User({ brand, ...userData });
         await user.save({ validateBeforeSave: false });
@@ -886,6 +832,7 @@ export const bulkCreateOrders = catchAsync(
       const newAddress = { brand, user: user._id, ...address };
       const createdAddress = await Address.create(newAddress);
       orderData.delivery.address = createdAddress._id;
+      orderData.delivery.date = toUtcDateOnly(date);
 
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
@@ -999,7 +946,7 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.moneyPulling.want'] = moneyPullingOrders;
+      filter['product.wantMoneyPulling'] = moneyPullingOrders;
     }
     delete req.query.superCategory;
     delete req.query.category;
@@ -1017,6 +964,9 @@ export const updateOrder = catchAsync(
     const { delivery, recipInfo } = req.body;
     if (req.files?.length) {
       req.body.additionalRefImages = req.files;
+    }
+    if (delivery) {
+      req.body.delivery.date = toUtcDateOnly(delivery.date);
     }
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -1201,25 +1151,72 @@ export const hitpayWebhookHandler = catchAsync(
 );
 
 export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
-  const { orders } = req.body || [];
-  const failedIds: number[] = [];
-  const bulkOps = await Promise.all(
-    orders.map(async (order: IOrder) => ({
-      insertOne: { document: order },
-    }))
-  );
+  const orders: IOrder[] = Array.isArray(req.body.orders)
+    ? req.body.orders
+    : [];
+  const failedOrderIds: number[] = [];
+  const failedDeliveryIds: number[] = [];
 
-  const result = await Order.bulkWrite(bulkOps, { ordered: false });
+  // 1) Pre‐assign an _id & normalize each order
+  orders.forEach((order) => {
+    order._id = new mongoose.Types.ObjectId();
+    if (order.delivery?.date) {
+      order.delivery.date = toUtcDateOnly(order.delivery.date);
+      order.orderNumber = generateUniqueIds();
+    }
+  });
 
-  if (result?.writeErrors && result.writeErrors?.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    result.writeErrors.forEach((err: any) => {
-      failedIds.push(orders[err.index]?.sqlId);
-    });
-  }
+  // 2) Bulk‐insert Orders
+  const orderBulk = Order.collection.initializeUnorderedBulkOp();
+  orders.forEach((order) => orderBulk.insert(order));
+  const orderResult = await orderBulk.execute();
+  console.log('Order bulk result:', orderResult);
 
+  // 3) Record any order‐level failures
+  orderResult.getWriteErrors().forEach((we) => {
+    const sqlId = orders[we.index]?.sqlId;
+    if (sqlId != null) failedOrderIds.push(sqlId);
+  });
+
+  // 4) Build & Bulk‐insert Deliveries for successful Orders
+  const deliveryBulk = Delivery.collection.initializeUnorderedBulkOp();
+  orders.forEach((order, idx) => {
+    // skip failed orders
+    if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
+
+    const d = order.delivery!;
+    const deliveryDoc: Partial<IDelivery> = {
+      brand: order.brand,
+      order: order._id,
+      deliveryDate: d.date,
+      method: d.method,
+      collectionTime: d.collectionTime,
+      address: d.address,
+      recipientName: order.recipInfo?.name,
+      recipientPhone: order.recipInfo?.contact,
+      recipientEmail: d.recipientEmail,
+      woodeliveryTaskId: order.woodeliveryTaskId,
+      instructions: d.instructions,
+      customiseCakeForm: order.customiseCakeForm ?? false,
+    };
+    deliveryBulk.insert(deliveryDoc);
+  });
+  const deliveryResult = await deliveryBulk.execute();
+  console.log('Delivery bulk result:', deliveryResult);
+
+  // 5) Record any delivery‐level failures
+  deliveryResult.getWriteErrors().forEach((we) => {
+    // use same sqlId index mapping
+    const sqlId = orders[we.index]?.sqlId;
+    if (sqlId != null) failedDeliveryIds.push(sqlId);
+  });
+
+  // Respond with counts and any failures
   res.status(200).json({
     message: 'Migration completed',
-    failedIds,
+    insertedOrders: orderResult.insertedCount,
+    insertedDeliveries: deliveryResult.insertedCount,
+    failedOrderIds,
+    failedDeliveryIds,
   });
 });

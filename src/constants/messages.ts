@@ -90,6 +90,9 @@ export const OTP_SENT = 'OTP sent successfully';
 export const OTP_VERIFIED = 'OTP verified successfully';
 export const OTP_EXPIRED = 'OTP has expired';
 export const INVALID_OTP = 'OTP is invalid';
+export const PHONE_BRAND_REQ = 'Phone and brand are required';
+export const PHONE_BRAND_OTP_REQ = 'Phone, brand & OTP are required';
+export const INVALID_PHONE_OTP = 'Invalid OTP or phone number';
 export const ORDER_NOT_FOUND = 'Order not found.';
 export const ORDER_DELIVERY_DATE_ERR = `Delivery date should be greater than today's date`;
 export const ORDER_FAIL_EMAIL = 'Order failure email sent successfully.';
@@ -178,6 +181,11 @@ export const BOB_EMAILS = {
     template: 'orderFailure',
     previewText: 'Attention required',
   },
+  orderPrepare: {
+    subject: 'Your order is being prepared',
+    template: 'orderPrepare',
+    previewText: 'The wait is almost over',
+  },
 };
 export const COUPON_SCHEMA_VALIDATION = {
   code: 'Coupon name is required',
@@ -192,8 +200,9 @@ export const COUPON_SCHEMA_VALIDATION = {
   minPurchaseValue: 'Your cart value is low for this coupon',
   minQty: 'Your product quantity in cart is low for this coupon',
   notForYourCart: 'This coupon is not applicable on the products in your cart.',
-  paymentLinkSent: 'An email has been sent to the customer with payment link',
 };
+
+export const SMS_SENT = 'SMS sent successfully';
 
 export const ORDER_PREP_EMAIL = {
   noOrdersFound: 'No orders found for the target date.',
@@ -219,4 +228,15 @@ export const REF_IMG_UPDATE = {
   noOrder: 'Order not found',
   noProduct: 'Product item not found',
   imgUploadSuccess: 'Images uploaded successfully',
+};
+
+export const BOB_SMS_CONTENT = {
+  otp: (otp: string): string =>
+    `<BobTheBakerBoy> Please use ${otp} for your login`,
+  corporateDelivered:
+    '<BobTheBakerBoy> All orders delivered. Contact 88623327 for assistance. Have a great day!',
+  regularDelivered: (name: string): string =>
+    `<BobTheBakerBoy> Hi ${name}, how was your experience ? Please share your feedback on Google: https://bit.ly/2VG9Md5. Get 10% off your next purchase with code WELCOMEBACK.`,
+  paymentReminder: (link: string, orderNumber: string): string =>
+    `<BobTheBakerBoy> Your celebration is coming, but your order #${orderNumber} is not confirmed yet! Finish payment here: ${link}. For help, WhatsApp 88623327.`,
 };

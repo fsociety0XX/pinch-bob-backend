@@ -26,7 +26,7 @@ interface IPhoto {
 interface IRecipInfo {
   sameAsSender: boolean;
   name: string;
-  contact: number;
+  contact: string;
 }
 
 interface IPricingSummary {
@@ -39,7 +39,7 @@ interface IPricingSummary {
 }
 
 interface IDelivery {
-  date: string;
+  date: Date;
   method: {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
@@ -62,7 +62,6 @@ interface IDelivery {
 }
 
 interface IMoneyPulling {
-  want: boolean;
   noteType: string;
   qty: number;
 }
@@ -100,6 +99,7 @@ export interface IProduct {
   specialInstructions?: string;
   fondantName?: string;
   fondantNumber?: string;
+  wantMoneyPulling?: boolean;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -134,6 +134,7 @@ export interface IOtherProduct {
 export interface IOrder {
   id: string;
   orderNumber?: string;
+  sqlId: number;
   gaClientId?: string;
   brand: string;
   deliveryType: string; // multi or single location delivery
@@ -165,10 +166,6 @@ const ProductImageSchema = new mongoose.Schema<IPhoto>({
 });
 
 const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({
-  want: {
-    type: Boolean,
-    default: false,
-  },
   noteType: {
     type: String,
     enum: notesEnum,
@@ -232,12 +229,16 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
+  wantMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
   moneyPulling: [MoneyPullingSchema],
   address: String,
 });
 
 const DeliverySchema = new mongoose.Schema<IDelivery>({
-  date: String,
+  date: Date,
   method: {
     type: mongoose.Schema.ObjectId,
     ref: 'DeliveryMethod',
@@ -266,6 +267,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
   {
     orderNumber: {
       type: String,
+      unique: true,
+    },
+    sqlId: {
+      type: Number,
       unique: true,
     },
     gaClientId: String,
@@ -301,7 +306,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     recipInfo: {
       sameAsSender: Boolean,
       name: String,
-      contact: Number,
+      contact: String,
     },
     paid: {
       type: Boolean,
@@ -354,7 +359,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   });
   this.populate({
     path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
-    select: 'name images inventory updatedAt',
+    select: 'name images inventory updatedAt duration',
   });
   this.populate({
     path: 'user',

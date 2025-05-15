@@ -10,6 +10,7 @@ export interface IDriver {
   lastName: 'string';
 }
 export interface IDelivery {
+  sqlId: number;
   brand: string;
   order?: mongoose.Schema.Types.ObjectId;
   customiseCakeOrder?: mongoose.Schema.Types.ObjectId;
@@ -38,6 +39,10 @@ const DriverSchema = new mongoose.Schema<IDriver>({
 
 const deliverySchema = new mongoose.Schema<IDelivery>(
   {
+    sqlId: {
+      type: Number,
+      unique: true,
+    },
     brand: {
       type: String,
       required: [true, COMMON_SCHEMA_VALIDATION.brand],

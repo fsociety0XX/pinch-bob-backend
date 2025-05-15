@@ -18,7 +18,7 @@ export interface IAddress {
   address1: string;
   address2?: string;
   postalCode: string;
-  phone: number;
+  phone: string;
   user: mongoose.Types.ObjectId;
   default: boolean;
   active: boolean;
@@ -75,7 +75,7 @@ const addressSchema = new mongoose.Schema<IAddress>(
       trim: true,
     },
     phone: {
-      type: Number,
+      type: String,
       required: [true, ADDRESS_SCHEMA_VALIDATION.phone],
       trim: true,
     },

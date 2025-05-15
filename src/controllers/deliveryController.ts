@@ -5,7 +5,7 @@ import {
   GET_WOODELIVERY_DRIVERS,
   WOODELIVERY_TASK,
 } from '@src/constants/routeConstants';
-import { StatusCode } from '@src/types/customTypes';
+import { brandEnum, StatusCode } from '@src/types/customTypes';
 import catchAsync from '@src/utils/catchAsync';
 import { fetchAPI } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -19,10 +19,12 @@ import {
 } from '@src/utils/factoryHandler';
 import sendEmail from '@src/utils/sendEmail';
 import {
+  BOB_SMS_CONTENT,
   DELIVERY_COLLECTION_TIME,
   PINCH_EMAILS,
 } from '@src/constants/messages';
 import AppError from '@src/utils/appError';
+import sendSms from '@src/utils/sendTwilioOtp';
 
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
@@ -127,6 +129,22 @@ export const updateOrderStatus = catchAsync(
 
     // Send order delivered email and ask for google review from cx
     if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
+      // Send SMS via Twilio for Bob
+      if (brand === brandEnum[1]) {
+        let body = '';
+        if (order.corporate) {
+          body = BOB_SMS_CONTENT.corporateDelivered;
+        } else {
+          body = BOB_SMS_CONTENT.regularDelivered(order.user.firstName || '');
+        }
+        const phone =
+          order.recipInfo?.contact ||
+          order.delivery.address.phone ||
+          order.user.phone;
+
+        await sendSms(body, phone as string);
+      }
+
       await sendEmail({
         email: order?.user?.email,
         subject,

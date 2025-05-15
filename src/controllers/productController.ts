@@ -48,7 +48,7 @@ async function syncProductWithMerchantCenter(
     contentLanguage: 'en',
     targetCountry: 'SG',
     channel: 'online',
-    availability: p?.inventory?.available ? 'in stock' : 'out of stock',
+    availability: p?.available ? 'in stock' : 'out of stock',
     condition: 'new',
     price: {
       value: p.price.toString(),
@@ -221,7 +221,8 @@ export const deleteProduct = deleteOne(Product);
 export const getOneProductViaSlug = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { slug } = req.params;
-    const doc = await Product.findOne({ slug });
+    const { brand } = req.body;
+    const doc = await Product.findOne({ slug, brand });
     if (!doc) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
@@ -668,7 +669,7 @@ export const getFbtAlsoLike = catchAsync(
       'brand superCategory'
     );
     if (!product) {
-      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+      throw new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
     }
 
     const superCategory = product.superCategory[0].name;
