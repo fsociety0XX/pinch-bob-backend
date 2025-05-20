@@ -344,6 +344,7 @@ const handleHitpayPayment = async (
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
+    const { customer } = req.body
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
@@ -359,12 +360,12 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (!user?.firstName || !user?.lastName || !user?.email) {
-        const { customer } = req.body;
+      if (Object.keys(customer).length) {
         await User.findByIdAndUpdate(req.user?._id, {
           firstName: customer?.firstName,
           lastName: customer?.lastName,
           email: user?.email || customer?.email,
+          phone: user?.phone || customer?.phone,
         });
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
