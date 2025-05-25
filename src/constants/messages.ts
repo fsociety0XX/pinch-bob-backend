@@ -152,19 +152,19 @@ export const BOB_EMAILS = {
     previewText: 'Hey! So glad to see you',
   },
   forgotPassword: {
-    subject: 'Reset password - valid for 10 minutes',
+    subject: 'Reset Your Bob the Baker Boy Password',
     template: 'forgotPassword',
     previewText: 'Reset password - valid for 10 minutes',
   },
   paymentLink: {
-    subject: 'Thank you for your order',
+    subject: 'Thank you for your order - payment pending',
     template: 'paymentLink',
     previewText: 'Pay Now - link valid for 24 hrs',
   },
   customiseCakeOrderConfirm: {
     subject: 'Thank you for your order',
     template: 'customiseCakeOrderConfirmation',
-    previewText: 'Thank you for your order',
+    previewText: 'Your order is confirmed!',
   },
   sendOtp: {
     subject: 'Your OTP for Bob the Baker Boy',
@@ -174,7 +174,7 @@ export const BOB_EMAILS = {
   orderConfirm: {
     subject: 'Thank you for your order',
     template: 'orderConfirmation',
-    previewText: 'Thank you for your order',
+    previewText: 'Your order is confirmed!',
   },
   orderFail: {
     subject: 'Payment failed for your recent order',
@@ -203,6 +203,7 @@ export const COUPON_SCHEMA_VALIDATION = {
 };
 
 export const SMS_SENT = 'SMS sent successfully';
+export const EMAIL_SENT = 'Email sent successfully';
 
 export const ORDER_PREP_EMAIL = {
   noOrdersFound: 'No orders found for the target date.',

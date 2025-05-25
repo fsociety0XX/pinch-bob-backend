@@ -122,6 +122,7 @@ cron.schedule('0 0 * * *', async () => {
             order.user.lastName || ''
           }`.trim(),
         },
+        brand,
       }),
       onError: (order, err) =>
         console.error(`[${brand}] Email failed for ${order.orderNumber}`, err),

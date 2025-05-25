@@ -56,6 +56,7 @@ import Product from '@src/models/productModel';
 import Coupon from '@src/models/couponModel';
 import { updateCustomiseCakeOrderAfterPaymentSuccess } from './customiseCakeController';
 import {
+  BOB_EMAIL_DETAILS,
   SELF_COLLECT_ADDRESS,
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
@@ -202,32 +203,68 @@ const createProductListForTemplate = (order: IOrder) => {
 };
 
 const sendOrderConfirmationEmail = async (email: string, order: IOrder) => {
-  const {
-    orderConfirm: { subject, template, previewText },
-  } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+  // Pinch
+  if (order.brand === brandEnum[0]) {
+    const { subject, template, previewText } = PINCH_EMAILS.orderConfirm;
 
-  await sendEmail({
-    email,
-    subject,
-    template,
-    context: {
-      previewText,
-      orderId: order?.id,
-      orderNo: order?.orderNumber,
-      customerName: `${order?.user?.firstName || ''} ${
-        order?.user?.lastName || ''
-      }`,
-      products: createProductListForTemplate(order!),
-      pricingSummary: order!.pricingSummary,
-      deliveryDate: new Date(order!.delivery?.date)?.toDateString(),
-      deliveryMethod: order?.delivery?.method?.name || '',
-      collectionTime: order?.delivery?.collectionTime || '',
-      address: prepareCompleteAddress(order),
-      trackingLink: order?.woodeliveryTaskId
-        ? `https://app.woodelivery.com/t?q=${order?.woodeliveryTaskId}`
-        : '',
-    },
-  });
+    await sendEmail({
+      email,
+      subject,
+      template,
+      context: {
+        previewText,
+        orderId: order?.id,
+        orderNo: order?.orderNumber,
+        customerName: `${order?.user?.firstName || ''} ${
+          order?.user?.lastName || ''
+        }`,
+        products: createProductListForTemplate(order!),
+        pricingSummary: order!.pricingSummary,
+        deliveryDate: new Date(order!.delivery?.date)?.toDateString(),
+        deliveryMethod: order?.delivery?.method?.name || '',
+        collectionTime: order?.delivery?.collectionTime || '',
+        address: prepareCompleteAddress(order),
+        trackingLink: order?.woodeliveryTaskId
+          ? `https://app.woodelivery.com/t?q=${order?.woodeliveryTaskId}`
+          : '',
+      },
+      brand: order.brand,
+    });
+  }
+
+  // Bob
+  if (order.brand === brandEnum[1]) {
+    const { subject, template, previewText } = BOB_EMAILS.orderConfirm;
+
+    await sendEmail({
+      email,
+      subject,
+      template,
+      context: {
+        previewText,
+        homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+        customerName: `${order?.user?.firstName || ''} ${
+          order?.user?.lastName || ''
+        }`,
+        orderNo: order?.orderNumber,
+        products: createProductListForTemplate(order!),
+        subTotal: order.pricingSummary.subTotal || 0,
+        discount: order.pricingSummary.discountedAmt || 0,
+        deliveryCharge: order.pricingSummary.deliveryCharge || 0,
+        total: order.pricingSummary.total || 0,
+        deliveryDate: new Date(order!.delivery?.date)?.toDateString(),
+        deliveryMethod: order?.delivery?.method?.name || '',
+        collectionTime: order?.delivery?.collectionTime || '',
+        address: prepareCompleteAddress(order),
+        trackingLink: order?.woodeliveryTaskId
+          ? `https://app.woodelivery.com/t?q=${order?.woodeliveryTaskId}`
+          : '',
+        faqLink: BOB_EMAIL_DETAILS.faqLink,
+        whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+      },
+      brand: order.brand,
+    });
+  }
 };
 
 const handleStripePayment = async (
@@ -648,20 +685,44 @@ export const triggerOrderFailEmail = catchAsync(
       return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
     }
 
-    const {
-      orderFail: { subject, template, previewText },
-    } = order.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+    // Pinch
+    if (order.brand === brandEnum[0]) {
+      const { subject, template, previewText } = PINCH_EMAILS.orderFail;
 
-    await sendEmail({
-      email: email! || order.user.email,
-      subject,
-      template,
-      context: {
-        previewText,
-        orderNo: order?.orderNumber,
-        customerName: req.user?.firstName,
-      },
-    });
+      await sendEmail({
+        email: email! || order.user.email,
+        subject,
+        template,
+        context: {
+          previewText,
+          orderNo: order?.orderNumber,
+          customerName: req.user?.firstName,
+        },
+        brand: order.brand,
+      });
+    }
+
+    // Bob
+    if (order.brand === brandEnum[1]) {
+      const { subject, template, previewText } = BOB_EMAILS.orderFail;
+
+      await sendEmail({
+        email: email! || order.user.email,
+        subject,
+        template,
+        context: {
+          previewText,
+          orderNo: order?.orderNumber,
+          customerName: req.user?.firstName,
+          homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+          loginLink: BOB_EMAIL_DETAILS.loginLink,
+          faqLink: BOB_EMAIL_DETAILS.faqLink,
+          whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+        },
+        brand: order.brand,
+      });
+    }
+
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       message: ORDER_FAIL_EMAIL,
