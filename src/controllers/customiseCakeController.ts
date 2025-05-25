@@ -24,17 +24,17 @@ import Address from '@src/models/addressModel';
 import AppError from '@src/utils/appError';
 import {
   DELIVERY_CREATE_ERROR,
-  PINCH_EMAILS,
   NO_DATA_FOUND,
   BOB_EMAILS,
   BOB_SMS_CONTENT,
   SMS_SENT,
+  EMAIL_SENT,
 } from '@src/constants/messages';
 import sendEmail from '@src/utils/sendEmail';
 import Coupon from '@src/models/couponModel';
 import Delivery from '@src/models/deliveryModel';
 import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
-import { SELF_COLLECT_ADDRESS } from '@src/constants/static';
+import { BOB_EMAIL_DETAILS, SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
@@ -508,21 +508,11 @@ const sendOrderConfirmationEmail = async (
   customiseCakeOrder: ICustomiseCake,
   email: string
 ) => {
-  const {
-    customiseCakeOrderConfirm: { subject, template, previewText },
-  } = customiseCakeOrder.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
-  const {
-    _id: orderId,
-    orderNumber,
-    user,
-    quantity,
-    price,
-    deliveryFee,
-    discountedAmt,
-    total,
-    delivery,
-    woodeliveryTaskId,
-  } = customiseCakeOrder;
+  const { subject, template, previewText } =
+    BOB_EMAILS.customiseCakeOrderConfirm;
+
+  const { orderNumber, user, quantity, price, deliveryFee, total, delivery } =
+    customiseCakeOrder;
 
   await sendEmail({
     email,
@@ -530,22 +520,21 @@ const sendOrderConfirmationEmail = async (
     template,
     context: {
       previewText,
-      orderId,
+      customerName: user.firstName,
+      totalAmount: total.toFixed(2),
       orderNo: orderNumber,
-      customerName: `${user.firstName} ${user.lastName}`,
-      qty: String(quantity),
-      subTotal: String(price),
-      deliveryCharge: String(deliveryFee || 0),
-      discountedAmt: String(discountedAmt || 0),
-      total: String(total),
-      deliveryDate: new Date(delivery.date)?.toDateString(),
-      deliveryMethod: delivery.deliveryType,
-      collectionTime: delivery?.time || '',
+      deliveryDate: delivery.date.toDateString(),
+      collectionTime: delivery.time,
       address: prepareCompleteAddress(customiseCakeOrder),
-      trackingLink: woodeliveryTaskId
-        ? `https://app.woodelivery.com/t?q=${woodeliveryTaskId}`
-        : '',
+      productName: 'Customised Order',
+      productQuantity: quantity.toString(),
+      productPrice: price.toString(),
+      deliveryFee: deliveryFee.toString() || 'FREE',
+      faqLink: BOB_EMAIL_DETAILS.faqLink,
+      whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+      homeUrl: BOB_EMAIL_DETAILS.homeUrl,
     },
+    brand: 'bob',
   });
 };
 
@@ -621,13 +610,61 @@ export const sendPaymentSms = catchAsync(
         paymentLink,
         customiseCakeOrder.orderNumber
       );
-      console.log(body, phone, '00999');
       await sendSms(body, phone as string);
     }
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       message: SMS_SENT,
+    });
+  }
+);
+
+export const sendPaymentEmail = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    let paymentLink = '';
+    const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+    const { user, total, orderNumber, delivery, quantity, price, deliveryFee } =
+      customiseCakeOrder;
+    if (customiseCakeOrder.paymentLink) {
+      paymentLink = customiseCakeOrder.paymentLink;
+    } else {
+      paymentLink = await generatePaymentLink(req, req.params.id, next);
+    }
+
+    const { subject, template, previewText } = BOB_EMAILS.paymentLink;
+
+    await sendEmail({
+      email: customiseCakeOrder.user.email,
+      subject,
+      template,
+      context: {
+        previewText,
+        customerName: user.firstName,
+        totalAmount: total?.toFixed(2) || '0',
+        orderNo: orderNumber,
+        duration: '24 hours',
+        paymentLink,
+        deliveryDate: delivery.date.toDateString(),
+        collectionTime: delivery.time,
+        address: prepareCompleteAddress(customiseCakeOrder),
+        productName: 'Customised Order',
+        productQuantity: quantity?.toString() || '1',
+        productPrice: price.toString(),
+        deliveryFee: deliveryFee.toString() || 'FREE',
+        faqLink: BOB_EMAIL_DETAILS.faqLink,
+        whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+        homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+      },
+      brand: 'bob',
+    });
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: EMAIL_SENT,
     });
   }
 );

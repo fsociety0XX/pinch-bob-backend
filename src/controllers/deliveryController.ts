@@ -156,6 +156,7 @@ export const updateOrderStatus = catchAsync(
             order!.user?.lastName || ''
           }`,
         },
+        brand: brand as string,
       });
     }
     res.send(StatusCode.SUCCESS);
