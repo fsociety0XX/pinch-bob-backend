@@ -7,7 +7,7 @@ import { Express, NextFunction, Request, Response } from 'express';
 import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode, brandEnum } from '@src/types/customTypes';
-import { PRODUCTION } from '@src/constants/static';
+import { BOB_EMAIL_DETAILS, PRODUCTION } from '@src/constants/static';
 import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
 import {
@@ -138,15 +138,35 @@ export const roleRistriction =
   };
 
 const sendWelcomeEmail = async (newUser: IUser) => {
-  const {
-    welcomeEmail: { subject, template, previewText },
-  } = newUser.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
-  await sendEmail({
-    email: newUser.email,
-    subject,
-    template,
-    context: { previewText },
-  });
+  // Pinch
+  if (newUser.brand === brandEnum[0]) {
+    const { subject, template, previewText } = PINCH_EMAILS.welcomeEmail;
+    await sendEmail({
+      email: newUser.email,
+      subject,
+      template,
+      context: { previewText },
+      brand: newUser.brand,
+    });
+  }
+  // Bob
+  if (newUser.brand === brandEnum[1]) {
+    const { subject, template, previewText } = BOB_EMAILS.welcomeEmail;
+    await sendEmail({
+      email: newUser.email,
+      subject,
+      template,
+      context: {
+        previewText,
+        couponCode: BOB_EMAIL_DETAILS.welcomeCouponCode,
+        homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+        orderLink: BOB_EMAIL_DETAILS.orderNow,
+        faqLink: BOB_EMAIL_DETAILS.faqLink,
+        whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+      },
+      brand: 'bob',
+    });
+  }
 };
 
 export const signup = catchAsync(
@@ -162,7 +182,7 @@ export const signup = catchAsync(
       return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
     }
     createAndSendToken(newUser, StatusCode.CREATE, res);
-    sendWelcomeEmail(newUser);
+    await sendWelcomeEmail(newUser);
   }
 );
 
@@ -194,17 +214,39 @@ export const forgotPassword = catchAsync(
     }
     const resetToken = user.generateResetPasswordToken();
     await user.save({ validateBeforeSave: false });
-
     try {
-      const {
-        forgotPassword: { subject, template, previewText },
-      } = user.brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
-      await sendEmail({
-        email: user.email,
-        subject,
-        template,
-        context: { previewText, token: resetToken },
-      });
+      // Pinch
+      if (user.brand === brandEnum[0]) {
+        const { subject, template, previewText } = PINCH_EMAILS.forgotPassword;
+        await sendEmail({
+          email: user.email,
+          subject,
+          template,
+          context: { previewText, token: resetToken },
+          brand: user.brand,
+        });
+      }
+
+      // Bob
+      if (user.brand === brandEnum[1]) {
+        const { subject, template, previewText } = BOB_EMAILS.forgotPassword;
+        const resetLink = `https://bobthebakerboy.com/reset-password/${resetToken}`;
+        await sendEmail({
+          email: user.email,
+          subject,
+          template,
+          context: {
+            previewText,
+            customerName: user.firstName || '',
+            resetLink,
+            faqLink: BOB_EMAIL_DETAILS.faqLink,
+            whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+            homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+          },
+          brand: user.brand,
+        });
+      }
+
       res.status(200).json({
         status: 'success',
         message: TOKEN_SENT,
@@ -275,9 +317,7 @@ export const changePassword = catchAsync(
 
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   const { email, brand } = req.body;
-  const {
-    sendOtp: { subject, template, previewText },
-  } = brand === brandEnum[0] ? PINCH_EMAILS : BOB_EMAILS;
+
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
@@ -290,12 +330,38 @@ export const sendOtp = catchAsync(async (req: Request, res: Response) => {
     { otp, otpTimestamp },
     { upsert: true }
   );
-  await sendEmail({
-    email,
-    subject,
-    template,
-    context: { previewText, otp },
-  });
+
+  // Pinch
+  if (brand === brandEnum[0]) {
+    const { subject, template, previewText } = PINCH_EMAILS.sendOtp;
+    await sendEmail({
+      email,
+      subject,
+      template,
+      context: { previewText, otp },
+      brand,
+    });
+  }
+
+  // Bob
+  if (brand === brandEnum[1]) {
+    const { subject, template, previewText } = BOB_EMAILS.sendOtp;
+    await sendEmail({
+      email,
+      subject,
+      template,
+      context: {
+        previewText,
+        homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+        duration: '10 minutes',
+        otpCode: otp,
+        faqLink: BOB_EMAIL_DETAILS.faqLink,
+        whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+      },
+      brand,
+    });
+  }
+
   res.status(StatusCode.SUCCESS).json({
     status: 'success',
     message: OTP_SENT,

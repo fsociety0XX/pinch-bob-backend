@@ -65,6 +65,7 @@ export const GA_URL = `https://www.google-analytics.com/mp/collect`;
 
 // CUSTOMISE CAKE
 export const SEND_PAYMENT_SMS = '/sendSms/:id';
+export const SEND_PAYMENT_EMAIL = '/sendEmail/:id';
 
 // REPORTS
 export const CUSTOMER_ORDER_REPORT = '/customer-order';

@@ -8,6 +8,7 @@ interface IEmail {
   subject: string;
   template?: string;
   context?: { [key: string]: string };
+  brand: string;
 }
 
 const sendEmail = async ({
@@ -15,6 +16,7 @@ const sendEmail = async ({
   subject,
   template,
   context,
+  brand,
 }: IEmail): Promise<void> => {
   const transport = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -30,7 +32,7 @@ const sendEmail = async ({
     hbs({
       viewEngine: {
         extname: '.hbs',
-        layoutsDir: path.resolve(TEMPLATES_DIR),
+        layoutsDir: path.resolve(TEMPLATES_DIR, brand),
         defaultLayout: false,
         helpers: {
           ternaryDeliveryType: (
@@ -42,7 +44,7 @@ const sendEmail = async ({
           },
         },
       },
-      viewPath: path.resolve(TEMPLATES_DIR),
+      viewPath: path.resolve(TEMPLATES_DIR, brand),
       extName: '.hbs',
     })
   );
