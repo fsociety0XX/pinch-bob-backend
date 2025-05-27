@@ -55,7 +55,7 @@ export interface IRequestWithUser extends Request {
 
 const generateToken = (id: string) =>
   jwt.sign({ id }, process.env.JWT_SCERET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: process.env.JWT_EXPIRES_IN as string,
   });
 
 const createAndSendToken = (
