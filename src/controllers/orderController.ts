@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable prefer-destructuring */
@@ -944,9 +945,10 @@ export const getAllOrder = catchAsync(
       subCategory,
       flavour,
       moneyPullingOrders,
+      deliveryStartDate,
+      deliveryEndDate,
     } = req.query;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = {};
 
     if (orderNumber) {
@@ -1012,11 +1014,24 @@ export const getAllOrder = catchAsync(
     if (moneyPullingOrders) {
       filter['product.wantMoneyPulling'] = moneyPullingOrders;
     }
+    if (deliveryStartDate || deliveryEndDate) {
+      const dateFilter: any = {};
+      if (deliveryStartDate) {
+        dateFilter.gte = new Date(deliveryStartDate as string);
+      }
+      if (deliveryEndDate) {
+        dateFilter.lte = new Date(deliveryEndDate as string);
+      }
+      filter['delivery.date'] = dateFilter;
+    }
+
     delete req.query.superCategory;
     delete req.query.category;
     delete req.query.subCategory;
     delete req.query.flavour;
     delete req.query.moneyPullingOrders;
+    delete req.query.deliveryStartDate;
+    delete req.query.deliveryEndDate;
 
     req.query = { ...req.query, ...filter };
     await getAll(Order)(req, res, next);

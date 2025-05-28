@@ -601,9 +601,9 @@ export const sendPaymentSms = catchAsync(
 
     let body = '';
     const phone =
-      customiseCakeOrder.delivery.recipientPhone ||
-      customiseCakeOrder.delivery.address.phone ||
-      customiseCakeOrder.user.phone;
+      customiseCakeOrder?.delivery?.recipientPhone ||
+      customiseCakeOrder?.delivery?.address?.phone ||
+      customiseCakeOrder.user?.phone;
 
     if (customiseCakeOrder.brand === brandEnum[1]) {
       body = BOB_SMS_CONTENT.paymentReminder(
