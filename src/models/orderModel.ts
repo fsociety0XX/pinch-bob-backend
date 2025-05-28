@@ -153,6 +153,7 @@ export interface IOrder {
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
   customiseCakeForm: boolean;
+  forKitchenUse: boolean;
   active: boolean;
   createdAt: string;
 }
@@ -328,6 +329,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     hitpayDetails: Object,
     woodeliveryTaskId: String,
     customiseCakeForm: {
+      type: Boolean,
+      default: false,
+    },
+    forKitchenUse: {
       type: Boolean,
       default: false,
     },
