@@ -131,6 +131,19 @@ export interface IOtherProduct {
   moneyPulling: IMoneyPulling[];
 }
 
+export interface ICustomFormProduct {
+  product?: mongoose.Schema.Types.ObjectId;
+  flavour?: mongoose.Schema.Types.ObjectId;
+  productName?: string;
+  quantity: number;
+  qtyType?: string;
+  indPacked?: boolean;
+  size?: string;
+  giftCardMsg?: string;
+  specialRequest?: string;
+  moneyPulling?: IMoneyPulling[];
+}
+
 export interface IOrder {
   id: string;
   orderNumber?: string;
@@ -140,6 +153,7 @@ export interface IOrder {
   deliveryType: string; // multi or single location delivery
   product: IProduct[];
   otherProduct: IOtherProduct[];
+  customFormProduct: ICustomFormProduct[];
   user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
@@ -195,6 +209,25 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   fondantName: String,
   fondantNumber: String,
   complexAccessories: String,
+  moneyPulling: [MoneyPullingSchema],
+});
+
+const CustomFormProductSchema = new mongoose.Schema<ICustomFormProduct>({
+  product: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Product',
+  },
+  flavour: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Flavour',
+  },
+  productName: String,
+  quantity: Number,
+  qtyType: String,
+  indPacked: Boolean,
+  size: String,
+  giftCardMsg: String,
+  specialRequest: String,
   moneyPulling: [MoneyPullingSchema],
 });
 
@@ -292,6 +325,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
       },
     ],
     otherProduct: [OtherProductSchema],
+    customFormProduct: [CustomFormProductSchema],
     user: {
       type: mongoose.Schema.ObjectId,
       ref: 'User',
@@ -363,7 +397,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
       'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
   });
   this.populate({
-    path: 'product.product delivery.method product.size product.colour product.pieces product.flavour',
+    path: 'product.product delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
     select: 'name images inventory updatedAt duration',
   });
   this.populate({
