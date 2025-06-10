@@ -38,6 +38,7 @@ import { BOB_EMAIL_DETAILS, SELF_COLLECT_ADDRESS } from '@src/constants/static';
 import { getAll, getOne } from '@src/utils/factoryHandler';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
+import Order, { ICustomFormProduct } from '@src/models/orderModel';
 
 interface IWoodeliveryResponse extends Response {
   data?: {
@@ -434,6 +435,100 @@ const createDelivery = async (
       .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
 };
 
+const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
+  const {
+    orderNumber,
+    brand,
+    user,
+    paid,
+    hitpayDetails,
+    woodeliveryTaskId,
+    delivery,
+    price,
+    deliveryFee,
+    coupon,
+    discountedAmt,
+    total,
+    candlesAndSparklers,
+    bakes,
+    quantity,
+    size,
+    giftCardMsg,
+    specialRequest,
+    moneyPulling,
+    flavour,
+  } = customiseCakeOrder;
+  let deliveryMethod;
+  if (delivery.specificTimeSlot) {
+    deliveryMethod = await DeliveryMethod.findOne({
+      name: 'Specific Delivery',
+      brand,
+    });
+  } else if (delivery.deliveryType === customiseOrderEnums.deliveryType[0]) {
+    deliveryMethod = await DeliveryMethod.findOne({
+      name: 'Self-collect',
+      brand,
+    });
+  } else {
+    deliveryMethod = await DeliveryMethod.findOne({
+      name: 'Regular Delivery',
+      brand,
+    });
+  }
+  const deliveryDetails = {
+    method: deliveryMethod?.id || deliveryMethod?._id,
+    date: delivery.date,
+    collectionTime: delivery.time,
+    address: delivery.address,
+  };
+  const pricingSummary = {
+    subTotal: String(price),
+    gst: '0',
+    deliveryCharge: String(deliveryFee),
+    coupon,
+    discountedAmt: String(discountedAmt),
+    total: String(total),
+  };
+  const customFormProduct: ICustomFormProduct[] = [
+    ...bakes,
+    ...candlesAndSparklers,
+    {
+      productName: 'Custom Cake',
+      quantity,
+      size,
+      flavour,
+      giftCardMsg,
+      specialRequest,
+      moneyPulling,
+    },
+  ];
+  const orderData = {
+    orderNumber,
+    brand,
+    user,
+    paid,
+    hitpayDetails,
+    woodeliveryTaskId,
+    customiseCakeForm: true,
+    delivery: deliveryDetails,
+    pricingSummary,
+    recipInfo: {
+      sameAsSender: false,
+      name: delivery.recipientName,
+      contact: delivery.recipientPhone,
+    },
+    customFormProduct,
+  };
+  await Order.findOneAndUpdate(
+    { orderNumber },
+    { $set: orderData },
+    {
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+};
+
 export const submitAdminForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
@@ -474,6 +569,9 @@ export const submitAdminForm = catchAsync(
     if (!customiseCakeOrder) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
+
+    // Insert/Update custom form into order database
+    await syncOrderDB(customiseCakeOrder);
 
     await generatePaymentLink(req, String(customiseCakeOrder._id), next);
 
@@ -671,13 +769,18 @@ export const sendPaymentEmail = catchAsync(
 
 export const getAllCustomiseForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { moneyPullingOrders, ...otherQueries } = req.query;
+    const { moneyPullingOrders, orderNumber, ...otherQueries } = req.query;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = { ...otherQueries };
 
     if (moneyPullingOrders) {
       filter.moneyPulling = { $exists: moneyPullingOrders };
+    }
+    if (orderNumber) {
+      filter.orderNumber = {
+        $in: (orderNumber as string).split(','),
+      };
     }
     req.query = filter;
     await getAll(CustomiseCake)(req, res, next);
