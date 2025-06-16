@@ -37,9 +37,13 @@ const handleCastErrorDB = (err: MongooseEnvironmentError): AppError => {
 
 const handleDuplicateErrorDB = (err: MongooseDuplicateError): AppError => {
   const duplicateData = err?.keyValue || {};
-  const fieldName = Object.keys(duplicateData);
-  const value = Object.values(duplicateData)[0];
-  const message = `The ${fieldName}: ${value} already present in records. Please try another value`;
+  const hiddenFields = ['brand'];
+  const fields = Object.keys(duplicateData);
+  // Find first field NOT in hidden list
+  const visibleField = fields.find((field) => !hiddenFields.includes(field));
+  const message = visibleField
+    ? `The ${visibleField}: ${duplicateData[visibleField]} already present in records. Please try another value.`
+    : `Duplicate record found. Please use different values.`;
   return new AppError(message, StatusCode.BAD_REQUEST);
 };
 
