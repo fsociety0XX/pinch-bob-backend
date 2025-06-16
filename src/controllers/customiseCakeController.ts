@@ -211,7 +211,7 @@ const generatePaymentLink = async (
     send_email: true,
     send_sms: true,
     redirect_url: `${req.protocol}://${req.get('host')}/order-confirm/${
-      customiseCake?.orderNumber
+      customiseCake?.id || customiseCake?._id
     }`,
   };
 
@@ -679,7 +679,8 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   }
 
   await createDelivery(customiseCakeOrder);
-
+  // Insert/Update custom form into order database
+  await syncOrderDB(customiseCakeOrder);
   // Send final confirmation email
   sendOrderConfirmationEmail(customiseCakeOrder, email);
 };

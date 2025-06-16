@@ -251,6 +251,9 @@ export const createProduct = catchAsync(
     if (req.files?.length) {
       req.body.images = req.files;
     }
+    if (req.body.subCategory === '') {
+      req.body.subCategory = [];
+    }
     const updatedPayload = { ...req.body };
     if (updatedPayload?.inventory) {
       const updatedInventory = inventorySetup(updatedPayload.inventory);
