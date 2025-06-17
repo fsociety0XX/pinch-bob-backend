@@ -519,7 +519,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       contact: delivery.recipientPhone,
     },
     customFormProduct,
-    customiseCakeFormId: _id,
+    customiseCakeFormDetails: _id,
   };
   await Order.findOneAndUpdate(
     { orderNumber },

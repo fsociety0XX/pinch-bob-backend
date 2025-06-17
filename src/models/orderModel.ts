@@ -167,7 +167,7 @@ export interface IOrder {
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
   customiseCakeForm: boolean;
-  customiseCakeFormId: mongoose.Schema.Types.ObjectId;
+  customiseCakeFormDetails: mongoose.Schema.Types.ObjectId;
   forKitchenUse: boolean;
   active: boolean;
   createdAt: string;
@@ -367,7 +367,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: Boolean,
       default: false,
     },
-    customiseCakeFormId: {
+    customiseCakeFormDetails: {
       type: mongoose.Schema.ObjectId,
       ref: 'CustomiseCake',
     },
@@ -413,7 +413,9 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     path: 'pricingSummary.coupon',
     select: 'code type applicableOn ids discountType discount',
   });
-
+  this.populate({
+    path: 'customiseCakeFormDetails',
+  });
   next();
 });
 
