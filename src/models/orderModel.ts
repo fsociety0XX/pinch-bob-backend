@@ -167,6 +167,7 @@ export interface IOrder {
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
   customiseCakeForm: boolean;
+  customiseCakeFormId: mongoose.Schema.Types.ObjectId;
   forKitchenUse: boolean;
   active: boolean;
   createdAt: string;
@@ -365,6 +366,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     customiseCakeForm: {
       type: Boolean,
       default: false,
+    },
+    customiseCakeFormId: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'CustomiseCake',
     },
     forKitchenUse: {
       type: Boolean,

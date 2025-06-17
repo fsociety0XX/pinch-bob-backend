@@ -437,6 +437,7 @@ const createDelivery = async (
 
 const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
   const {
+    _id,
     orderNumber,
     brand,
     user,
@@ -518,6 +519,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       contact: delivery.recipientPhone,
     },
     customFormProduct,
+    customiseCakeFormId: _id,
   };
   await Order.findOneAndUpdate(
     { orderNumber },
