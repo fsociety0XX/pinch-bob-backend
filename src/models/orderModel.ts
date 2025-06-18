@@ -402,7 +402,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
       'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
   });
   this.populate({
-    path: 'product.product delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
+    path: 'delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
     select: 'name images inventory updatedAt duration',
   });
   this.populate({
@@ -414,7 +414,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     select: 'code type applicableOn ids discountType discount',
   });
   this.populate({
-    path: 'customiseCakeFormDetails',
+    path: 'customiseCakeFormDetails product.product',
   });
   next();
 });
