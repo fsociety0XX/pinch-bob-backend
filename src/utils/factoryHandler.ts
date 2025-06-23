@@ -87,7 +87,7 @@ export const softDeleteMany = (
         $in: ids?.map((id: string) => new mongoose.Types.ObjectId(id)),
       },
     };
-    const update = { $set: { active: false } };
+    const update = { $set: { active: false, status: CANCELLED } };
 
     const doc = await model.updateMany(filter, update);
     if (!doc) {
