@@ -149,12 +149,16 @@ export const getAll = (
 
       // Special case for handling search query for name with single/multiple values
       if (req.query.name && typeof req.query.name === 'string') {
-        const names = req.query?.name?.split(',');
-        // Create an $or condition for all names
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore: Assuming `query.name` is always a string here
-        if (!req.query.exact) {
-          // this is used if we want to match exact name
+        const names = req.query.name.split(',').map((n) => n.trim());
+        const exact = req.query.exact === 'true';
+
+        if (exact) {
+          // Exact match: $or with direct equality
+          req.query.$or = names.map((name) => ({
+            name,
+          }));
+        } else {
+          // Loose match: case-insensitive, punctuation-removed, regex
           req.query.$or = names.map((name) => ({
             $expr: {
               $regexMatch: {
@@ -179,18 +183,18 @@ export const getAll = (
                     },
                   },
                 },
-                regex: name
-                  .trim()
-                  .replace(/[^a-zA-Z0-9 ]/g, '')
-                  .toLowerCase(),
+                regex: name.replace(/[^a-zA-Z0-9 ]/g, '').toLowerCase(),
                 options: 'i',
               },
             },
           }));
         }
+
+        // Clean up
         delete req.query.name;
+        delete req.query.exact;
       }
-      delete req.query.exact; // this is used if we want to match exact name
+
       const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter()
         .sort()
