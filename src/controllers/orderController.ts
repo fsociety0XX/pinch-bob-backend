@@ -397,12 +397,19 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (!user?.firstName || !user?.lastName || !user?.email) {
+      if (
+        !user?.firstName ||
+        user?.firstName === 'Guest' ||
+        !user?.lastName ||
+        user?.lastName === 'User' ||
+        !user?.email
+      ) {
         const { customer } = req.body;
         await User.findByIdAndUpdate(req.user?._id, {
           firstName: customer?.firstName,
           lastName: customer?.lastName,
           email: user?.email || customer?.email,
+          phone: user?.phone || customer?.phone,
         });
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
@@ -583,8 +590,9 @@ const createDelivery = async (id: string, update = false) => {
 
 async function updateProductAfterPurchase(order: IOrder) {
   const updates = order.product.map((p) => {
-    const { inventory } = p?.product;
+    const { inventory, available } = p?.product;
     let inventoryUpdateQuery = { ...inventory };
+    let isProductAvailable = available;
 
     if (inventory && inventory.track) {
       let updatedRemQty = inventory.remainingQty - p.quantity;
@@ -598,6 +606,7 @@ async function updateProductAfterPurchase(order: IOrder) {
 
       if (!updatedRemQty) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+        isProductAvailable = false;
       } else if (updatedRemQty <= 20) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
       } else {
@@ -610,7 +619,7 @@ async function updateProductAfterPurchase(order: IOrder) {
         filter: { _id: p.product._id },
         update: {
           $inc: { sold: p.quantity },
-          $set: { ...inventoryUpdateQuery },
+          $set: { ...inventoryUpdateQuery, available: isProductAvailable },
         },
       },
     };
