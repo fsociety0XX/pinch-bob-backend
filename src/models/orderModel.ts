@@ -303,6 +303,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     orderNumber: {
       type: String,
       unique: true,
+      index: true,
     },
     sqlId: {
       type: Number,
