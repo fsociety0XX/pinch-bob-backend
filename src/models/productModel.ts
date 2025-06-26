@@ -449,7 +449,7 @@ productSchema.pre('find', function (next) {
     path: 'category superCategory subCategory',
     select: 'name',
   });
-  this.sort({ priority: 1, createdAt: -1 });
+  this.sort({ priority: -1, createdAt: -1 });
 
   next();
 });
