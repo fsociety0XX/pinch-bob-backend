@@ -672,7 +672,7 @@ export const getFbtAlsoLike = catchAsync(
       'brand superCategory'
     );
     if (!product) {
-      return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+      throw new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
     }
 
     const superCategory = product.superCategory[0].name;
