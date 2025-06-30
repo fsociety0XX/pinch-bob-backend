@@ -5,6 +5,7 @@ import { StatusCode } from '@src/types/customTypes';
 import Order from '@src/models/orderModel';
 import Delivery from '@src/models/deliveryModel';
 
+// Modes
 type Mode = 'order' | 'delivery';
 
 interface LookupOpts {
@@ -14,9 +15,6 @@ interface LookupOpts {
   project: Record<string, 0 | 1>;
 }
 
-/**
- * Returns a $lookup + safe $unwind for a single field
- */
 const makeLookup = ({ from, letLocal, as, project }: LookupOpts) => [
   {
     $lookup: {
@@ -37,58 +35,47 @@ const makeLookup = ({ from, letLocal, as, project }: LookupOpts) => [
 export const createSearchQuery = (
   mode: Mode,
   search: string,
-  brand: string
+  brand: string,
+  skip: number,
+  limit: number
 ): { pipeline: any[]; model: any } => {
-  // case-insensitive regex for matching
-  const s = { $regex: new RegExp(search, 'i') };
+  const isTextSearch = !!search.trim();
+  const pipeline: any[] = [];
+  const regex = { $regex: new RegExp(search, 'i') };
 
-  // start with brand filter
-  const pipeline: any[] = [{ $match: { brand } }];
+  if (isTextSearch) {
+    pipeline.push({ $match: { brand, $text: { $search: search } } });
+  } else {
+    pipeline.push({ $match: { brand } });
+  }
 
   if (mode === 'delivery') {
-    // 1) lookup delivery method
     pipeline.push(
       ...makeLookup({
         from: 'deliverymethods',
         letLocal: 'method',
         as: 'method',
         project: { name: 1, price: 1 },
-      })
-    );
-
-    // 2) lookup order basics
-    pipeline.push(
+      }),
       ...makeLookup({
         from: 'orders',
         letLocal: 'order',
         as: 'order',
         project: { orderNumber: 1, user: 1 },
-      })
-    );
-
-    // 3) lookup user
-    pipeline.push(
+      }),
       ...makeLookup({
         from: 'users',
         letLocal: 'order.user',
         as: 'user',
         project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
-      })
-    );
-
-    // 4) unwind and lookup products
-    pipeline.push(
+      }),
       { $unwind: { path: '$order.product', preserveNullAndEmptyArrays: true } },
       ...makeLookup({
         from: 'products',
         letLocal: 'order.product.product',
         as: 'order.product',
         project: { name: 1, price: 1 },
-      })
-    );
-
-    // 5) lookup address
-    pipeline.push(
+      }),
       ...makeLookup({
         from: 'addresses',
         letLocal: 'address',
@@ -97,23 +84,23 @@ export const createSearchQuery = (
       })
     );
 
-    // 6) match across all searchable fields
-    pipeline.push({
-      $match: {
-        $or: [
-          { 'order.orderNumber': s },
-          { 'user.firstName': s },
-          { 'user.lastName': s },
-          { 'user.email': s },
-          { 'user.phone': s },
-          { recipientName: s },
-          { recipientPhone: s },
-          { woodeliveryTaskId: s },
-        ],
-      },
-    });
+    if (!isTextSearch) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'customer.firstName': regex },
+            { 'customer.lastName': regex },
+            { 'customer.email': regex },
+            { 'customer.phone': regex },
+            { orderNumber: regex },
+            { recipientName: regex },
+            { recipientPhone: regex },
+            { woodeliveryTaskId: regex },
+          ],
+        },
+      });
+    }
 
-    // 7) group back into full delivery docs
     pipeline.push({
       $group: {
         _id: '$_id',
@@ -134,103 +121,106 @@ export const createSearchQuery = (
         active: { $first: '$active' },
         createdAt: { $first: '$createdAt' },
         updatedAt: { $first: '$updatedAt' },
+        orderNumber: { $first: '$orderNumber' },
+        customer: { $first: '$customer' },
       },
     });
+  } else {
+    pipeline.push(
+      ...makeLookup({
+        from: 'users',
+        letLocal: 'user',
+        as: 'user',
+        project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
+      }),
+      ...makeLookup({
+        from: 'deliverymethods',
+        letLocal: 'delivery.method',
+        as: 'delivery.method',
+        project: { name: 1, price: 1 },
+      }),
+      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+      ...makeLookup({
+        from: 'products',
+        letLocal: 'product.product',
+        as: 'product.product',
+        project: { name: 1, price: 1 },
+      })
+    );
 
-    // 8) final sort
-    pipeline.push({ $sort: { createdAt: -1 } });
+    if (!isTextSearch) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { orderNumber: regex },
+            { 'user.firstName': regex },
+            { 'user.lastName': regex },
+            { 'user.email': regex },
+            { 'user.phone': regex },
+            { 'recipInfo.name': regex },
+            { woodeliveryTaskId: regex },
+            { 'recipInfo.contact': { $in: [search, parseInt(search, 10)] } },
+          ],
+        },
+      });
+    }
 
-    return { pipeline, model: Delivery };
+    pipeline.push({
+      $group: {
+        _id: '$_id',
+        brand: { $first: '$brand' },
+        orderNumber: { $first: '$orderNumber' },
+        user: { $first: '$user' },
+        delivery: { $first: '$delivery' },
+        product: { $push: '$product' },
+        recipInfo: { $first: '$recipInfo' },
+        pricingSummary: { $first: '$pricingSummary' },
+        paid: { $first: '$paid' },
+        active: { $first: '$active' },
+        status: { $first: '$status' },
+        woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
+        createdAt: { $first: '$createdAt' },
+        updatedAt: { $first: '$updatedAt' },
+      },
+    });
   }
 
-  // ----- ORDER branch -----
-
-  // 1) lookup user
-  pipeline.push(
-    ...makeLookup({
-      from: 'users',
-      letLocal: 'user',
-      as: 'user',
-      project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
-    })
-  );
-
-  // 2) lookup delivery method
-  pipeline.push(
-    ...makeLookup({
-      from: 'deliverymethods',
-      letLocal: 'delivery.method',
-      as: 'delivery.method',
-      project: { name: 1, price: 1 },
-    })
-  );
-
-  // 3) unwind & lookup products
-  pipeline.push(
-    { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
-    ...makeLookup({
-      from: 'products',
-      letLocal: 'product.product',
-      as: 'product.product',
-      project: { name: 1, price: 1 },
-    })
-  );
-
-  // 4) match across order fields
   pipeline.push({
-    $match: {
-      $or: [
-        { orderNumber: s },
-        { 'user.firstName': s },
-        { 'user.lastName': s },
-        { 'user.email': s },
-        { 'user.phone': s },
-        { 'recipInfo.name': s },
-        { woodeliveryTaskId: s },
-        { 'recipInfo.contact': { $in: [search, parseInt(search, 10)] } },
-      ],
+    $facet: {
+      data: [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: limit }],
+      total: [{ $count: 'count' }],
     },
   });
 
-  // 5) group back into full order docs
-  pipeline.push({
-    $group: {
-      _id: '$_id',
-      brand: { $first: '$brand' },
-      orderNumber: { $first: '$orderNumber' },
-      user: { $first: '$user' },
-      delivery: { $first: '$delivery' },
-      product: { $push: '$product' },
-      recipInfo: { $first: '$recipInfo' },
-      pricingSummary: { $first: '$pricingSummary' },
-      paid: { $first: '$paid' },
-      active: { $first: '$active' },
-      status: { $first: '$status' },
-      woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
-      createdAt: { $first: '$createdAt' },
-      updatedAt: { $first: '$updatedAt' },
-    },
-  });
-
-  // 6) final sort
-  pipeline.push({ $sort: { createdAt: -1 } });
-
-  return { pipeline, model: Order };
+  return { pipeline, model: mode === 'delivery' ? Delivery : Order };
 };
 
 export const globalTableSearch = catchAsync(
   async (req: Request, res: Response) => {
-    const searchTerm = String(req.query.search || '');
+    const searchTerm = String(req.query.search || '').trim();
     const mode = String(req.query.mode || '') as Mode;
     const brand = String(req.query.brand || '');
 
-    const { pipeline, model } = createSearchQuery(mode, searchTerm, brand);
-    const docs = await model.aggregate(pipeline).allowDiskUse(true);
+    const page = Math.max(parseInt(String(req.query.page || '1'), 10), 1);
+    const limit = Math.max(parseInt(String(req.query.limit || '20'), 10), 1);
+    const skip = (page - 1) * limit;
+
+    const { pipeline, model } = createSearchQuery(
+      mode,
+      searchTerm,
+      brand,
+      skip,
+      limit
+    );
+    const [result] = await model.aggregate(pipeline).allowDiskUse(true);
+
+    const docs = result?.data || [];
+    const totalCount = result?.total?.[0]?.count || 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: { data: docs },
-      meta: { totalDataCount: docs.length },
+      meta: { totalCount, page, limit },
     });
   }
 );

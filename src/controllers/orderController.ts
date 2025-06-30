@@ -104,6 +104,12 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
   status?: string;
 }
 
@@ -382,7 +388,6 @@ const handleHitpayPayment = async (
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const { customer } = req.body
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
@@ -398,7 +403,14 @@ export const placeOrder = catchAsync(
       }
       // Updating user document with extra details
       const user = await User.findById(req.user?._id);
-      if (Object.keys(customer).length) {
+      if (
+        !user?.firstName ||
+        user?.firstName === 'Guest' ||
+        !user?.lastName ||
+        user?.lastName === 'User' ||
+        !user?.email
+      ) {
+        const { customer } = req.body;
         await User.findByIdAndUpdate(req.user?._id, {
           firstName: customer?.firstName,
           lastName: customer?.lastName,
@@ -531,6 +543,12 @@ const createDeliveryDocument = async (
     collectionTime,
     recipientName: recipInfo?.name,
     recipientPhone: recipInfo?.contact,
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
   };
   if (task) {
     data.woodeliveryTaskId = task?.data?.guid;
@@ -584,8 +602,9 @@ const createDelivery = async (id: string, update = false) => {
 
 async function updateProductAfterPurchase(order: IOrder) {
   const updates = order.product.map((p) => {
-    const { inventory } = p?.product;
+    const { inventory, available } = p?.product;
     let inventoryUpdateQuery = { ...inventory };
+    let isProductAvailable = available;
 
     if (inventory && inventory.track) {
       let updatedRemQty = inventory.remainingQty - p.quantity;
@@ -599,6 +618,7 @@ async function updateProductAfterPurchase(order: IOrder) {
 
       if (!updatedRemQty) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+        isProductAvailable = false;
       } else if (updatedRemQty <= 20) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
       } else {
@@ -611,7 +631,7 @@ async function updateProductAfterPurchase(order: IOrder) {
         filter: { _id: p.product._id },
         update: {
           $inc: { sold: p.quantity },
-          $set: { ...inventoryUpdateQuery },
+          $set: { ...inventoryUpdateQuery, available: isProductAvailable },
         },
       },
     };
@@ -1083,7 +1103,6 @@ export const updateRefImages = catchAsync(
       return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
     }
 
-    // Find the product item by its _id (subdocument)
     const productItem = order.product[productItemId];
     if (!productItem) {
       return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
@@ -1264,6 +1283,7 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
     if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
 
     const d = order.delivery!;
+    const u = order.user;
     const deliveryDoc: Partial<IDelivery> = {
       brand: order.brand,
       order: order._id,
@@ -1277,6 +1297,12 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
       woodeliveryTaskId: order.woodeliveryTaskId,
       instructions: d.instructions,
       customiseCakeForm: order.customiseCakeForm ?? false,
+      customer: {
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u?.email || '',
+        phone: u?.phone || '',
+      },
     };
     deliveryBulk.insert(deliveryDoc);
   });

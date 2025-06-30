@@ -139,6 +139,7 @@ export interface IProduct {
     };
   };
   fondantFig: string;
+  toys: string;
   fondantLvl: string;
   metaDesc: string;
   available: boolean; // will be used in FE to show "Out of stock"
@@ -399,6 +400,7 @@ const productSchema = new mongoose.Schema<IProduct>(
       two: EdiblePrintSchema,
     },
     fondantFig: String,
+    toys: String,
     fondantLvl: String,
     metaDesc: String,
     available: {
@@ -447,7 +449,7 @@ productSchema.pre('find', function (next) {
     path: 'category superCategory subCategory',
     select: 'name',
   });
-  this.sort({ priority: 1, createdAt: -1 });
+  this.sort({ priority: -1, createdAt: -1 });
 
   next();
 });

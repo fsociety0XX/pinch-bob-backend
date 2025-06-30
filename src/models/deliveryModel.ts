@@ -9,15 +9,24 @@ export interface IDriver {
   firstName: 'string';
   lastName: 'string';
 }
+
+interface ICustomer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
 export interface IDelivery {
   sqlId: number;
   brand: string;
   order?: mongoose.Schema.Types.ObjectId;
+  orderNumber: string;
   customiseCakeOrder?: mongoose.Schema.Types.ObjectId;
   deliveryDate: Date;
   method: mongoose.Schema.Types.ObjectId;
   collectionTime: string;
   address?: mongoose.Schema.Types.ObjectId;
+  customer: ICustomer;
   recipientName?: string;
   recipientPhone?: string;
   recipientEmail?: string;
@@ -37,6 +46,13 @@ const DriverSchema = new mongoose.Schema<IDriver>({
   phoneNumber: String,
 });
 
+const CustomerSchema = new mongoose.Schema<ICustomer>({
+  firstName: String,
+  lastName: String,
+  email: String,
+  phone: String,
+});
+
 const deliverySchema = new mongoose.Schema<IDelivery>(
   {
     sqlId: {
@@ -52,6 +68,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
       type: mongoose.Schema.ObjectId,
       ref: 'Order',
     },
+    orderNumber: { type: String, index: true },
     customiseCakeOrder: {
       type: mongoose.Schema.ObjectId,
       ref: 'CustomiseCake',
@@ -66,6 +83,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
       type: mongoose.Schema.ObjectId,
       ref: 'Address',
     },
+    customer: CustomerSchema,
     recipientName: String,
     recipientPhone: String,
     recipientEmail: String,
@@ -99,7 +117,8 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   });
   this.populate({
     path: 'order customiseCakeOrder',
-    select: 'orderNumber product updatedAt createdAt',
+    select:
+      'orderNumber product updatedAt createdAt otherProduct customFormProduct',
   });
   next();
 });

@@ -57,7 +57,14 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
   customiseCakeForm: boolean;
+  status?: string;
 }
 
 interface IWoodeliveryTask {
@@ -350,6 +357,12 @@ const createDeliveryDocument = async (
     recipientPhone: +recipientPhone || +currentUser!.phone!,
     recipientEmail: currentUser?.email,
     customiseCakeForm: true,
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
   };
 
   if (task) {

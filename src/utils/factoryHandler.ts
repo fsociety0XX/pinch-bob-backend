@@ -87,7 +87,7 @@ export const softDeleteMany = (
         $in: ids?.map((id: string) => new mongoose.Types.ObjectId(id)),
       },
     };
-    const update = { $set: { active: false } };
+    const update = { $set: { active: false, status: CANCELLED } };
 
     const doc = await model.updateMany(filter, update);
     if (!doc) {
@@ -148,50 +148,53 @@ export const getAll = (
       if (req.user?.role === Role.CUSTOMER) req.query.active = 'true';
 
       // Special case for handling search query for name with single/multiple values
-      if (
-        req.query.name &&
-        typeof req.query.name === 'string' &&
-        !req.query.exact // this is used if we want to match exact name
-      ) {
-        const names = req.query?.name?.split(',');
-        // Create an $or condition for all names
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore: Assuming `query.name` is always a string here
-        req.query.$or = names.map((name) => ({
-          $expr: {
-            $regexMatch: {
-              input: {
-                $toLower: {
-                  $replaceAll: {
-                    input: {
-                      $replaceAll: {
-                        input: {
-                          $replaceAll: {
-                            input: '$name',
-                            find: '(',
-                            replacement: '',
+      if (req.query.name && typeof req.query.name === 'string') {
+        const names = req.query.name.split(',').map((n) => n.trim());
+        const exact = req.query.exact === 'true';
+
+        if (exact) {
+          // Exact match: $or with direct equality
+          req.query.$or = names.map((name) => ({
+            name,
+          }));
+        } else {
+          // Loose match: case-insensitive, punctuation-removed, regex
+          req.query.$or = names.map((name) => ({
+            $expr: {
+              $regexMatch: {
+                input: {
+                  $toLower: {
+                    $replaceAll: {
+                      input: {
+                        $replaceAll: {
+                          input: {
+                            $replaceAll: {
+                              input: '$name',
+                              find: '(',
+                              replacement: '',
+                            },
                           },
+                          find: ')',
+                          replacement: '',
                         },
-                        find: ')',
-                        replacement: '',
                       },
+                      find: "'",
+                      replacement: '',
                     },
-                    find: "'",
-                    replacement: '',
                   },
                 },
+                regex: name.replace(/[^a-zA-Z0-9 ]/g, '').toLowerCase(),
+                options: 'i',
               },
-              regex: name
-                .trim()
-                .replace(/[^a-zA-Z0-9 ]/g, '')
-                .toLowerCase(),
-              options: 'i',
             },
-          },
-        }));
+          }));
+        }
+
+        // Clean up
         delete req.query.name;
+        delete req.query.exact;
       }
-      delete req.query.exact; // this is used if we want to match exact name
+
       const features = new APIFeatures(model.find(), req.query as QueryString)
         .filter()
         .sort()
