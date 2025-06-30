@@ -104,6 +104,12 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
   status?: string;
 }
 
@@ -537,6 +543,12 @@ const createDeliveryDocument = async (
     collectionTime,
     recipientName: recipInfo?.name,
     recipientPhone: recipInfo?.contact,
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
   };
   if (task) {
     data.woodeliveryTaskId = task?.data?.guid;
@@ -1271,6 +1283,7 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
     if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
 
     const d = order.delivery!;
+    const u = order.user;
     const deliveryDoc: Partial<IDelivery> = {
       brand: order.brand,
       order: order._id,
@@ -1284,6 +1297,12 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
       woodeliveryTaskId: order.woodeliveryTaskId,
       instructions: d.instructions,
       customiseCakeForm: order.customiseCakeForm ?? false,
+      customer: {
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u?.email || '',
+        phone: u?.phone || '',
+      },
     };
     deliveryBulk.insert(deliveryDoc);
   });
