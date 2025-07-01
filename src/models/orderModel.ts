@@ -144,6 +144,13 @@ export interface ICustomFormProduct {
   moneyPulling?: IMoneyPulling[];
 }
 
+interface ICustomer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
 export interface IOrder {
   id: string;
   orderNumber?: string;
@@ -157,6 +164,7 @@ export interface IOrder {
   user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
+  customer: ICustomer;
   recipInfo?: IRecipInfo;
   paid: boolean;
   corporate: boolean;
@@ -172,6 +180,13 @@ export interface IOrder {
   active: boolean;
   createdAt: string;
 }
+
+const CustomerSchema = new mongoose.Schema<ICustomer>({
+  firstName: String,
+  lastName: String,
+  email: String,
+  phone: String,
+});
 
 const ProductImageSchema = new mongoose.Schema<IPhoto>({
   key: String,
@@ -340,6 +355,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: PricingSummarySchema,
       required: [true, ORDER_SCHEMA_VALIDATION.pricingSummary],
     },
+    customer: CustomerSchema,
     recipInfo: {
       sameAsSender: Boolean,
       name: String,
