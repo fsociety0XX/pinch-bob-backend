@@ -48,6 +48,7 @@ interface IWoodeliveryResponse extends Response {
 
 interface IDeliveryData {
   brand: string;
+  orderNumber: string;
   customiseCakeOrder: string;
   deliveryDate: Date;
   method: ObjectId | string;
@@ -357,6 +358,7 @@ const createDeliveryDocument = async (
     recipientPhone: +recipientPhone || +currentUser!.phone!,
     recipientEmail: currentUser?.email,
     customiseCakeForm: true,
+    orderNumber: customiseCake.orderNumber,
     customer: {
       firstName: user.firstName,
       lastName: user.lastName,
@@ -530,6 +532,12 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       sameAsSender: false,
       name: delivery.recipientName,
       contact: delivery.recipientPhone,
+    },
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
     },
     customFormProduct,
     customiseCakeFormDetails: _id,

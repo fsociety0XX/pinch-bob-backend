@@ -8,29 +8,8 @@ import Delivery from '@src/models/deliveryModel';
 // Modes
 type Mode = 'order' | 'delivery';
 
-interface LookupOpts {
-  from: string;
-  letLocal: string;
-  as: string;
-  project: Record<string, 0 | 1>;
-}
-
-const makeLookup = ({ from, letLocal, as, project }: LookupOpts) => [
-  {
-    $lookup: {
-      from,
-      let: { localId: `$${letLocal}` },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$localId'] } } },
-        { $project: project },
-      ],
-      as,
-    },
-  },
-  {
-    $unwind: { path: `$${as}`, preserveNullAndEmptyArrays: true },
-  },
-];
+// Case-insensitive regex
+const regex = (search: string) => ({ $regex: new RegExp(search, 'i') });
 
 export const createSearchQuery = (
   mode: Mode,
@@ -39,152 +18,161 @@ export const createSearchQuery = (
   skip: number,
   limit: number
 ): { pipeline: any[]; model: any } => {
-  const isTextSearch = !!search.trim();
   const pipeline: any[] = [];
-  const regex = { $regex: new RegExp(search, 'i') };
+  const isTextSearch = !!search.trim();
+  const isLikelyEmail = search.includes('@');
+  const isLikelyPhone = /^\+?\d+$/.test(search);
 
-  if (isTextSearch) {
-    pipeline.push({ $match: { brand, $text: { $search: search } } });
-  } else {
-    pipeline.push({ $match: { brand } });
+  // Initial brand match
+  pipeline.push({ $match: { brand } });
+
+  // Smart conditions
+  const matchConditions: any[] = [];
+
+  if (isLikelyEmail) {
+    matchConditions.push({ 'customer.email': search });
+  }
+
+  if (isLikelyPhone) {
+    matchConditions.push({ 'customer.phone': search });
+    matchConditions.push({ recipientPhone: search });
+    matchConditions.push({ 'recipInfo.contact': search });
+  }
+
+  matchConditions.push({ orderNumber: search });
+
+  if (!isLikelyEmail && !isLikelyPhone && isTextSearch) {
+    matchConditions.push(
+      { 'customer.firstName': regex(search) },
+      { 'customer.lastName': regex(search) },
+      { 'customer.email': regex(search) },
+      { 'customer.phone': regex(search) },
+      { orderNumber: regex(search) },
+      { recipientName: regex(search) },
+      { recipientPhone: regex(search) },
+      { woodeliveryTaskId: regex(search) },
+      { 'recipInfo.name': regex(search) }
+    );
+  }
+
+  if (matchConditions.length > 0) {
+    pipeline.push({ $match: { $or: matchConditions } });
   }
 
   if (mode === 'delivery') {
     pipeline.push(
-      ...makeLookup({
-        from: 'deliverymethods',
-        letLocal: 'method',
-        as: 'method',
-        project: { name: 1, price: 1 },
-      }),
-      ...makeLookup({
-        from: 'orders',
-        letLocal: 'order',
-        as: 'order',
-        project: { orderNumber: 1, user: 1 },
-      }),
-      ...makeLookup({
-        from: 'users',
-        letLocal: 'order.user',
-        as: 'user',
-        project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
-      }),
-      { $unwind: { path: '$order.product', preserveNullAndEmptyArrays: true } },
-      ...makeLookup({
-        from: 'products',
-        letLocal: 'order.product.product',
-        as: 'order.product',
-        project: { name: 1, price: 1 },
-      }),
-      ...makeLookup({
-        from: 'addresses',
-        letLocal: 'address',
-        as: 'address',
-        project: { address1: 1, address2: 1, postalCode: 1 },
-      })
-    );
-
-    if (!isTextSearch) {
-      pipeline.push({
-        $match: {
-          $or: [
-            { 'customer.firstName': regex },
-            { 'customer.lastName': regex },
-            { 'customer.email': regex },
-            { 'customer.phone': regex },
-            { orderNumber: regex },
-            { recipientName: regex },
-            { recipientPhone: regex },
-            { woodeliveryTaskId: regex },
-          ],
+      {
+        $lookup: {
+          from: 'deliverymethods',
+          localField: 'method',
+          foreignField: '_id',
+          as: 'method',
         },
-      });
-    }
-
-    pipeline.push({
-      $group: {
-        _id: '$_id',
-        brand: { $first: '$brand' },
-        order: { $first: '$order' },
-        user: { $first: '$user' },
-        method: { $first: '$method' },
-        product: { $push: '$order.product' },
-        address: { $first: '$address' },
-        deliveryDate: { $first: '$deliveryDate' },
-        collectionTime: { $first: '$collectionTime' },
-        recipientName: { $first: '$recipientName' },
-        recipientPhone: { $first: '$recipientPhone' },
-        recipientEmail: { $first: '$recipientEmail' },
-        woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
-        driverDetails: { $first: '$driverDetails' },
-        status: { $first: '$status' },
-        active: { $first: '$active' },
-        createdAt: { $first: '$createdAt' },
-        updatedAt: { $first: '$updatedAt' },
-        orderNumber: { $first: '$orderNumber' },
-        customer: { $first: '$customer' },
       },
-    });
+      { $unwind: { path: '$method', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'addresses',
+          localField: 'address',
+          foreignField: '_id',
+          as: 'address',
+        },
+      },
+      { $unwind: { path: '$address', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          brand: 1,
+          deliveryDate: 1,
+          method: {
+            _id: '$method._id',
+            name: '$method.name',
+            id: '$method._id',
+          },
+          collectionTime: 1,
+          user: {
+            firstName: '$customer.firstName',
+            lastName: '$customer.lastName',
+            email: '$customer.email',
+            phone: '$customer.phone',
+          },
+          address: {
+            _id: '$address._id',
+            firstName: '$address.firstName',
+            lastName: '$address.lastName',
+            city: '$address.city',
+            country: '$address.country',
+            company: '$address.company',
+            address1: '$address.address1',
+            address2: '$address.address2',
+            postalCode: '$address.postalCode',
+            phone: '$address.phone',
+            unitNumber: '$address.unitNumber',
+            id: '$address._id',
+          },
+          recipientName: 1,
+          recipientPhone: 1,
+          recipientEmail: 1,
+          woodeliveryTaskId: 1,
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          driverDetails: 1,
+          id: '$_id',
+        },
+      }
+    );
   } else {
     pipeline.push(
-      ...makeLookup({
-        from: 'users',
-        letLocal: 'user',
-        as: 'user',
-        project: { firstName: 1, lastName: 1, email: 1, phone: 1 },
-      }),
-      ...makeLookup({
-        from: 'deliverymethods',
-        letLocal: 'delivery.method',
-        as: 'delivery.method',
-        project: { name: 1, price: 1 },
-      }),
-      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
-      ...makeLookup({
-        from: 'products',
-        letLocal: 'product.product',
-        as: 'product.product',
-        project: { name: 1, price: 1 },
-      })
-    );
-
-    if (!isTextSearch) {
-      pipeline.push({
-        $match: {
-          $or: [
-            { orderNumber: regex },
-            { 'user.firstName': regex },
-            { 'user.lastName': regex },
-            { 'user.email': regex },
-            { 'user.phone': regex },
-            { 'recipInfo.name': regex },
-            { woodeliveryTaskId: regex },
-            { 'recipInfo.contact': { $in: [search, parseInt(search, 10)] } },
-          ],
+      {
+        $lookup: {
+          from: 'deliverymethods',
+          localField: 'delivery.method',
+          foreignField: '_id',
+          as: 'deliveryMethod',
         },
-      });
-    }
-
-    pipeline.push({
-      $group: {
-        _id: '$_id',
-        brand: { $first: '$brand' },
-        orderNumber: { $first: '$orderNumber' },
-        user: { $first: '$user' },
-        delivery: { $first: '$delivery' },
-        product: { $push: '$product' },
-        recipInfo: { $first: '$recipInfo' },
-        pricingSummary: { $first: '$pricingSummary' },
-        paid: { $first: '$paid' },
-        active: { $first: '$active' },
-        status: { $first: '$status' },
-        woodeliveryTaskId: { $first: '$woodeliveryTaskId' },
-        createdAt: { $first: '$createdAt' },
-        updatedAt: { $first: '$updatedAt' },
       },
-    });
+      {
+        $unwind: { path: '$deliveryMethod', preserveNullAndEmptyArrays: true },
+      },
+      {
+        $project: {
+          recipInfo: 1,
+          _id: 1,
+          orderNumber: 1,
+          brand: 1,
+          corporate: 1,
+          createdAt: 1,
+          customiseCakeForm: 1,
+          deliveryType: 1,
+          paid: 1,
+          preparationStatus: 1,
+          updatedAt: 1,
+          delivery: {
+            date: '$delivery.date',
+            collectionTime: '$delivery.collectionTime',
+            method: {
+              _id: '$deliveryMethod._id',
+              name: '$deliveryMethod.name',
+              updatedAt: '$deliveryMethod.updatedAt',
+              id: '$deliveryMethod._id',
+            },
+            address: '$delivery.address',
+            _id: '$delivery._id',
+          },
+          pricingSummary: 1,
+          user: {
+            firstName: '$customer.firstName',
+            lastName: '$customer.lastName',
+            email: '$customer.email',
+            phone: '$customer.phone',
+          },
+          id: '$_id',
+        },
+      }
+    );
   }
 
+  // Pagination
   pipeline.push({
     $facet: {
       data: [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: limit }],

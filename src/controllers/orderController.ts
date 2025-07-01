@@ -95,6 +95,7 @@ interface IWoodeliveryTask {
 
 interface IDeliveryData {
   brand: string;
+  orderNumber: string;
   order: string;
   deliveryDate: Date;
   method: ObjectId | string;
@@ -402,7 +403,7 @@ export const placeOrder = catchAsync(
         );
       }
       // Updating user document with extra details
-      const user = await User.findById(req.user?._id);
+      let user = await User.findById(req.user?._id);
       if (
         !user?.firstName ||
         user?.firstName === 'Guest' ||
@@ -411,14 +412,24 @@ export const placeOrder = catchAsync(
         !user?.email
       ) {
         const { customer } = req.body;
-        await User.findByIdAndUpdate(req.user?._id, {
-          firstName: customer?.firstName,
-          lastName: customer?.lastName,
-          email: user?.email || customer?.email,
-          phone: user?.phone || customer?.phone,
-        });
+        user = await User.findByIdAndUpdate(
+          req.user?._id,
+          {
+            firstName: customer?.firstName,
+            lastName: customer?.lastName,
+            email: user?.email || customer?.email,
+            phone: user?.phone || customer?.phone,
+          },
+          { new: true }
+        );
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
+      req.body.customer = {
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        email: user?.email,
+        phone: user?.phone,
+      };
       const order = await Order.create(req.body);
       orderId = order.id;
     }
@@ -538,6 +549,7 @@ const createDeliveryDocument = async (
   const data: IDeliveryData = {
     brand,
     order: order?.id,
+    orderNumber: order.orderNumber,
     deliveryDate: new Date(date),
     method: method.id,
     collectionTime,
@@ -834,7 +846,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const { email, firstName, lastName, phone } = req?.body?.user;
 
   let user;
-  const customer = await User.find({ email });
+  let customer = await User.find({ email });
   [user] = customer;
   if (!customer.length) {
     const userDetails = {
@@ -844,7 +856,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
       phone,
     };
     user = new User(userDetails);
-    await user.save({ validateBeforeSave: false });
+    customer = await user.save({ validateBeforeSave: false });
   }
   req.body.user = user?.id; // IMP for assigning order to this user
   const newAddress = {
@@ -856,6 +868,12 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
   req.body.orderNumber = generateUniqueIds();
   req.body.delivery.date = toUtcDateOnly(date);
+  req.body.customer = {
+    firstName: customer?.firstName,
+    lastName: customer?.lastName,
+    email: customer?.email,
+    phone: customer?.phone,
+  };
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -918,7 +936,12 @@ export const bulkCreateOrders = catchAsync(
       const createdAddress = await Address.create(newAddress);
       orderData.delivery.address = createdAddress._id;
       orderData.delivery.date = toUtcDateOnly(date);
-
+      orderData.customer = {
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        email: user?.email,
+        phone: user?.phone,
+      };
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
       const newOrder = await Order.create(orderData);
@@ -1287,6 +1310,7 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
     const deliveryDoc: Partial<IDelivery> = {
       brand: order.brand,
       order: order._id,
+      orderNumber: order.orderNumber,
       deliveryDate: d.date,
       method: d.method,
       collectionTime: d.collectionTime,
