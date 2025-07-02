@@ -438,7 +438,7 @@ productSchema.index({ slug: 1, brand: 1 }, { unique: true });
 // Document middleware
 productSchema.pre('save', function (next) {
   this.productNumber = generateUniqueIds();
-  this.slug = slugify(this.slug || this.name);
+  this.slug = slugify(this.slug || this.name, { lower: true, strict: true });
   next();
 });
 
