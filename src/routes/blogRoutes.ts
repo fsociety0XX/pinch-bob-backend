@@ -7,6 +7,7 @@ import {
   deleteBlog,
   getAllBlog,
   getOneBlog,
+  getOneBlogViaSlug,
   updateBlog,
 } from '@src/controllers/blogController';
 
@@ -30,5 +31,7 @@ blogRouter
     updateBlog
   )
   .delete(deleteBlog);
+
+blogRouter.route('/slug/:slug').get(getOneBlogViaSlug);
 
 export default blogRouter;
