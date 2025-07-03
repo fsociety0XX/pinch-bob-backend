@@ -83,7 +83,7 @@ blogSchema.pre('save', function (next) {
 
 blogSchema.pre('find', function (next) {
   this.populate({
-    path: 'category ',
+    path: 'category',
     select: 'name',
   });
   next();
