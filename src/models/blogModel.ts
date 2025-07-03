@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import slugify from 'slugify';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
@@ -81,7 +81,7 @@ blogSchema.pre('save', function (next) {
   next();
 });
 
-blogSchema.pre('find', function (next) {
+blogSchema.pre<Query<IBlog, IBlog>>(/^find/, function (next) {
   this.populate({
     path: 'category',
     select: 'name',
