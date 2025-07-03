@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import slugify from 'slugify';
 import { brandEnum } from '@src/types/customTypes';
 import { COMMON_SCHEMA_VALIDATION } from '@src/constants/messages';
@@ -45,6 +45,12 @@ const blogSchema = new mongoose.Schema<IBlog>(
     images: {
       type: [BlogImageSchema],
     },
+    category: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+      },
+    ],
     metaTitle: String,
     metaDescription: String,
     views: {
@@ -60,7 +66,6 @@ const blogSchema = new mongoose.Schema<IBlog>(
     active: {
       type: Boolean,
       default: true,
-      select: false,
     },
   },
   {
@@ -73,6 +78,14 @@ const blogSchema = new mongoose.Schema<IBlog>(
 blogSchema.index({ slug: 1, brand: 1 }, { unique: true });
 blogSchema.pre('save', function (next) {
   this.slug = slugify(this.slug, { lower: true, strict: true });
+  next();
+});
+
+blogSchema.pre<Query<IBlog, IBlog>>(/^find/, function (next) {
+  this.populate({
+    path: 'category',
+    select: 'name',
+  });
   next();
 });
 
