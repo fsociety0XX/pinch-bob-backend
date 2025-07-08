@@ -62,6 +62,7 @@ import {
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
+import logActivity, { ActivityActions } from '@src/utils/activityLogger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -975,8 +976,16 @@ export const bulkCreateOrders = catchAsync(
   }
 );
 
-export const deleteOrder = softDeleteOne(Order);
-export const deleteManyOrder = softDeleteMany(Order);
+export const deleteOrder = softDeleteOne(Order, {
+  action: ActivityActions.DELETE_ORDER,
+  module: 'order',
+});
+
+export const deleteManyOrder = softDeleteMany(Order, {
+  action: ActivityActions.DELETE_ORDER,
+  module: 'order',
+});
+
 export const getOneOrder = getOne(Order);
 
 export const getAllOrder = catchAsync(
@@ -1090,6 +1099,8 @@ export const updateOrder = catchAsync(
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
     }
+    const before = await Order.findById(req.params.id);
+
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -1097,7 +1108,22 @@ export const updateOrder = catchAsync(
     if (!order) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
-
+    await logActivity({
+      user: {
+        _id: req.user._id,
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.UPDATE_ORDER,
+      module: 'order',
+      targetId: order._id.toString(),
+      metadata: {
+        before,
+        after: order,
+      },
+      brand: req.brand,
+    });
     // Updating delivery & woodelivery data
     if (delivery || recipInfo) {
       createDelivery(order, true);

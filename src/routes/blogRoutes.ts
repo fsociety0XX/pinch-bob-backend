@@ -14,6 +14,7 @@ import {
 const blogRouter = express.Router();
 
 blogRouter.route('/').get(getAllBlog); // No protection for get all data
+blogRouter.route('/slug/:slug').get(getOneBlogViaSlug);
 
 blogRouter.use(protect, roleRistriction(Role.ADMIN));
 blogRouter
@@ -31,7 +32,5 @@ blogRouter
     updateBlog
   )
   .delete(deleteBlog);
-
-blogRouter.route('/slug/:slug').get(getOneBlogViaSlug);
 
 export default blogRouter;
