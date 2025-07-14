@@ -16,10 +16,17 @@ import {
   getOne,
   updateOne,
 } from '@src/utils/factoryHandler';
+import { ActivityActions } from '@src/utils/activityLogger';
 
 export const createUser = createOne(User);
-export const updateUser = updateOne(User);
-export const deleteUser = deleteOne(User);
+export const updateUser = updateOne(User, {
+  action: ActivityActions.UPDATE_USER,
+  module: 'user',
+});
+export const deleteUser = deleteOne(User, {
+  action: ActivityActions.DELETE_USER,
+  module: 'user',
+});
 export const getOneUser = getOne(User);
 export const getAllUser = getAll(User);
 
