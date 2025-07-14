@@ -999,9 +999,27 @@ export const getAllOrder = catchAsync(
       moneyPullingOrders,
       deliveryStartDate,
       deliveryEndDate,
+      dateMode,
+      dateFrom,
+      dateTo,
     } = req.query;
 
+    const timeRange =
+      dateFrom && dateTo
+        ? { $gte: new Date(dateFrom), $lte: new Date(dateTo) }
+        : undefined;
+
     const filter: any = {};
+
+    if (timeRange) {
+      if (dateMode === 'created') {
+        filter.createdAt = timeRange;
+      } else if (dateMode === 'updated') {
+        filter.updatedAt = timeRange;
+      } else if (dateMode === 'both') {
+        filter.$or = [{ createdAt: timeRange }, { updatedAt: timeRange }];
+      }
+    }
 
     if (orderNumber) {
       filter.orderNumber = {
