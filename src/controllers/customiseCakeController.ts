@@ -48,6 +48,7 @@ interface IWoodeliveryResponse extends Response {
 
 interface IDeliveryData {
   brand: string;
+  orderNumber: string;
   customiseCakeOrder: string;
   deliveryDate: Date;
   method: ObjectId | string;
@@ -57,7 +58,14 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
   customiseCakeForm: boolean;
+  status?: string;
 }
 
 interface IWoodeliveryTask {
@@ -350,6 +358,13 @@ const createDeliveryDocument = async (
     recipientPhone: +recipientPhone || +currentUser!.phone!,
     recipientEmail: currentUser?.email,
     customiseCakeForm: true,
+    orderNumber: customiseCake.orderNumber,
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
   };
 
   if (task) {
@@ -437,6 +452,7 @@ const createDelivery = async (
 
 const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
   const {
+    _id,
     orderNumber,
     brand,
     user,
@@ -517,7 +533,14 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       name: delivery.recipientName,
       contact: delivery.recipientPhone,
     },
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
     customFormProduct,
+    customiseCakeFormDetails: _id,
   };
   await Order.findOneAndUpdate(
     { orderNumber },
@@ -532,34 +555,41 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
 export const submitAdminForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
+    const customFormData = { ...req.body };
 
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files.images?.length) {
-        req.body.images = files.images; // Multiple images
+        customFormData.images = files.images; // Multiple images
       }
 
       if (files.baseColourImg?.length) {
-        req.body.baseColourImg = files.baseColourImg[0]; // Single image
+        customFormData.baseColourImg = files.baseColourImg[0]; // Single image
       }
     }
 
     if (coupon === '') {
-      req.body.coupon = null;
+      customFormData.coupon = null;
     }
     if (candlesAndSparklers === '') {
-      req.body.candlesAndSparklers = [];
+      customFormData.candlesAndSparklers = [];
     }
     if (bakes === '') {
-      req.body.bakes = [];
+      customFormData.bakes = [];
     }
     if (delivery?.date) {
-      req.body.delivery.date = toUtcDateOnly(delivery.date);
+      customFormData.delivery.date = toUtcDateOnly(delivery.date);
+    }
+    if (
+      delivery?.address === '' ||
+      delivery?.deliveryType === customiseOrderEnums.deliveryType[0]
+    ) {
+      customFormData.delivery.address = null;
     }
 
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      customFormData,
       {
         new: true,
         runValidators: true,
@@ -581,14 +611,13 @@ export const submitAdminForm = catchAsync(
 
     // Updating delivery & woodelivery data
     if (delivery) {
-      createDelivery(customiseCakeOrder, true);
+      await createDelivery(customiseCakeOrder, true);
       // If delivery type got changed from delivery to self-collect then delete the address
       if (
         delivery?.deliveryType === customiseOrderEnums.deliveryType[0] &&
         delivery.address
       ) {
         await Address.findByIdAndDelete(delivery.address);
-        delete req.body.delivery.address;
       }
     }
 

@@ -29,7 +29,8 @@ class APIFeatures<T extends Document> {
 
   sort(): this {
     const sortBy =
-      (this.queryString.sort as string)?.split(',')?.join(' ') ?? '-createdAt'; // For descending order -> add '-' symbol before field
+      (this.queryString.sort as string)?.split(',')?.join(' ') ??
+      '-priority -createdAt'; // For descending order -> add '-' symbol before field
     this.query = this.query.sort(sortBy);
     return this;
   }

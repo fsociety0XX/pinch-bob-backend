@@ -62,6 +62,7 @@ import {
   WOODELIVERY_STATUS,
 } from '@src/constants/static';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
+import logActivity, { ActivityActions } from '@src/utils/activityLogger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 interface IWoodeliveryPackage {
@@ -95,6 +96,7 @@ interface IWoodeliveryTask {
 
 interface IDeliveryData {
   brand: string;
+  orderNumber: string;
   order: string;
   deliveryDate: Date;
   method: ObjectId | string;
@@ -104,6 +106,12 @@ interface IDeliveryData {
   recipientEmail?: string;
   woodeliveryTaskId?: string;
   address?: ObjectId;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
   status?: string;
 }
 
@@ -382,7 +390,6 @@ const handleHitpayPayment = async (
 
 export const placeOrder = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
-    const { customer } = req.body
     req.body.user = req.user?._id;
     let orderId;
     if (req.body.orderId) {
@@ -397,16 +404,33 @@ export const placeOrder = catchAsync(
         );
       }
       // Updating user document with extra details
-      const user = await User.findById(req.user?._id);
-      if (Object.keys(customer).length) {
-        await User.findByIdAndUpdate(req.user?._id, {
-          firstName: customer?.firstName,
-          lastName: customer?.lastName,
-          email: user?.email || customer?.email,
-          phone: user?.phone || customer?.phone,
-        });
+      let user = await User.findById(req.user?._id);
+      if (
+        !user?.firstName ||
+        user?.firstName === 'Guest' ||
+        !user?.lastName ||
+        user?.lastName === 'User' ||
+        !user?.email
+      ) {
+        const { customer } = req.body;
+        user = await User.findByIdAndUpdate(
+          req.user?._id,
+          {
+            firstName: customer?.firstName,
+            lastName: customer?.lastName,
+            email: user?.email || customer?.email,
+            phone: user?.phone || customer?.phone,
+          },
+          { new: true }
+        );
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
+      req.body.customer = {
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        email: user?.email,
+        phone: user?.phone,
+      };
       const order = await Order.create(req.body);
       orderId = order.id;
     }
@@ -526,11 +550,18 @@ const createDeliveryDocument = async (
   const data: IDeliveryData = {
     brand,
     order: order?.id,
+    orderNumber: order.orderNumber,
     deliveryDate: new Date(date),
     method: method.id,
     collectionTime,
     recipientName: recipInfo?.name,
     recipientPhone: recipInfo?.contact,
+    customer: {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user?.email || '',
+      phone: user?.phone || '',
+    },
   };
   if (task) {
     data.woodeliveryTaskId = task?.data?.guid;
@@ -584,8 +615,9 @@ const createDelivery = async (id: string, update = false) => {
 
 async function updateProductAfterPurchase(order: IOrder) {
   const updates = order.product.map((p) => {
-    const { inventory } = p?.product;
+    const { inventory, available } = p?.product;
     let inventoryUpdateQuery = { ...inventory };
+    let isProductAvailable = available;
 
     if (inventory && inventory.track) {
       let updatedRemQty = inventory.remainingQty - p.quantity;
@@ -599,6 +631,7 @@ async function updateProductAfterPurchase(order: IOrder) {
 
       if (!updatedRemQty) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+        isProductAvailable = false;
       } else if (updatedRemQty <= 20) {
         inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
       } else {
@@ -611,7 +644,7 @@ async function updateProductAfterPurchase(order: IOrder) {
         filter: { _id: p.product._id },
         update: {
           $inc: { sold: p.quantity },
-          $set: { ...inventoryUpdateQuery },
+          $set: { ...inventoryUpdateQuery, available: isProductAvailable },
         },
       },
     };
@@ -814,7 +847,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   const { email, firstName, lastName, phone } = req?.body?.user;
 
   let user;
-  const customer = await User.find({ email });
+  let customer = await User.find({ email });
   [user] = customer;
   if (!customer.length) {
     const userDetails = {
@@ -824,7 +857,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
       phone,
     };
     user = new User(userDetails);
-    await user.save({ validateBeforeSave: false });
+    customer = await user.save({ validateBeforeSave: false });
   }
   req.body.user = user?.id; // IMP for assigning order to this user
   const newAddress = {
@@ -836,6 +869,12 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
   req.body.orderNumber = generateUniqueIds();
   req.body.delivery.date = toUtcDateOnly(date);
+  req.body.customer = {
+    firstName: customer?.firstName,
+    lastName: customer?.lastName,
+    email: customer?.email,
+    phone: customer?.phone,
+  };
   const newOrder = await Order.create(req.body);
   const order = await Order.findById(newOrder?.id).lean();
 
@@ -898,7 +937,12 @@ export const bulkCreateOrders = catchAsync(
       const createdAddress = await Address.create(newAddress);
       orderData.delivery.address = createdAddress._id;
       orderData.delivery.date = toUtcDateOnly(date);
-
+      orderData.customer = {
+        firstName: user?.firstName,
+        lastName: user?.lastName,
+        email: user?.email,
+        phone: user?.phone,
+      };
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
       const newOrder = await Order.create(orderData);
@@ -932,8 +976,16 @@ export const bulkCreateOrders = catchAsync(
   }
 );
 
-export const deleteOrder = softDeleteOne(Order);
-export const deleteManyOrder = softDeleteMany(Order);
+export const deleteOrder = softDeleteOne(Order, {
+  action: ActivityActions.DELETE_ORDER,
+  module: 'order',
+});
+
+export const deleteManyOrder = softDeleteMany(Order, {
+  action: ActivityActions.DELETE_ORDER,
+  module: 'order',
+});
+
 export const getOneOrder = getOne(Order);
 
 export const getAllOrder = catchAsync(
@@ -947,9 +999,27 @@ export const getAllOrder = catchAsync(
       moneyPullingOrders,
       deliveryStartDate,
       deliveryEndDate,
+      dateMode,
+      dateFrom,
+      dateTo,
     } = req.query;
 
+    const timeRange =
+      dateFrom && dateTo
+        ? { $gte: new Date(dateFrom), $lte: new Date(dateTo) }
+        : undefined;
+
     const filter: any = {};
+
+    if (timeRange) {
+      if (dateMode === 'created') {
+        filter.createdAt = timeRange;
+      } else if (dateMode === 'updated') {
+        filter.updatedAt = timeRange;
+      } else if (dateMode === 'both') {
+        filter.$or = [{ createdAt: timeRange }, { updatedAt: timeRange }];
+      }
+    }
 
     if (orderNumber) {
       filter.orderNumber = {
@@ -1047,6 +1117,8 @@ export const updateOrder = catchAsync(
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
     }
+    const before = await Order.findById(req.params.id);
+
     const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -1054,7 +1126,22 @@ export const updateOrder = catchAsync(
     if (!order) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
-
+    await logActivity({
+      user: {
+        _id: req.user._id,
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.UPDATE_ORDER,
+      module: 'order',
+      targetId: order._id.toString(),
+      metadata: {
+        before,
+        after: order,
+      },
+      brand: req.brand,
+    });
     // Updating delivery & woodelivery data
     if (delivery || recipInfo) {
       createDelivery(order, true);
@@ -1083,7 +1170,6 @@ export const updateRefImages = catchAsync(
       return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
     }
 
-    // Find the product item by its _id (subdocument)
     const productItem = order.product[productItemId];
     if (!productItem) {
       return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
@@ -1264,9 +1350,11 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
     if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
 
     const d = order.delivery!;
+    const u = order.user;
     const deliveryDoc: Partial<IDelivery> = {
       brand: order.brand,
       order: order._id,
+      orderNumber: order.orderNumber,
       deliveryDate: d.date,
       method: d.method,
       collectionTime: d.collectionTime,
@@ -1277,6 +1365,12 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
       woodeliveryTaskId: order.woodeliveryTaskId,
       instructions: d.instructions,
       customiseCakeForm: order.customiseCakeForm ?? false,
+      customer: {
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u?.email || '',
+        phone: u?.phone || '',
+      },
     };
     deliveryBulk.insert(deliveryDoc);
   });

@@ -5,6 +5,7 @@ const WOODELIVERY_BASEURL = 'https://api.woodelivery.com/v2';
 export const USER_ROUTE = `${VERSION1}/user`;
 export const AUTH_ROUTE = `${VERSION1}/auth`;
 export const CATEGORY_ROUTE = `${VERSION1}/category`;
+export const BLOG_ROUTE = `${VERSION1}/blog`;
 export const SUPER_CATEGORY_ROUTE = `${VERSION1}/superCategory`;
 export const SUB_CATEGORY_ROUTE = `${VERSION1}/subCategory`;
 export const PRODUCT_ROUTE = `${VERSION1}/product`;

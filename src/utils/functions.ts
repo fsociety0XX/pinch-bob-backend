@@ -69,12 +69,12 @@ export function calculateBeforeAndAfterDateTime(
   }
 
   // Parse the start time and set it in SGT
-  const [startHours, startMinutes] = convertTo24Hour(startTime.trim());
+  const [startHours, startMinutes] = convertTo24Hour(startTime?.trim());
   const afterDateTime = new Date(sgtDateTime);
   afterDateTime.setHours(startHours, startMinutes, 0, 0);
 
   // Parse the end time and set it in SGT
-  const [endHours, endMinutes] = convertTo24Hour(endTime.trim());
+  const [endHours, endMinutes] = convertTo24Hour(endTime?.trim());
   const beforeDateTime = new Date(sgtDateTime);
   beforeDateTime.setHours(endHours, endMinutes, 0, 0);
 
@@ -83,7 +83,7 @@ export function calculateBeforeAndAfterDateTime(
 
 export const generateUniqueIds = (): string => {
   const alphabet = '0123456789';
-  const nanoid = customAlphabet(alphabet, 6);
+  const nanoid = customAlphabet(alphabet, 8);
   return nanoid();
 };
 

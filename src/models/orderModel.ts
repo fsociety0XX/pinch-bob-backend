@@ -144,6 +144,13 @@ export interface ICustomFormProduct {
   moneyPulling?: IMoneyPulling[];
 }
 
+interface ICustomer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
 export interface IOrder {
   id: string;
   orderNumber?: string;
@@ -157,6 +164,7 @@ export interface IOrder {
   user: IUser;
   delivery: IDelivery;
   pricingSummary: IPricingSummary;
+  customer: ICustomer;
   recipInfo?: IRecipInfo;
   paid: boolean;
   corporate: boolean;
@@ -167,10 +175,18 @@ export interface IOrder {
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
   customiseCakeForm: boolean;
+  customiseCakeFormDetails: mongoose.Schema.Types.ObjectId;
   forKitchenUse: boolean;
   active: boolean;
   createdAt: string;
 }
+
+const CustomerSchema = new mongoose.Schema<ICustomer>({
+  firstName: String,
+  lastName: String,
+  email: String,
+  phone: String,
+});
 
 const ProductImageSchema = new mongoose.Schema<IPhoto>({
   key: String,
@@ -302,6 +318,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
     orderNumber: {
       type: String,
       unique: true,
+      index: true,
     },
     sqlId: {
       type: Number,
@@ -338,6 +355,7 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: PricingSummarySchema,
       required: [true, ORDER_SCHEMA_VALIDATION.pricingSummary],
     },
+    customer: CustomerSchema,
     recipInfo: {
       sameAsSender: Boolean,
       name: String,
@@ -365,6 +383,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     customiseCakeForm: {
       type: Boolean,
       default: false,
+    },
+    customiseCakeFormDetails: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'CustomiseCake',
     },
     forKitchenUse: {
       type: Boolean,
@@ -397,7 +419,7 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
       'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
   });
   this.populate({
-    path: 'product.product delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
+    path: 'delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
     select: 'name images inventory updatedAt duration',
   });
   this.populate({
@@ -408,7 +430,9 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     path: 'pricingSummary.coupon',
     select: 'code type applicableOn ids discountType discount',
   });
-
+  this.populate({
+    path: 'customiseCakeFormDetails product.product',
+  });
   next();
 });
 

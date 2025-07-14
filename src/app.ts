@@ -38,6 +38,7 @@ import {
   STRIPE_WEBHOOK_ROUTE,
   SUB_CATEGORY_ROUTE,
   REPORT_ROUTE,
+  BLOG_ROUTE,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -66,6 +67,7 @@ import '@src/crons/orderCron';
 import '@src/crons/mailchimpCron';
 import subCategoryRouter from './routes/subCategoryRoutes';
 import reportRouter from './routes/reportRoutes';
+import blogRouter from './routes/blogRoutes';
 
 const app = express();
 const dirname = path.resolve();
@@ -138,6 +140,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(AUTH_ROUTE, authRouter);
 app.use(USER_ROUTE, userRouter);
 app.use(CATEGORY_ROUTE, categoryRouter);
+app.use(BLOG_ROUTE, blogRouter);
 app.use(SUPER_CATEGORY_ROUTE, superCategoryRouter);
 app.use(SUB_CATEGORY_ROUTE, subCategoryRouter);
 app.use(PRODUCT_ROUTE, productRouter);

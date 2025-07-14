@@ -16,6 +16,7 @@ import {
   couponTypeEnum,
 } from '@src/types/customTypes';
 import { COUPON_SCHEMA_VALIDATION } from '@src/constants/messages';
+import { ActivityActions } from '@src/utils/activityLogger';
 
 export const applyCoupon = catchAsync(
   async (req: IRequestWithUser, res: Response, next: NextFunction) => {
@@ -99,7 +100,13 @@ export const applyCoupon = catchAsync(
 );
 
 export const createCoupon = createOne(Coupon);
-export const updateCoupon = updateOne(Coupon);
-export const deleteCoupon = deleteOne(Coupon);
+export const updateCoupon = updateOne(Coupon, {
+  action: ActivityActions.UPDATE_COUPON,
+  module: 'coupon',
+});
+export const deleteCoupon = deleteOne(Coupon, {
+  action: ActivityActions.DELETE_COUPON,
+  module: 'coupon',
+});
 export const getOneCoupon = getOne(Coupon);
 export const getAllCoupon = getAll(Coupon);
