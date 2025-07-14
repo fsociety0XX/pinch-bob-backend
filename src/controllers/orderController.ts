@@ -420,6 +420,7 @@ export const placeOrder = catchAsync(
             lastName: customer?.lastName,
             email: user?.email || customer?.email,
             phone: user?.phone || customer?.phone,
+            userId: user?.userId || generateUniqueIds(),
           },
           { new: true }
         );
@@ -1006,7 +1007,7 @@ export const getAllOrder = catchAsync(
 
     const timeRange =
       dateFrom && dateTo
-        ? { $gte: new Date(dateFrom), $lte: new Date(dateTo) }
+        ? { gte: new Date(dateFrom), lte: new Date(dateTo) }
         : undefined;
 
     const filter: any = {};
