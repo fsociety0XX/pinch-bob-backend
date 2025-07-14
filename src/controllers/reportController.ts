@@ -151,6 +151,12 @@ export const fetchCustomerDataByOrder = catchAsync(
           ],
         },
       },
+      {
+        $addFields: {
+          customiseCakeOrders: { $ifNull: ['$customiseCakeOrders', 0] },
+          customiseCakeAmount: { $ifNull: ['$customiseCakeAmount', 0] },
+        },
+      },
       // Step 4: Final Grouping to Combine Data from Both Models
       {
         $group: {
