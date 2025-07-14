@@ -64,8 +64,11 @@ export const fetchCustomerDataByOrder = catchAsync(
             $cond: [{ $gte: ['$userDetails.createdAt', start] }, true, false],
           },
           totalAmountValue: {
-            $toDouble: {
-              $ifNull: ['$pricingSummary.total', '0'],
+            $convert: {
+              input: '$pricingSummary.total',
+              to: 'double',
+              onError: 0,
+              onNull: 0,
             },
           },
         },
@@ -124,8 +127,11 @@ export const fetchCustomerDataByOrder = catchAsync(
                   ],
                 },
                 totalAmountValue: {
-                  $toDouble: {
-                    $ifNull: ['$total', '0'],
+                  $convert: {
+                    input: '$pricingSummary.total',
+                    to: 'double',
+                    onError: 0,
+                    onNull: 0,
                   },
                 },
               },
@@ -149,6 +155,12 @@ export const fetchCustomerDataByOrder = catchAsync(
               },
             },
           ],
+        },
+      },
+      {
+        $addFields: {
+          customiseCakeOrders: { $ifNull: ['$customiseCakeOrders', 0] },
+          customiseCakeAmount: { $ifNull: ['$customiseCakeAmount', 0] },
         },
       },
       // Step 4: Final Grouping to Combine Data from Both Models
@@ -268,7 +280,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
         $match: {
           deliveryDateConverted: { $gte: start, $lte: end },
           paid: true,
-          ...(brand && { brand }),
+          ...(brand ? { brand } : {}),
         },
       },
       {
@@ -291,8 +303,11 @@ export const fetchCustomerDataByDelivery = catchAsync(
             $cond: [{ $gte: ['$userDetails.createdAt', start] }, true, false],
           },
           totalAmountValue: {
-            $toDouble: {
-              $ifNull: ['$pricingSummary.total', '0'],
+            $convert: {
+              input: '$pricingSummary.total',
+              to: 'double',
+              onError: 0,
+              onNull: 0,
             },
           },
         },
@@ -332,6 +347,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
               $match: {
                 'delivery.date': { $gte: start, $lte: end },
                 paid: true,
+                ...(brand ? { brand } : {}),
               },
             },
             {
@@ -358,8 +374,11 @@ export const fetchCustomerDataByDelivery = catchAsync(
                   ],
                 },
                 totalAmountValue: {
-                  $toDouble: {
-                    $ifNull: ['$total', '0'],
+                  $convert: {
+                    input: '$total',
+                    to: 'double',
+                    onError: 0,
+                    onNull: 0,
                   },
                 },
               },
@@ -385,7 +404,12 @@ export const fetchCustomerDataByDelivery = catchAsync(
           ],
         },
       },
-
+      {
+        $addFields: {
+          customiseCakeOrders: { $ifNull: ['$customiseCakeOrders', 0] },
+          customiseCakeAmount: { $ifNull: ['$customiseCakeAmount', 0] },
+        },
+      },
       // Step 4: Final Grouping to Combine Data
       {
         $group: {
@@ -481,30 +505,30 @@ export const aggregatedCustomerReport = catchAsync(
     const pageNumber = parseInt(page, 10);
     const pageSize = parseInt(limit, 10);
     const skip = (pageNumber - 1) * pageSize;
+    const dateMatch = {
+      paid: true,
+      createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+      ...(brand ? { brand } : {}),
+    };
 
     const pipeline: PipelineStage[] = [
-      // Step 1: Add orderType
+      // Step 1: Filter paid orders in date range
+      {
+        $match: dateMatch,
+      },
+      // Step 2: Add orderType
       {
         $addFields: { orderType: 'regular' },
       },
 
-      // Step 2: Union with customiseorders
+      // Step 3: Union with customiseorders
       {
         $unionWith: {
           coll: 'customiseorders',
-          pipeline: [{ $addFields: { orderType: 'customise' } }],
-        },
-      },
-
-      // Step 3: Filter paid orders in date range
-      {
-        $match: {
-          paid: true,
-          createdAt: {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate),
-          },
-          ...(brand && { brand }),
+          pipeline: [
+            { $addFields: { orderType: 'customise' } },
+            { $match: dateMatch },
+          ],
         },
       },
 
@@ -525,8 +549,8 @@ export const aggregatedCustomerReport = catchAsync(
           itemsCount: {
             $cond: {
               if: { $eq: ['$orderType', 'customise'] },
-              then: { $size: '$bakes' },
-              else: { $size: '$product' },
+              then: { $size: { $ifNull: ['$bakes', []] } },
+              else: { $size: { $ifNull: ['$product', []] } },
             },
           },
           isAttachOrder: {
@@ -673,13 +697,18 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         paid: true,
       },
     },
-    { $unwind: '$product' },
+    { $unwind: { path: '$product', preserveNullAndEmptyArrays: false } },
     {
       $group: {
         _id: '$product.product',
         noOfItems: { $sum: '$product.quantity' },
         totalOrderValue: {
-          $sum: { $multiply: ['$product.price', '$product.quantity'] },
+          $sum: {
+            $multiply: [
+              { $ifNull: ['$product.price', 0] },
+              '$product.quantity',
+            ],
+          },
         },
       },
     },

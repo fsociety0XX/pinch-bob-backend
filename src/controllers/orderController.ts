@@ -1,3 +1,4 @@
+/* eslint-disable radix */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
@@ -420,6 +421,7 @@ export const placeOrder = catchAsync(
             lastName: customer?.lastName,
             email: user?.email || customer?.email,
             phone: user?.phone || customer?.phone,
+            userId: user?.userId || generateUniqueIds(),
           },
           { new: true }
         );
@@ -1006,7 +1008,10 @@ export const getAllOrder = catchAsync(
 
     const timeRange =
       dateFrom && dateTo
-        ? { $gte: new Date(dateFrom), $lte: new Date(dateTo) }
+        ? {
+            gte: new Date(dateFrom as string),
+            lte: new Date(dateTo as string),
+          }
         : undefined;
 
     const filter: any = {};
@@ -1102,7 +1107,9 @@ export const getAllOrder = catchAsync(
     delete req.query.moneyPullingOrders;
     delete req.query.deliveryStartDate;
     delete req.query.deliveryEndDate;
-
+    delete req.query.dateMode;
+    delete req.query.dateTo;
+    delete req.query.dateFrom;
     req.query = { ...req.query, ...filter };
     await getAll(Order)(req, res, next);
   }
