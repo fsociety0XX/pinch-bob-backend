@@ -21,8 +21,10 @@ import {
 } from '@src/utils/factoryHandler';
 import sendEmail from '@src/utils/sendEmail';
 import {
+  ASSIGN_ORDER_ERROR,
   BOB_SMS_CONTENT,
   DELIVERY_COLLECTION_TIME,
+  NO_DATA_FOUND,
   PINCH_EMAILS,
 } from '@src/constants/messages';
 import AppError from '@src/utils/appError';
@@ -51,9 +53,17 @@ export const getServerTime = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const assignOrderToDriver = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const deliveryId = req.params.id;
     const { driverDetails, woodeliveryTaskId } = req.body;
+    const before = await Delivery.findById(deliveryId);
+
+    if (!before) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+    if (!driverDetails || !woodeliveryTaskId) {
+      return next(new AppError(ASSIGN_ORDER_ERROR, StatusCode.BAD_REQUEST));
+    }
 
     const assignOrder = [
       {
@@ -62,8 +72,6 @@ export const assignOrderToDriver = catchAsync(
       },
     ];
     await fetchAPI(ASSIGN_TASK_TO_DRIVER, 'POST', assignOrder);
-
-    const before = await Delivery.findById(deliveryId);
 
     const doc = await Delivery.findByIdAndUpdate(
       deliveryId,
