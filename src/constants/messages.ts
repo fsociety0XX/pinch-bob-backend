@@ -30,6 +30,8 @@ export const INVALID_TOKEN = 'Please provide a valid token.';
 export const GOOGLE_REVIEWS_ERROR = 'Error in fetching google reviews';
 export const UNAUTHORISED_ROLE = 'You are not authorised to access';
 export const TOKEN_SENT = 'Token sent to email';
+export const ASSIGN_ORDER_ERROR =
+  'Please provide a valid woodelivery id and driver details';
 export const EMAIL_FAILED =
   'Error in sending email, Please try again after sometime';
 export const CURRENT_PASSWORD_INCORRECT = 'Your current password is incorrect.';
