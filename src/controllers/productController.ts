@@ -49,7 +49,7 @@ async function syncProductWithMerchantCenter(
     description:
       p.brand === brandEnum[0]
         ? p.pinchDetails.details
-        : p.bobDetails?.description?.[0] || '',
+        : p.bobDetails?.description || '',
     link: p.brand === brandEnum[0] ? pinchLink : bobLink,
     imageLink: p.images[0].location,
     additionalImageLinks: [p?.images?.[1] ? p.images[1].location : ''],
