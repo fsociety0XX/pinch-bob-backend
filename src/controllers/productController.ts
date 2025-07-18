@@ -40,14 +40,17 @@ async function syncProductWithMerchantCenter(
     auth: authClient,
   });
 
+  const pinchLink = `${PINCH_URL}/details/${p.slug}`;
+  const bobLink = `${BOB_URL}/${p?.superCategory?.[0].name}/${p.slug}`;
+
   const googleProduct = {
     offerId: p._id.toString(),
     title: p.name,
     description:
       p.brand === brandEnum[0]
         ? p.pinchDetails.details
-        : p.bobDetails.description[0],
-    link: `${p.brand === brandEnum[0] ? PINCH_URL : BOB_URL}/details/${p.slug}`,
+        : p.bobDetails?.description?.[0] || '',
+    link: p.brand === brandEnum[0] ? pinchLink : bobLink,
     imageLink: p.images[0].location,
     additionalImageLinks: [p?.images?.[1] ? p.images[1].location : ''],
     contentLanguage: 'en',
@@ -124,6 +127,7 @@ export const updateProduct = catchAsync(
       'fbt',
       'tag',
       'filterColours',
+      'subCategory',
     ];
 
     for (const key of stringArrays) {
