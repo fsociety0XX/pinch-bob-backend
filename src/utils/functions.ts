@@ -83,7 +83,7 @@ export function calculateBeforeAndAfterDateTime(
 
 export const generateUniqueIds = (): string => {
   const alphabet = '0123456789';
-  const nanoid = customAlphabet(alphabet, 8);
+  const nanoid = customAlphabet(alphabet, 7);
   return nanoid();
 };
 
