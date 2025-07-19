@@ -1,0 +1,183 @@
+{{!-- orderDeliverAndReview.hbs --}}
+{{#if previewText}}
+  <!-- hidden preview text for most mail clients -->
+  <span class="mcnPreviewText" style="display:none; font-size:0; line-height:0; max-height:0; max-width:0; opacity:0; overflow:hidden; visibility:hidden;">
+    {{previewText}}
+  </span>
+{{/if}}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Your order has been delivered.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <!--[if !mso]><!-->
+  <link
+    href="https://fonts.googleapis.com/css?family=DM+Sans:400,400i,700,700i,900,900i"
+    rel="stylesheet"
+    type="text/css"
+  />
+  <!--<![endif]-->
+  <style>
+    body, #bodyTable { background-color: #f4f4f4; margin:0; padding:0; width:100%!important; }
+    img { border:0; height:auto; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+    table { border-collapse:collapse !important; }
+    .button { background-color:#111C4E; border-radius:6px; color:#ffffff; display:inline-block; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:bold; line-height:1.2; padding:12px 24px; text-decoration:none; }
+    h2 { font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:24px; line-height:1.2; margin:0 0 16px; color:#111C4E; }
+    h3 { font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:20px; line-height:1.2; margin:0 0 8px; }
+    p { font-family:'DM Sans',sans-serif; font-size:16px; line-height:1.5; color:#000; margin:0 0 16px; }
+    .section { background:#ffffff; padding:30px; }
+    .stars { color:#FFCC00; font-size:28px; line-height:1; margin:16px 0; }
+    .alert { background:#fff3f3; padding:24px; }
+    .alert h3 { color:#B22222; }
+    .footer-small { font-family:'DM Sans',sans-serif; font-size:12px; color:#707070; margin:0 0 8px; }
+    .bottom { background:#111C4E; color:#ffffff; text-align:center; font-family:'DM Sans',sans-serif; font-size:12px; padding:24px; }
+    .bottom a { color:#ffffff; text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <center>
+    <table width="100%" id="bodyTable">
+      <tr><td align="center">
+        <!--[if (gte mso 9)|(IE)]><table width="660"><tr><td><![endif]-->
+        <table width="100%" style="max-width:660px;">
+          <!-- HEADER -->
+          <tr>
+            <td style="background:#111C4E; padding:16px;" align="center">
+              <a href="http://www.bobthebakerboy.com" target="_blank">
+                <img
+                  src="https://mcusercontent.com/.../f55b6112-fa54-2307-e9dd-44958bf27db3.png"
+                  alt="Bob the Baker Boy Logo"
+                  width="110"
+                  style="display:block; border:0;"
+                />
+              </a>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td class="section">
+              <h2>Your order has been delivered.</h2>
+
+              <p>
+                Order <strong>#{{orderNo}}</strong> has just been delivered.
+                Thank you for letting us be part of your celebration,
+                <strong>{{customerName}}</strong>! We hope it brought a little
+                extra joy to your day 💜
+              </p>
+
+              <p>
+                If you have a moment, we’d love to hear how it went. Your
+                feedback helps us grow, and it also helps others who are
+                looking for something special.
+              </p>
+
+              <p>
+                Every kind word, suggestion, or thought helps us keep doing
+                what we do – and do it better.
+              </p>
+
+              <div class="stars">★★★★★</div>
+
+              <p>
+                <a
+                  href="https://g.page/r/Ccmi4RaWeJ7qEAE/review"
+                  target="_blank"
+                  class="button"
+                >
+                  Leave a Review ›
+                </a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- ALERT: Something wasn’t quite right? -->
+          <tr>
+            <td class="alert">
+              <h3>Something wasn’t quite right?</h3>
+              <p>
+                If anything in your order wasn’t as expected, please let us
+                know before you leave a review. We’re here to make things right
+                – whether it’s a missing item, something not up to standard, or
+                anything else.
+              </p>
+              <p>
+                <a
+                  href="mailto:hello@bobthebakerboy.com"
+                  class="button"
+                >
+                  Contact Us
+                </a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- DISCLAIMER -->
+          <tr>
+            <td style="background:#ffffff; padding:24px;">
+              <p class="footer-small">
+                If you received this e-mail and do not have a Bob the Baker Boy
+                account, please ignore and delete this e-mail.
+              </p>
+              <p class="footer-small">
+                Note: This is an automated e-mail. Please do not reply to this
+                e-mail. For help, WhatsApp us at +65 8862 3327
+              </p>
+            </td>
+          </tr>
+
+          <!-- BOTTOM LINKS -->
+          <tr>
+            <td class="bottom">
+              <p style="margin:0 0 16px;">
+                Have a question? Visit our
+                <a href="https://bobthebakerboy.com/faq" target="_blank">FAQs</a>
+                or
+                <a href="https://wa.me/6583886727" target="_blank">Whatsapp</a>
+                us.
+              </p>
+              <p style="margin:0 0 16px; font-weight:bold;">
+                Bob the Baker Boy Pte. Ltd.<br/>
+                Level 1 Reception, 218 Pandan Loop, Xpace, Singapore 128408<br/>
+                hello@bobthebakerboy.com | +65 8862 3327
+              </p>
+              <p style="margin:0 0 8px; font-weight:bold;">Connect with Us</p>
+              <p style="margin:0;">
+                <a href="https://facebook.com/bobthebakerboy" target="_blank"
+                  ><img
+                    src="https://cdn-images.mailchimp.com/icons/social-block-v3/block-icons-v3/facebook-filled-light-40.png"
+                    width="24"
+                    alt="Facebook"
+                /></a>
+                <a href="https://instagram.com/bobthebakerboy" target="_blank"
+                  ><img
+                    src="https://cdn-images.mailchimp.com/icons/social-block-v3/block-icons-v3/instagram-filled-light-40.png"
+                    width="24"
+                    alt="Instagram"
+                /></a>
+                <a href="mailto:hello@bobthebakerboy.com" target="_blank"
+                  ><img
+                    src="https://cdn-images.mailchimp.com/icons/social-block-v3/block-icons-v3/email-filled-light-40.png"
+                    width="24"
+                    alt="Email"
+                /></a>
+                <a href="https://bobthebakerboy.com" target="_blank"
+                  ><img
+                    src="https://cdn-images.mailchimp.com/icons/social-block-v3/block-icons-v3/website-filled-light-40.png"
+                    width="24"
+                    alt="Website"
+                /></a>
+              </p>
+            </td>
+          </tr>
+        </table>
+        <!--[if (gte mso 9)|(IE)]></td></tr></table><![endif]-->
+      </td></tr>
+    </table>
+  </center>
+</body>
+</html>
