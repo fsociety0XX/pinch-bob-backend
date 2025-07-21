@@ -98,12 +98,8 @@ buy/2st,collections/2st,
 buy/2to5,collections/2to5,
 buy/30th,collections/30th,
 buy/3d,collections/3d,
-buy/3d,collections/3d,
-buy/3dcake,collections/3dcake,
-buy/3dcake,collections/3dcake,
 buy/3dcake,collections/3dcake,
 buy/3dcakes,collections/3dcakes,
-buy/3dheart,collections/3dheart,
 buy/3dheart,collections/3dheart,
 buy/40th,collections/40th,
 buy/43ljellycat,collections/43ljellycat,
@@ -159,7 +155,6 @@ buy/brownies,collections/brownies,
 buy/brownieslab,collections/brownieslab,
 buy/browniestack,collections/browniestack,
 buy/bundle,collections/bundle,
-buy/bundle,collections/bundle,
 buy/bunny,collections/bunny,
 buy/butterfly,collections/butterfly,
 buy/caketopper,collections/caketopper,
@@ -173,7 +168,6 @@ buy/cash,collections/cash,
 buy/casino,collections/casino,
 buy/cat,collections/cat,
 buy/character,collections/character,
-buy/character,collections/character,
 buy/cherry,collections/cherry,
 buy/childrensday,collections/childrensday,
 buy/chinesenewyear,collections/chinesenewyear,
@@ -182,7 +176,6 @@ buy/christening,collections/christening,
 buy/christmas,collections/christmas,
 buy/cinnamoroll,collections/cinnamoroll,
 buy/classic,collections/classic,
-buy/cny,collections/cny,
 buy/cny,collections/cny,
 buy/cny2025,collections/cny2025,
 buy/cnybundle,collections/cnybundle,
@@ -195,7 +188,6 @@ buy/cookiesandcream,collections/cookiesandcream,
 buy/coquette,collections/coquette,
 buy/corporate,collections/corporate,
 buy/corporatecake,collections/corporatecake,
-buy/corporatecakes,collections/corporatecakes,
 buy/cow,collections/cow,
 buy/crown,collections/crown,
 buy/crumble,collections/crumble,
@@ -211,9 +203,7 @@ buy/dietary,collections/dietary,
 buy/dietfriendly,collections/dietfriendly,
 buy/dino,collections/dino,
 buy/dinosaur,collections/dinosaur,
-buy/dinosaur,collections/dinosaur,
 buy/dior,collections/dior,
-buy/diy,collections/diy,
 buy/diy,collections/diy,
 buy/dog,collections/dog,
 buy/dragon,collections/dragon,
@@ -232,16 +222,13 @@ buy/excavator,collections/excavator,
 buy/fairyandgarden,collections/fairyandgarden,
 buy/family,collections/family,
 buy/fantasy,collections/fantasy,
-buy/fantasy,collections/fantasy,
 buy/farm,collections/farm,
 buy/fashion,collections/fashion,
 buy/fastfood,collections/fastfood,
 buy/fathersday,collections/fathersday,
-buy/fathersday,collections/fathersday,
 buy/festive,collections/festive,
 buy/fishing,collections/fishing,
 buy/floral,collections/floral,
-buy/fondant,collections/fondant,
 buy/fondant,collections/fondant,
 buy/food,collections/food,
 buy/frozen,collections/frozen,
@@ -272,7 +259,6 @@ buy/kayabutter,collections/kayabutter,
 buy/kids,collections/kids,
 buy/kitkat,collections/kitkat,
 buy/kitty,collections/kitty,
-buy/korean,collections/korean,
 buy/korean,collections/korean,
 buy/kpop,collections/kpop,
 buy/kstyle,collections/kstyle,
@@ -391,7 +377,6 @@ buy/shoutao,collections/shoutao,
 buy/singles,collections/singles,
 buy/soccer,collections/soccer,
 buy/sport,collections/sport,
-buy/sport,collections/sport,
 buy/sports,collections/sports,
 buy/standard,collections/standard,
 buy/star,collections/star,
@@ -415,7 +400,6 @@ buy/trending,collections/trending,
 buy/tropical,collections/tropical,
 buy/underthesea,collections/underthesea,
 buy/unicorn,collections/unicorn,
-buy/unicorn,collections/unicorn,
 buy/valentine,collections/valentine,
 buy/valentines,collections/valentines,
 buy/vday,collections/vday,
@@ -423,7 +407,6 @@ buy/vday-brownies,collections/vday-brownies,
 buy/vegetarian,collections/vegetarian,
 buy/vintage,collections/vintage,
 buy/watches,collections/watches,
-buy/wedding,collections/wedding,
 buy/wedding,collections/wedding,
 buy/whiteandgold,collections/whiteandgold,
 buy/whiteparty,collections/whiteparty,
@@ -443,7 +426,6 @@ caketopper/Cute-Giraffe-Fondant-Topper,Accessories/Cute-Giraffe-Fondant-Topper,C
 caketopper/Cute-Ivory-Lion-Fondant-Topper,Accessories/Cute-Ivory-Lion-Fondant-Topper,Cute Ivory Lion Fondant Topper
 caketopper/Cute-Pink-Piggy-Fondant-Topper,Accessories/Cute-Pink-Piggy-Fondant-Topper,Cute Pink Piggy Fondant Topper
 caketopper/Cute-Unicorn-Fondant-Topper,Accessories/Cute-Unicorn-Fondant-Topper,Cute Unicorn Fondant Topper
-caketopper/Cute-Yellow-Lion-Fondant-Topper,Accessories/Cute-Yellow-Lion-Fondant-Topper,Cute Yellow Lion Fondant Topper
 caketopper/Cute-Yellow-Lion-Fondant-Topper,Accessories/Cute-Yellow-Lion-Fondant-Topper,Cute Yellow Lion Fondant Topper
 caketopper/Duck-on-Float-Fondant-Topper,Accessories/Duck-on-Float-Fondant-Topper,Duck on Float Fondant Topper
 caketopper/Hot-Air-Balloon-Bear-Fondant-Topper,Accessories/Hot-Air-Balloon-Bear-Fondant-Topper,Hot Air Balloon Bear Fondant Topper
@@ -490,11 +472,9 @@ chinese-new-year/year-of-the-dragon-cake-and-pineapple-tart,collections/Chinese-
 chocolate-strawberry-cakes-bundle,Classic-Cakes/Classic-Strawberry-Shortcake,Strawberry Shortcake and Belgian Chocolate Cake Bundle
 Christmas-Bundle,collections/Christmas,Christmas Log Cake and Tree Bundle
 christmas-gifts/Christmas-Brownie-Tree,collections/Christmas,Christmas Brownie Tree
-christmas-gifts/Christmas-Brownie-Tree,collections/Christmas,Christmas Brownie Tree
 christmas-gifts/christmas-brownie-tree-bundle,collections/Christmas,Christmas Brownie Tree Bundle (2s)
 christmas-gifts/Christmas-Cakes-Bundle,collections/Christmas,Christmas Cakes Bundle
 christmas-gifts/Christmas-Cakes-Party-Platter,collections/Christmas,Christmas Cakes Party Platter
-christmas-gifts/Christmas-Log-Cake,collections/Christmas,Christmas Log Cake
 christmas-gifts/Christmas-Log-Cake,collections/Christmas,Christmas Log Cake
 christmas-gifts/Christmas-Log-Cake-Bundle,collections/Christmas,Christmas Log Cake Bundle
 christmas-gifts/Christmas-Tree-Cupcakes,collections/Christmas,Christmas Tree Cupcakes
@@ -690,7 +670,6 @@ customisedcakes/Baby-Bear-Gender-Reveal-Cake,Customised/Baby-Bear-Gender-Reveal-
 customisedcakes/Baby-Blue-Korean-Coquette-Style-Cake,Customised/Baby-Blue-Korean-Coquette-Style-Cake,Baby Blue Korean Coquette Style Cake
 customisedcakes/Baby-Blue-Stitch-Birthday-Cake,Customised/Baby-Blue-Stitch-Birthday-Cake,Baby Blue Stitch Birthday Cake
 customisedcakes/baby-blue-vintage-coquette-cake,Customised/baby-blue-vintage-coquette-cake,Baby Blue Vintage Coquette Cake
-customisedcakes/Baby-Booties-Gender-Reveal-Cake,Customised/Baby-Booties-Gender-Reveal-Cake,Baby Booties Gender Reveal Cake
 customisedcakes/Baby-Booties-Gender-Reveal-Cake,Customised/Baby-Booties-Gender-Reveal-Cake,Baby Booties Gender Reveal Cake
 customisedcakes/Baby-Boy-and-Girl-Twin-Birthday-Cake,Customised/Baby-Boy-and-Girl-Twin-Birthday-Cake,Baby Boy and Girl Twin Birthday Cake
 customisedcakes/Baby-Elephant-Birthday-Cake-in-Blue,Customised/Baby-Elephant-Birthday-Cake-in-Blue,Baby Elephant Birthday Cake in Blue
@@ -1490,7 +1469,6 @@ pastries/assorted-lava-muffins,pastries/Assorted-Mini-Tarts,Assorted Lava Muffin
 pastries/assorted-macarons,pastries/Assorted-Mini-Tarts,Assorted Macarons
 pastries/Assorted-Mini-Tarts,pastries/Assorted-Mini-Tarts,Assorted Mini Tarts
 pastries/assorted-party-pack,Pastries/Assorted-Party-Pack-Box-of-24,Assorted Party Pack (25pcs)
-pastries/Assorted-party-pack,Pastries/Assorted-Party-Pack-Box-of-24,Assorted Party Pack (8pcs)
 pastries/Assorted-Party-Pack-8s,Pastries/Assorted-Party-Pack-Box-of-24,Assorted Party Pack (8pcs)
 pastries/blue-macarons,pastries/Assorted-Mini-Tarts,Blue Macarons
 pastries/blue-party-pack,Pastries/Assorted-Party-Pack-Box-of-24,Pastel Blue Party Pack
@@ -1552,179 +1530,176 @@ valentines-day-cake/Valentines-Day-Bento-Cake,Customised/Valentines-Day-Bento-Ca
 valentines-day-cake/Valentines-Day-Bento-Cake-Set,Customised/Valentines-Day-Bento-Cake-Set,Duo Valentines Day Bento Cake Bundle
 valentines-day/custom-brownie-slab,Customised/custom-brownie-slab,Valentine's Day Brownie Slab
 customised/order/customised-cakes-in-singapore,order-customised-cake-singapore,These are URLs in the menu
-standard/order/standard-bakes-singapore,collections/Mini-Bites,
-cake-discount-promotion-singapore,collections/Classic-Cakes,
-order-customised-cake-singapore,order-customised-cake-singapore,
-dessert-table-singapore,order-customised-cake-singapore,
-online-cake-delivery-singapore,Sid please provide URL,
-customised/order/customised-birthday-cakes-singapore,collections/Birthday,
-customised/order/customised-men-women-cakes-singapore,collections/Unisex-Adults,
-customised/order/customised-kids-birthday-cakes-singapore,collections/Unisex-Kids,
-customised/order/customised-colour-cakes-singapore,collections/Rainbow,
-customised/order/customised-longevity-cakes-singapore,collections/Longevity,
-customised/order/customised-last-minute-cakes-singapore,order-customised-cake-singapore,
-customised/order/100days-birthday-cake,collections/100-Days-Cakes,
-customised/order/1st-birthday-cake,collections/1st-Birthday-Cakes,
-customised/order/21st-birthday-cake,collections/21st-Birthday-Cakes,
-customised/order/30th-birthday-cake,collections/30th-Birthday-Cakes,
-customised/order/50th-birthday-cake,collections/50th-Birthday-Cakes,
-customised/order/60th-birthday-cake,collections/Longevity,
-customised/order/70th-birthday-cake,collections/Longevity,
-customised/order/80th-birthday-cake,collections/Longevity,
-customised/order/babies-breath-cake,collections/Floral,
-customised/order/casino-cake,collections/Casino,
-customised/order/candyland-cake,collections/Candy,
-customised/order/food-drink-cake,collections/Food-and-Drinks,
-customised/order/floral-cake,collections/Floral,
-customised/order/galaxy-cake,collections,
-customised/order/korean-cake,collections/Korean,
-customised/order/liquor-cake,collections/Liquor,
-customised/order/longevity-cake,collections/Longevity,
-customised/order/lottery-cake,collections/Lottery,
-customised/order/mahjong-cake,collections/Mahjong,
-customised/order/minimalist-cake,collections/Minimalist,
-customised/order/music-cake,collections/Music,
-customised/order/prank-cake,collections/Prank,
-customised/order/sport-cake,collections/Sports,
-customised/order/tropical-cake,order-customised-cake-singapore,
-customised/order/3d-cake,collections,
-customised/order/animal-cake,collections/Animals,
-customised/order/balls-cake,collections/Sports,
-customised/order/bear-cake,collections/Animals,
-customised/order/construction-cake,collections/Construction,
-customised/order/dinosaur-cake,collections/Dinosaur,
-customised/order/dog-cake,collections/Animals,
-customised/order/fairy-cake,collections,
-customised/order/farm-cake,collections/Animals,
-customised/order/garden-cake,collections/garden,
-customised/order/jungle-cake,collections/jungle,
-customised/order/mermaid-cake,collections/Mermaid,
-customised/order/prince-cake,collections,
-customised/order/star-cake,collections/star,
-customised/order/transport-cake,collections,
-customised/order/under-the-sea-cake,collections/Transport,
-customised/order/unicorn-cake,Unicorn,
-customised/order/woodland-cake,collections,
-customised/order/black-and-gold-cake,collections/black%20and%20gold,
-customised/order/blue-cake,order-customised-cake-singapore,
-customised/order/gold-cake,order-customised-cake-singapore,
-customised/order/marble-cake,order-customised-cake-singapore,
-customised/order/maroon-cake,order-customised-cake-singapore,
-customised/order/monochrome-cake,order-customised-cake-singapore,
-customised/order/paddle-pop-cake,order-customised-cake-singapore,
-customised/order/pastel-cake,order-customised-cake-singapore,
-customised/order/pink-cake,order-customised-cake-singapore,
-customised/order/rainbow-cake,collections/Rainbow,
-customised/order/semi-naked-cake,order-customised-cake-singapore,
-customised/order/tiffany-blue-cake,order-customised-cake-singapore,
-customised/order/money-pulling-cake,collections/Money-Pulling,
-customised/order/last-minute-cake,Sid please provide URL,
-customised/order/gender-reveal-cake,collections/Gender-Reveal,
-birthdaycakes/order/standard-cakes-singapore,collections/Classic-Cakes,
-standard/order/special-diet-cakes-singapore,collections/Sugar-free,
-standard/order/standard-pastries-singapore,collections/Pastries,
-standard/order/party-accessories-singapore,collections/Accessories,
-customisedcakes/birthday-cakes,collections/Classic-Cakes,
-customisedcakes/men-women-cakes,collections/Unisex-Adults,
-customisedcakes/kids-birthday-cakes,collections/Birthday,
-customisedcakes/colour-cakes,order-customised-cake-singapore,
-customisedcakes/longevity-cakes,collections/Longevity,
-customisedcakes/gender-reveal-cakes,collections/Gender-Reveal,
-customised/order-cake-singapore,order-customised-cake-singapore,
-order/customised-cake-singapore,order-customised-cake-singapore,
-standard/order/mini-cakes-singapore,collections/Mini-Cakes,
-standard/order/cookies-singapore,collections/Mini-Bites,
-mothers-day,collections/Mothers-Day,
-customised/order/luxury-cake,order-customised-cake-singapore,
-money-pulling-cakes-singapore,collections/Money-Pulling,
-birthdaycakes/order/fancy-standard-cakes-singapore,collections/Photo-Cakes,
-standard/order/cupcakes-singapore,collections/Cupcakes,
-customised-cakes-pastries-singapore,collections/Pastries,
-standard/order/bento-cakes-singapore,collections/Mini-&-Bento-Cakes,
-christmas-gifts,collections/Christmas,
-order/cakes-pastries-cookies,collections/Cookies,
-chinese-new-year,collections/Chinese-New-Year,
-valentines-day-cake,collections,
-customised/order/surprise/drinkable-cake,collections/drinkable,
-customised/order/surprise/spin-wheel-cake,order-customised-cake-singapore,
-customised/order/surprise/pinata-cake,order-customised-cake-singapore,
-customised/order/surprise/pull-me-up-tsunami-cake,order-customised-cake-singapore,
-customised/order/surprise/gender-reveal-cake,collections/Gender-Reveal,
-popular-customised-cakes-singapore,order-customised-cake-singapore,
-standard/order/korean-bento-cakes-singapore,collections/Mini-&-Bento-Cakes,
-standard/order/standard-bento-cakes-singapore,collections/Mini-&-Bento-Cakes,
-customised/order/fathers-day-cake,collections/Fathers-Day,
-blog,blog,
-standard/order/photo-cakes-singapore,collections/Photo-Cakes,
-standard/order/mini-tarts-singapore,collections/Mini-Bites,
-standard/order/brownies-singapore,collections/Brownies,
-customised/order/wedding-cake,collections/Wedding,
-customised/order/anniversary-cake,collections/Anniversary,
-customised/order/funny-cake,collections/Prank,
-customised/order/pig-cake,collections/pig,
-standard/order/bulk-buy-gift-singapore,collections/Classic-Cakes,
-customised/order/soccer-cake,collections/soccer,
-customised/order/baby-full-month-cake,collections/1st-month-Cakes,
-customised/order/kids-birthday-cakes,collections/Unisex-Kids,
-standard/order/cake-toppers-singapore,collections/Toppers,
-valentines-day-cake-collection,collections/valentine,
-dessert-box-delivery,collections/Pastries,
-fathers-day-collection,collections/Fathers-Day,
-pastries/pastry-box,collections/Pastries,
-dessert-tables-singapore,collections/Pastries,
-corporate-anniversary-cake,collections/corporate,
-customised/order/money-investment-cake,collections/money,
-customised/order/car-cake,collections/car,
-customised/order/kids-birthday-cakes,collections/Unisex-Kids,
-customised/order/boys-birthday-cake,collections/Boys,
-customised/order/girls-birthday-cake,collections/Girls,
-customised/order/cartoon-cake,collections/character,
-customised/order/naughty-cake,collections/naughty,
-customised/order/graduation-themed-cake,collections/graduation,
-customised/order/occupation-themed-cake,collections/job,
-teachers-day-gift,collections/teachers-day,
-halloween-cake,collections/halloween,
-customised/order/boss-cake,collections/boss,
-customised/order/princess-cake,collections/princess,
-customised/order/korean-pop-cake,collections/kpop,
-standard/order/bundle-deal,collections/Bundles,
-customised/order/movie-drama-cake,collections/movie,
-customised/order/customised-men-cakes-singapore,collections/Him,
-customised/order/customised-women-cakes-singapore,collections/Hers,
-customised/order/other-occasions-cake,collections/birthday,
-customised/order/seasonal-cake,collections/seasonal,
-international-women-day,collections/womens-day,
-april-fools-day,collections/april-fools,
-customised/order/character-cake,collections/character,
-gifting-made-easy,collections/Classic-Cakes,
-customised/order/pride-month,collections/pride,
-singapore-national-day,collections/national-day,
-customised/order/fantasy-cake,Photo-Cakes,
-standard/order/standard-classic-mini-cakes-singapore,collections/Mini-Cakes,
-assorted-mid-autumn-cakes,collections/mooncake,
-standard/order/customised-cupcakes-singapore,collections/Customised-Cupcakes,
-standard/order/mini-bites-singapore,collections/Mini-Bites,
-customised/order/diy-cakes-singapore,collections,
-standard/order/mini-bento-cakes-all,collections/Mini-&-Bento-Cakes,
-standard/order/classic-bakes-all,collections/Classic-Cakes,
-deepavali,collections/deepavali,
-customised/order/beauty-bags-cake,collections/fashion,
-customised/order/trending-cakes-singapore,collections/trending,
-customised/order/character-cake,collections/character,
-customised/order/2-5-birthday-cake,collections/Unisex-Kids,
-customised/order/6-9-birthday-cake,collections/Unisex-Kids,
-customised/order/10-12-birthday-cake,collections/Unisex-Kids,
-customised/order/13-15-birthday-cake,collections/Unisex-Kids,
-customised/order/hobby-cake,collections/hobby,
-customised/order/car-watch-cake,collections/car,
-customised/order/games-cake,collections/games,
-customised/order/manga-comic-cake,collections/manga,
-customised/order/bunny-cake,collections/bunny,
-hari-raya,collections/hari-raya,
-birthday,collections/birthday,
-chinese-new-year-goodies,collections/chinese-new-year,
-standard/order/eggless-cakes,collections/eggless,
-standard/order/healthy-sugar-free-desserts,collections/Sugar-free,
+standard/order/standard-bakes-singapore,collections/Mini-Bites,These are URLs in the menu
+cake-discount-promotion-singapore,collections/Classic-Cakes,These are URLs in the menu
+order-customised-cake-singapore,order-customised-cake-singapore,These are URLs in the menu
+dessert-table-singapore,order-customised-cake-singapore,These are URLs in the menu
+online-cake-delivery-singapore,Sid please provide URL,These are URLs in the menu
+customised/order/customised-birthday-cakes-singapore,collections/Birthday,These are URLs in the menu
+customised/order/customised-men-women-cakes-singapore,collections/Unisex-Adults,These are URLs in the menu
+customised/order/customised-kids-birthday-cakes-singapore,collections/Unisex-Kids,These are URLs in the menu
+customised/order/customised-colour-cakes-singapore,collections/Rainbow,These are URLs in the menu
+customised/order/customised-longevity-cakes-singapore,collections/Longevity,These are URLs in the menu
+customised/order/customised-last-minute-cakes-singapore,order-customised-cake-singapore,These are URLs in the menu
+customised/order/100days-birthday-cake,collections/100-Days-Cakes,These are URLs in the menu
+customised/order/1st-birthday-cake,collections/1st-Birthday-Cakes,These are URLs in the menu
+customised/order/21st-birthday-cake,collections/21st-Birthday-Cakes,These are URLs in the menu
+customised/order/30th-birthday-cake,collections/30th-Birthday-Cakes,These are URLs in the menu
+customised/order/50th-birthday-cake,collections/50th-Birthday-Cakes,These are URLs in the menu
+customised/order/60th-birthday-cake,collections/Longevity,These are URLs in the menu
+customised/order/70th-birthday-cake,collections/Longevity,These are URLs in the menu
+customised/order/80th-birthday-cake,collections/Longevity,These are URLs in the menu
+customised/order/babies-breath-cake,collections/Floral,These are URLs in the menu
+customised/order/casino-cake,collections/Casino,These are URLs in the menu
+customised/order/candyland-cake,collections/Candy,These are URLs in the menu
+customised/order/food-drink-cake,collections/Food-and-Drinks,These are URLs in the menu
+customised/order/floral-cake,collections/Floral,These are URLs in the menu
+customised/order/galaxy-cake,collections,These are URLs in the menu
+customised/order/korean-cake,collections/Korean,These are URLs in the menu
+customised/order/liquor-cake,collections/Liquor,These are URLs in the menu
+customised/order/longevity-cake,collections/Longevity,These are URLs in the menu
+customised/order/lottery-cake,collections/Lottery,These are URLs in the menu
+customised/order/mahjong-cake,collections/Mahjong,These are URLs in the menu
+customised/order/minimalist-cake,collections/Minimalist,These are URLs in the menu
+customised/order/music-cake,collections/Music,These are URLs in the menu
+customised/order/prank-cake,collections/Prank,These are URLs in the menu
+customised/order/sport-cake,collections/Sports,These are URLs in the menu
+customised/order/tropical-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/3d-cake,collections,These are URLs in the menu
+customised/order/animal-cake,collections/Animals,These are URLs in the menu
+customised/order/balls-cake,collections/Sports,These are URLs in the menu
+customised/order/bear-cake,collections/Animals,These are URLs in the menu
+customised/order/construction-cake,collections/Construction,These are URLs in the menu
+customised/order/dinosaur-cake,collections/Dinosaur,These are URLs in the menu
+customised/order/dog-cake,collections/Animals,These are URLs in the menu
+customised/order/fairy-cake,collections,These are URLs in the menu
+customised/order/farm-cake,collections/Animals,These are URLs in the menu
+customised/order/garden-cake,collections/garden,These are URLs in the menu
+customised/order/jungle-cake,collections/jungle,These are URLs in the menu
+customised/order/mermaid-cake,collections/Mermaid,These are URLs in the menu
+customised/order/prince-cake,collections,These are URLs in the menu
+customised/order/star-cake,collections/star,These are URLs in the menu
+customised/order/transport-cake,collections,These are URLs in the menu
+customised/order/under-the-sea-cake,collections/Transport,These are URLs in the menu
+customised/order/unicorn-cake,Unicorn,These are URLs in the menu
+customised/order/woodland-cake,collections,These are URLs in the menu
+customised/order/black-and-gold-cake,collections/black%20and%20gold,These are URLs in the menu
+customised/order/blue-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/gold-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/marble-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/maroon-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/monochrome-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/paddle-pop-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/pastel-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/pink-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/rainbow-cake,collections/Rainbow,These are URLs in the menu
+customised/order/semi-naked-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/tiffany-blue-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/money-pulling-cake,collections/Money-Pulling,These are URLs in the menu
+customised/order/last-minute-cake,Sid please provide URL,These are URLs in the menu
+customised/order/gender-reveal-cake,collections/Gender-Reveal,These are URLs in the menu
+birthdaycakes/order/standard-cakes-singapore,collections/Classic-Cakes,These are URLs in the menu
+standard/order/special-diet-cakes-singapore,collections/Sugar-free,These are URLs in the menu
+standard/order/standard-pastries-singapore,collections/Pastries,These are URLs in the menu
+standard/order/party-accessories-singapore,collections/Accessories,These are URLs in the menu
+customisedcakes/birthday-cakes,collections/Classic-Cakes,These are URLs in the menu
+customisedcakes/men-women-cakes,collections/Unisex-Adults,These are URLs in the menu
+customisedcakes/kids-birthday-cakes,collections/Birthday,These are URLs in the menu
+customisedcakes/colour-cakes,order-customised-cake-singapore,These are URLs in the menu
+customisedcakes/longevity-cakes,collections/Longevity,These are URLs in the menu
+customisedcakes/gender-reveal-cakes,collections/Gender-Reveal,These are URLs in the menu
+customised/order-cake-singapore,order-customised-cake-singapore,These are URLs in the menu
+order/customised-cake-singapore,order-customised-cake-singapore,These are URLs in the menu
+standard/order/mini-cakes-singapore,collections/Mini-Cakes,These are URLs in the menu
+standard/order/cookies-singapore,collections/Mini-Bites,These are URLs in the menu
+mothers-day,collections/Mothers-Day,These are URLs in the menu
+customised/order/luxury-cake,order-customised-cake-singapore,These are URLs in the menu
+money-pulling-cakes-singapore,collections/Money-Pulling,These are URLs in the menu
+birthdaycakes/order/fancy-standard-cakes-singapore,collections/Photo-Cakes,These are URLs in the menu
+standard/order/cupcakes-singapore,collections/Cupcakes,These are URLs in the menu
+customised-cakes-pastries-singapore,collections/Pastries,These are URLs in the menu
+standard/order/bento-cakes-singapore,collections/Mini-&-Bento-Cakes,These are URLs in the menu
+christmas-gifts,collections/Christmas,These are URLs in the menu
+order/cakes-pastries-cookies,collections/Cookies,These are URLs in the menu
+chinese-new-year,collections/Chinese-New-Year,These are URLs in the menu
+valentines-day-cake,collections,These are URLs in the menu
+customised/order/surprise/drinkable-cake,collections/drinkable,These are URLs in the menu
+customised/order/surprise/spin-wheel-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/surprise/pinata-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/surprise/pull-me-up-tsunami-cake,order-customised-cake-singapore,These are URLs in the menu
+customised/order/surprise/gender-reveal-cake,collections/Gender-Reveal,These are URLs in the menu
+popular-customised-cakes-singapore,order-customised-cake-singapore,These are URLs in the menu
+standard/order/korean-bento-cakes-singapore,collections/Mini-&-Bento-Cakes,These are URLs in the menu
+standard/order/standard-bento-cakes-singapore,collections/Mini-&-Bento-Cakes,These are URLs in the menu
+customised/order/fathers-day-cake,collections/Fathers-Day,These are URLs in the menu
+blog,blog,These are URLs in the menu
+standard/order/photo-cakes-singapore,collections/Photo-Cakes,These are URLs in the menu
+standard/order/mini-tarts-singapore,collections/Mini-Bites,These are URLs in the menu
+standard/order/brownies-singapore,collections/Brownies,These are URLs in the menu
+customised/order/wedding-cake,collections/Wedding,These are URLs in the menu
+customised/order/anniversary-cake,collections/Anniversary,These are URLs in the menu
+customised/order/funny-cake,collections/Prank,These are URLs in the menu
+customised/order/pig-cake,collections/pig,These are URLs in the menu
+standard/order/bulk-buy-gift-singapore,collections/Classic-Cakes,These are URLs in the menu
+customised/order/soccer-cake,collections/soccer,These are URLs in the menu
+customised/order/baby-full-month-cake,collections/1st-month-Cakes,These are URLs in the menu
+customised/order/kids-birthday-cakes,collections/Unisex-Kids,These are URLs in the menu
+standard/order/cake-toppers-singapore,collections/Toppers,These are URLs in the menu
+valentines-day-cake-collection,collections/valentine,These are URLs in the menu
+dessert-box-delivery,collections/Pastries,These are URLs in the menu
+fathers-day-collection,collections/Fathers-Day,These are URLs in the menu
+pastries/pastry-box,collections/Pastries,These are URLs in the menu
+dessert-tables-singapore,collections/Pastries,These are URLs in the menu
+corporate-anniversary-cake,collections/corporate,These are URLs in the menu
+customised/order/money-investment-cake,collections/money,These are URLs in the menu
+customised/order/car-cake,collections/car,These are URLs in the menu
+customised/order/boys-birthday-cake,collections/Boys,These are URLs in the menu
+customised/order/girls-birthday-cake,collections/Girls,These are URLs in the menu
+customised/order/cartoon-cake,collections/character,These are URLs in the menu
+customised/order/naughty-cake,collections/naughty,These are URLs in the menu
+customised/order/graduation-themed-cake,collections/graduation,These are URLs in the menu
+customised/order/occupation-themed-cake,collections/job,These are URLs in the menu
+teachers-day-gift,collections/teachers-day,These are URLs in the menu
+halloween-cake,collections/halloween,These are URLs in the menu
+customised/order/boss-cake,collections/boss,These are URLs in the menu
+customised/order/princess-cake,collections/princess,These are URLs in the menu
+customised/order/korean-pop-cake,collections/kpop,These are URLs in the menu
+standard/order/bundle-deal,collections/Bundles,These are URLs in the menu
+customised/order/movie-drama-cake,collections/movie,These are URLs in the menu
+customised/order/customised-men-cakes-singapore,collections/Him,These are URLs in the menu
+customised/order/customised-women-cakes-singapore,collections/Hers,These are URLs in the menu
+customised/order/other-occasions-cake,collections/birthday,These are URLs in the menu
+customised/order/seasonal-cake,collections/seasonal,These are URLs in the menu
+international-women-day,collections/womens-day,These are URLs in the menu
+april-fools-day,collections/april-fools,These are URLs in the menu
+customised/order/character-cake,collections/character,These are URLs in the menu
+gifting-made-easy,collections/Classic-Cakes,These are URLs in the menu
+customised/order/pride-month,collections/pride,These are URLs in the menu
+singapore-national-day,collections/national-day,These are URLs in the menu
+customised/order/fantasy-cake,Photo-Cakes,These are URLs in the menu
+standard/order/standard-classic-mini-cakes-singapore,collections/Mini-Cakes,These are URLs in the menu
+standard/order/customised-cupcakes-singapore,collections/Customised-Cupcakes,These are URLs in the menu
+standard/order/mini-bites-singapore,collections/Mini-Bites,These are URLs in the menu
+customised/order/diy-cakes-singapore,collections,These are URLs in the menu
+standard/order/mini-bento-cakes-all,collections/Mini-&-Bento-Cakes,These are URLs in the menu
+standard/order/classic-bakes-all,collections/Classic-Cakes,These are URLs in the menu
+deepavali,collections/deepavali,These are URLs in the menu
+customised/order/beauty-bags-cake,collections/fashion,These are URLs in the menu
+customised/order/trending-cakes-singapore,collections/trending,These are URLs in the menu
+customised/order/2-5-birthday-cake,collections/Unisex-Kids,These are URLs in the menu
+customised/order/6-9-birthday-cake,collections/Unisex-Kids,These are URLs in the menu
+customised/order/10-12-birthday-cake,collections/Unisex-Kids,These are URLs in the menu
+customised/order/13-15-birthday-cake,collections/Unisex-Kids,These are URLs in the menu
+customised/order/hobby-cake,collections/hobby,These are URLs in the menu
+customised/order/car-watch-cake,collections/car,These are URLs in the menu
+customised/order/games-cake,collections/games,These are URLs in the menu
+customised/order/manga-comic-cake,collections/manga,These are URLs in the menu
+customised/order/bunny-cake,collections/bunny,These are URLs in the menu
+hari-raya,collections/hari-raya,These are URLs in the menu
+birthday,collections/birthday,These are URLs in the menu
+chinese-new-year-goodies,collections/chinese-new-year,These are URLs in the menu
+standard/order/eggless-cakes,collections/eggless,These are URLs in the menu
+standard/order/healthy-sugar-free-desserts,collections/Sugar-free,These are URLs in the menu
 flavor,flavour,
 size,size,
 about,about-us,
