@@ -75,7 +75,7 @@ function main() {
 
   const mapFile = buildMap(entries);
   fs.writeFileSync(MAP_PATH, mapFile, { mode: 0o644 });
-  console.log(`Wrote ${entries.length} redirects to ${MAP_PATH}`);
+  console.log(`✅ Wrote ${entries.length} redirects to ${MAP_PATH}`);
 }
 
 main();
