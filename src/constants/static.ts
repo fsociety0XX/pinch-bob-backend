@@ -31,12 +31,11 @@ export const WOODELIVERY_STATUS: { [key: number]: string } = {
 export const SELF_COLLECT_ADDRESS =
   '218 Pandan Loop, Level 1 Reception Xpace, 128408';
 
-// TODO: review data
 export const BOB_EMAIL_DETAILS = {
   faqLink: 'https://bobthebakerboy.com/faq',
   whatsappLink: 'https://wa.me/6583806722',
   homeUrl: 'https://bobthebakerboy.com',
-  welcomeCouponCode: 'TESTCODE',
+  welcomeCouponCode: 'HELLOFFD',
   orderNow: 'https://bobthebakerboy.com/order',
   loginLink: 'https://bobthebakerboy.com/login',
 };
