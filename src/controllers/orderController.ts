@@ -50,7 +50,7 @@ import {
   generateUniqueIds,
   toUtcDateOnly,
 } from '@src/utils/functions';
-import Delivery, { IDelivery } from '@src/models/deliveryModel';
+import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
@@ -1397,75 +1397,187 @@ export const hitpayWebhookHandler = catchAsync(
 );
 
 export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
-  const orders: IOrder[] = Array.isArray(req.body.orders)
+  // 1) Receive raw payload
+  const rawOrders: any[] = Array.isArray(req.body.orders)
     ? req.body.orders
     : [];
   const failedOrderIds: number[] = [];
   const failedDeliveryIds: number[] = [];
 
-  // 1) Pre‐assign an _id & normalize each order
-  orders.forEach((order) => {
-    order._id = new mongoose.Types.ObjectId();
-    if (order.delivery?.date) {
-      order.delivery.date = toUtcDateOnly(order.delivery.date);
-      order.orderNumber = generateUniqueIds();
-    }
+  // 2) Normalize & cast every Order
+  const orders = rawOrders.map((o) => {
+    // ─ Basic scalars ─────────────────────────────────────
+    const sqlId = Number(o.sqlId);
+    const createdAt = new Date(o.createdAt);
+    const updatedAt = new Date(o.updatedAt);
+
+    // ─ Optional scalars ──────────────────────────────────
+    const gaClientId = o.gaClientId ?? undefined;
+    const deliveryType: string = o.deliveryType ?? 'single';
+
+    // ─ Snapshot customer (IUser) ─────────────────────────
+    // -- if you have user details in payload, spread them here;
+    //    otherwise you may need to query the User collection beforehand.
+    const customer = {
+      firstName: o.customer?.firstName ?? '',
+      lastName: o.customer?.lastName ?? '',
+      email: o.customer?.email ?? '',
+      phone: o.customer?.phone ?? '',
+    };
+
+    // ─ Recip Info subdoc ──────────────────────────────────
+    const recipInfo = {
+      sameAsSender: Boolean(o.recipInfo?.sameAsSender),
+      name: o.recipInfo?.name ?? '',
+      contact: o.recipInfo?.contact ?? '',
+    };
+
+    // ─ Pricing Summary (all strings in schema) ───────────
+    const pricingSummary = {
+      subTotal: String(o.pricingSummary.subTotal),
+      gst: String(o.pricingSummary.gst),
+      deliveryCharge: String(o.pricingSummary.deliveryCharge),
+      discountedAmt: String(o.pricingSummary.discountedAmt),
+      total: String(o.pricingSummary.total),
+      coupon: o.pricingSummary.coupon
+        ? new mongoose.Types.ObjectId(o.pricingSummary.coupon)
+        : undefined,
+    };
+
+    // ─ Stripe & HitPay details ────────────────────────────
+    const stripeDetails = o.stripeDetails ?? {};
+    const hitpayDetails = {
+      id: o.hitpayDetails.transactionId || o.hitpayDetails.paymentRequestId,
+      status: o.hitpayDetails.status,
+      amount: String(o.hitpayDetails.amount),
+      paymentMethod: o.hitpayDetails.paymentMethod,
+      transactionId: o.hitpayDetails.transactionId ?? '',
+      paymentRequestId: o.hitpayDetails.paymentRequestId,
+      receiptUrl: o.hitpayDetails.receiptUrl ?? '',
+    };
+
+    // ─ Products (IProduct[]) ─────────────────────────────
+    const product = Array.isArray(o.product)
+      ? o.product.map((p: any) => ({
+          product: new mongoose.Types.ObjectId(p.product),
+          price: p.price,
+          discountedPrice: p.discountedPrice,
+          quantity: p.quantity,
+          size: p.size ? new mongoose.Types.ObjectId(p.size) : undefined,
+        }))
+      : [];
+
+    // ─ OtherProducts (IOtherProduct[]) ───────────────────
+    const otherProduct = Array.isArray(o.otherProduct)
+      ? o.otherProduct.map((p: any) => ({
+          ...p,
+          moneyPulling: Array.isArray(p.moneyPulling)
+            ? p.moneyPulling.map((m: any) => ({
+                noteType: m.noteType,
+                qty: typeof m.qty === 'string' ? Number(m.qty) : m.qty,
+              }))
+            : [],
+        }))
+      : [];
+
+    // ─ CustomFormProducts (ICustomFormProduct[]) ─────────
+    const customFormProduct = Array.isArray(o.customFormProduct)
+      ? o.customFormProduct
+      : [];
+
+    // ─ IDs & OrderNumber ──────────────────────────────────
+    const _id = new mongoose.Types.ObjectId();
+    const orderNumber = o.orderNumber ?? generateUniqueIds();
+
+    // ─ Delivery subdoc (IDelivery) ───────────────────────
+    const delivery = {
+      date: toUtcDateOnly(o.delivery.date),
+      method: new mongoose.Types.ObjectId(o.delivery.method),
+      collectionTime: o.delivery.collectionTime,
+      address: new mongoose.Types.ObjectId(o.delivery.address),
+      recipientEmail: o.delivery.recipientEmail ?? '',
+      instructions: o.delivery.instructions ?? '',
+    };
+
+    return {
+      _id,
+      sqlId,
+      orderNumber,
+      gaClientId,
+      brand: o.brand,
+      deliveryType,
+      product,
+      otherProduct,
+      customFormProduct,
+      user: new mongoose.Types.ObjectId(o.user),
+      delivery,
+      pricingSummary,
+      customer,
+      recipInfo,
+      paid: Boolean(o.paid),
+      corporate: Boolean(o.corporate),
+      moneyReceivedForMoneyPulling: Boolean(o.moneyReceivedForMoneyPulling),
+      preparationStatus: o.preparationStatus ?? undefined,
+      status: o.status ?? undefined,
+      stripeDetails,
+      hitpayDetails,
+      woodeliveryTaskId: o.woodeliveryTaskId ?? '',
+      customiseCakeForm: Boolean(o.customiseCakeForm),
+      customiseCakeFormDetails: o.customiseCakeFormDetails
+        ? new mongoose.Types.ObjectId(o.customiseCakeFormDetails)
+        : undefined,
+      forKitchenUse: Boolean(o.forKitchenUse),
+      active: o.active ?? true,
+      createdAt,
+      updatedAt,
+    };
   });
 
-  // 2) Bulk‐insert Orders
+  // 3) Bulk‐insert Orders
   const orderBulk = Order.collection.initializeUnorderedBulkOp();
-  orders.forEach((order) => orderBulk.insert(order));
+  orders.forEach((doc) => orderBulk.insert(doc));
   const orderResult = await orderBulk.execute();
-  console.log('Order bulk result:', orderResult);
-
-  // 3) Record any order‐level failures
   orderResult.getWriteErrors().forEach((we) => {
-    const sqlId = orders[we.index]?.sqlId;
-    if (sqlId != null) failedOrderIds.push(sqlId);
+    failedOrderIds.push(orders[we.index].sqlId);
   });
 
-  // 4) Build & Bulk‐insert Deliveries for successful Orders
+  // 4) Bulk‐insert Deliveries (with matching timestamps)
   const deliveryBulk = Delivery.collection.initializeUnorderedBulkOp();
   orders.forEach((order, idx) => {
-    // skip failed orders
     if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
 
-    const d = order.delivery!;
-    const u = order.user;
-    const deliveryDoc: Partial<IDelivery> = {
+    deliveryBulk.insert({
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+
+      sqlId: order.sqlId,
       brand: order.brand,
       order: order._id,
       orderNumber: order.orderNumber,
-      deliveryDate: d.date,
-      method: d.method,
-      collectionTime: d.collectionTime,
-      address: d.address,
-      recipientName: order.recipInfo?.name,
-      recipientPhone: order.recipInfo?.contact,
-      recipientEmail: d.recipientEmail,
+      customiseCakeOrder: order.customiseCakeFormDetails,
+      deliveryDate: order.delivery.date,
+      method: order.delivery.method,
+      collectionTime: order.delivery.collectionTime,
+      address: order.delivery.address,
+
+      customer: order.customer,
+      recipientName: order.recipInfo.name,
+      recipientPhone: order.recipInfo.contact,
+      recipientEmail: order.delivery.recipientEmail,
       woodeliveryTaskId: order.woodeliveryTaskId,
-      instructions: d.instructions,
-      customiseCakeForm: order.customiseCakeForm ?? false,
-      customer: {
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u?.email || '',
-        phone: u?.phone || '',
-      },
-    };
-    deliveryBulk.insert(deliveryDoc);
+      driverDetails: undefined,
+      status: order.status,
+      instructions: order.delivery.instructions,
+      customiseCakeForm: order.customiseCakeForm,
+      active: order.active,
+    });
   });
   const deliveryResult = await deliveryBulk.execute();
-  console.log('Delivery bulk result:', deliveryResult);
-
-  // 5) Record any delivery‐level failures
   deliveryResult.getWriteErrors().forEach((we) => {
-    // use same sqlId index mapping
-    const sqlId = orders[we.index]?.sqlId;
-    if (sqlId != null) failedDeliveryIds.push(sqlId);
+    failedDeliveryIds.push(orders[we.index].sqlId);
   });
 
-  // Respond with counts and any failures
+  // 5) Final response
   res.status(200).json({
     message: 'Migration completed',
     insertedOrders: orderResult.insertedCount,
