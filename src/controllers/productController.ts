@@ -70,7 +70,7 @@ async function syncProductWithMerchantCenter(
       // Update existing product in Google Merchant Center
       await content.products.update({
         merchantId: process.env.GOOGLE_MERCHANT_ID,
-        productId: googleProduct.offerId,
+        productId: `online:en:SG:${googleProduct.offerId}`,
         requestBody: googleProduct,
       });
     } else {
