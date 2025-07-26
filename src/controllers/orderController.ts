@@ -34,7 +34,6 @@ import {
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import {
-  DELIVERY_CREATE_ERROR,
   PINCH_EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
@@ -51,7 +50,7 @@ import {
   generateUniqueIds,
   toUtcDateOnly,
 } from '@src/utils/functions';
-import Delivery, { IDelivery } from '@src/models/deliveryModel';
+import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
 import Product from '@src/models/productModel';
@@ -540,46 +539,72 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
 
 const createDeliveryDocument = async (
   order: IOrder,
-  task?: Response,
+  task?: any,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   update = false
 ) => {
-  const {
-    delivery: { address, method, date, collectionTime },
-    recipInfo,
-    user,
-    brand,
-  } = order;
-  const data: IDeliveryData = {
-    brand,
-    order: order?.id,
-    orderNumber: order.orderNumber,
-    deliveryDate: new Date(date),
-    method: method.id,
-    collectionTime,
-    recipientName: recipInfo?.name,
-    recipientPhone: recipInfo?.contact,
-    customer: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user?.email || '',
-      phone: user?.phone || '',
-    },
-  };
-  if (task) {
-    data.woodeliveryTaskId = task?.data?.guid;
-    data.status = WOODELIVERY_STATUS[task?.data?.statusId];
-  }
-  if (address?.id) {
-    data.address = address.id;
-  }
-  if (!recipInfo || recipInfo?.sameAsSender) {
-    data.recipientEmail = user?.email;
-  }
+  try {
+    const {
+      delivery: { address, method, date, collectionTime },
+      recipInfo,
+      user,
+      brand,
+    } = order;
 
-  if (update) {
-    await Delivery.findOneAndUpdate({ order: order?._id }, data);
-  } else {
-    await Delivery.create(data);
+    const data: IDeliveryData = {
+      brand,
+      order: order._id.toString(),
+      orderNumber: order.orderNumber,
+      deliveryDate: new Date(date),
+      method: method._id || method.id,
+      collectionTime,
+      recipientName: recipInfo?.name,
+      recipientPhone: recipInfo?.contact,
+      customer: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user?.email || '',
+        phone: user?.phone || '',
+      },
+    };
+
+    if (task) {
+      data.woodeliveryTaskId = task?.data?.guid;
+      data.status = WOODELIVERY_STATUS[task?.data?.statusId];
+    }
+
+    if (address?._id || address?.id) {
+      data.address = address._id || address.id;
+    }
+
+    if (!recipInfo || recipInfo?.sameAsSender) {
+      data.recipientEmail = user?.email;
+    }
+
+    // ✅ Always use upsert to prevent duplicates
+    const result = await Delivery.findOneAndUpdate(
+      { order: order._id }, // Filter by order ID
+      data, // Update data
+      {
+        new: true,
+        upsert: true, // Creates if doesn't exist, updates if exists
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error('💥 Error in createDeliveryDocument:', error);
+
+    // ✅ Handle duplicate key errors gracefully
+    if (error.code === 11000) {
+      const existing = await Delivery.findOne({ order: order._id });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    throw error;
   }
 };
 
@@ -588,72 +613,128 @@ const createDelivery = async (id: string, update = false) => {
   if (!order) {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
+
+  // ✅ Check if delivery already exists and prevent duplicates
+  const existingDelivery = await Delivery.findOne({ order: id });
+  if (existingDelivery && !update) {
+    return existingDelivery;
+  }
+
   const {
     brand,
     delivery: { method },
   } = order;
+
   const selfCollectDetails = await DeliveryMethod.findOne({
     name: SELF_COLLECT,
     brand,
   });
+
   const isSelfCollect =
-    String(method.id) ===
+    String(method._id || method.id) ===
     String(selfCollectDetails?.id || selfCollectDetails?._id);
 
-  if (isSelfCollect) {
-    createDeliveryDocument(order, undefined, update);
-  } else
-    createWoodeliveryTask(order, update)
-      .then(async (response) => {
-        const task = await response.json();
-        createDeliveryDocument(order, task, update);
-        await Order.findByIdAndUpdate(id, {
-          woodeliveryTaskId: task.data.guid,
-          status: WOODELIVERY_STATUS[task?.data?.statusId],
-        });
-      })
-      .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
-};
-
-async function updateProductAfterPurchase(order: IOrder) {
-  const updates = order.product.map((p) => {
-    const { inventory, available } = p?.product;
-    let inventoryUpdateQuery = { ...inventory };
-    let isProductAvailable = available;
-
-    if (inventory && inventory.track) {
-      let updatedRemQty = inventory.remainingQty - p.quantity;
-      updatedRemQty = Math.max(0, updatedRemQty); // Ensure quantity doesn't go below 0
-
-      inventoryUpdateQuery = {
-        'inventory.remainingQty': updatedRemQty,
-        maxQty: updatedRemQty,
-        'inventory.available': updatedRemQty > 0,
-      };
-
-      if (!updatedRemQty) {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
-        isProductAvailable = false;
-      } else if (updatedRemQty <= 20) {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
-      } else {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
-      }
+  try {
+    if (isSelfCollect) {
+      const result = await createDeliveryDocument(
+        order,
+        undefined,
+        update || !!existingDelivery
+      );
+      return result;
     }
 
-    return {
-      updateOne: {
-        filter: { _id: p.product._id },
-        update: {
+    // ✅ Fixed logic: Only create new task if order doesn't have woodeliveryTaskId
+    // For updates, use existing task ID to update the task
+    if (!order.woodeliveryTaskId) {
+      const response = await createWoodeliveryTask(order, false);
+      const task = await response.json();
+
+      const deliveryResult = await createDeliveryDocument(
+        order,
+        task,
+        !!existingDelivery
+      );
+
+      // Update order with new task ID
+      await Order.findByIdAndUpdate(id, {
+        woodeliveryTaskId: task.data.guid,
+        status: WOODELIVERY_STATUS[task?.data?.statusId],
+      });
+
+      return deliveryResult;
+    }
+
+    if (update) {
+      const response = await createWoodeliveryTask(order, true);
+      const task = await response.json();
+
+      const deliveryResult = await createDeliveryDocument(order, task, true);
+
+      // Update order status if needed
+      if (task?.data?.statusId) {
+        await Order.findByIdAndUpdate(id, {
+          status: WOODELIVERY_STATUS[task.data.statusId],
+        });
+      }
+
+      return deliveryResult;
+    }
+
+    const deliveryResult = await createDeliveryDocument(order, undefined, true);
+    return deliveryResult;
+  } catch (error) {
+    console.error('💥 Error in createDelivery:', error);
+    throw error;
+  }
+};
+async function updateProductAfterPurchase(orderId: string) {
+  const order = await Order.findById(orderId).populate('product.product');
+
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
+
+  // Process each product individually instead of using bulkWrite
+  for (let i = 0; i < order.product.length; i += 1) {
+    const p = order.product[i];
+
+    try {
+      const { inventory, available } = p?.product;
+      let inventoryUpdateQuery = { ...inventory };
+      let isProductAvailable = available;
+
+      if (inventory && inventory.track) {
+        let updatedRemQty = inventory.remainingQty - p.quantity;
+        updatedRemQty = Math.max(0, updatedRemQty);
+
+        inventoryUpdateQuery = {
+          'inventory.remainingQty': updatedRemQty,
+          maxQty: updatedRemQty,
+          'inventory.available': updatedRemQty > 0,
+        };
+
+        if (!updatedRemQty) {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+          isProductAvailable = false;
+        } else if (updatedRemQty <= 20) {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
+        } else {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
+        }
+      }
+
+      await Product.findByIdAndUpdate(
+        p.product._id,
+        {
           $inc: { sold: p.quantity },
           $set: { ...inventoryUpdateQuery, available: isProductAvailable },
         },
-      },
-    };
-  });
-
-  if (updates.length) {
-    await Product.bulkWrite(updates);
+        { new: true }
+      );
+    } catch (error) {
+      console.error(`Error updating product ${i}:`, error);
+    }
   }
 }
 
@@ -682,10 +763,7 @@ const updateOrderAfterPaymentSuccess = async (
   ).lean();
 
   // If customer has applied coupon
-  if (
-    order!.pricingSummary.coupon &&
-    Object.keys(order!.pricingSummary.coupon).length
-  ) {
+  if (order!.pricingSummary.coupon?._id) {
     // Append coupon details in user model when customer apply a coupon successfully
     const user = await User.findById(order?.user?._id);
     if (
@@ -696,13 +774,13 @@ const updateOrderAfterPaymentSuccess = async (
     }
     // Increment the coupon's used count atomically
     await Coupon.updateOne(
-      { _id: order?.pricingSummary.coupon?._id },
+      { _id: order?.pricingSummary?.coupon?._id },
       { $inc: { used: 1 } }
     );
     await user!.save({ validateBeforeSave: false });
   }
 
-  await updateProductAfterPurchase(order!);
+  await updateProductAfterPurchase(orderId);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
   // await sendPurchaseEventToGA4(orderId);
@@ -901,7 +979,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     await cUser.save({ validateBeforeSave: false });
   }
 
-  await updateProductAfterPurchase(order);
+  await updateProductAfterPurchase(order?._id);
   await createDelivery(order?._id);
   await sendOrderConfirmationEmail(email, order);
 
@@ -962,7 +1040,7 @@ export const bulkCreateOrders = catchAsync(
       //   }
       // }
 
-      // await updateProductAfterPurchase(order);
+      // await updateProductAfterPurchase(order._id);
       await createDelivery(order._id);
       await sendOrderConfirmationEmail(userData.email, order);
 
@@ -1151,7 +1229,7 @@ export const updateOrder = catchAsync(
     });
     // Updating delivery & woodelivery data
     if (delivery || recipInfo) {
-      createDelivery(order, true);
+      await createDelivery(order?._id, true);
     }
 
     res.status(StatusCode.SUCCESS).json({
@@ -1248,10 +1326,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       { new: true }
     ).lean();
     // If customer has applied coupon
-    if (
-      order!.pricingSummary.coupon &&
-      Object.keys(order!.pricingSummary.coupon).length
-    ) {
+    if (order!.pricingSummary?.coupon?._id) {
       // Append coupon details in user model when customer apply a coupon successfully
       const user = await User.findById(order?.user?._id);
       if (
@@ -1267,7 +1342,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       );
       await user!.save({ validateBeforeSave: false });
     }
-    await updateProductAfterPurchase(order!);
+    await updateProductAfterPurchase(orderId);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
     // await sendPurchaseEventToGA4(orderId);
@@ -1304,9 +1379,8 @@ export const hitpayWebhookHandler = catchAsync(
     const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
     const paymentRequest = parsedBody?.payment_request;
     const { status, purpose } = paymentRequest;
-
     if (verifyHitPayHmac(req, hitpaySignature)) {
-      if (status === 'completed') {
+      if (status === 'completed' || status === 'pending') {
         // eslint-disable-next-line no-unused-expressions
         purpose === HITPAY_PAYMENT_PURPOSE[0]
           ? updateBobOrderAfterPaymentSuccess(paymentRequest, res)
@@ -1323,75 +1397,187 @@ export const hitpayWebhookHandler = catchAsync(
 );
 
 export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
-  const orders: IOrder[] = Array.isArray(req.body.orders)
+  // 1) Receive raw payload
+  const rawOrders: any[] = Array.isArray(req.body.orders)
     ? req.body.orders
     : [];
   const failedOrderIds: number[] = [];
   const failedDeliveryIds: number[] = [];
 
-  // 1) Pre‐assign an _id & normalize each order
-  orders.forEach((order) => {
-    order._id = new mongoose.Types.ObjectId();
-    if (order.delivery?.date) {
-      order.delivery.date = toUtcDateOnly(order.delivery.date);
-      order.orderNumber = generateUniqueIds();
-    }
+  // 2) Normalize & cast every Order
+  const orders = rawOrders.map((o) => {
+    // ─ Basic scalars ─────────────────────────────────────
+    const sqlId = Number(o.sqlId);
+    const createdAt = new Date(o.createdAt);
+    const updatedAt = new Date(o.updatedAt);
+
+    // ─ Optional scalars ──────────────────────────────────
+    const gaClientId = o.gaClientId ?? undefined;
+    const deliveryType: string = o.deliveryType ?? 'single';
+
+    // ─ Snapshot customer (IUser) ─────────────────────────
+    // -- if you have user details in payload, spread them here;
+    //    otherwise you may need to query the User collection beforehand.
+    const customer = {
+      firstName: o.customer?.firstName ?? '',
+      lastName: o.customer?.lastName ?? '',
+      email: o.customer?.email ?? '',
+      phone: o.customer?.phone ?? '',
+    };
+
+    // ─ Recip Info subdoc ──────────────────────────────────
+    const recipInfo = {
+      sameAsSender: Boolean(o.recipInfo?.sameAsSender),
+      name: o.recipInfo?.name ?? '',
+      contact: o.recipInfo?.contact ?? '',
+    };
+
+    // ─ Pricing Summary (all strings in schema) ───────────
+    const pricingSummary = {
+      subTotal: String(o.pricingSummary.subTotal),
+      gst: String(o.pricingSummary.gst),
+      deliveryCharge: String(o.pricingSummary.deliveryCharge),
+      discountedAmt: String(o.pricingSummary.discountedAmt),
+      total: String(o.pricingSummary.total),
+      coupon: o.pricingSummary.coupon
+        ? new mongoose.Types.ObjectId(o.pricingSummary.coupon)
+        : undefined,
+    };
+
+    // ─ Stripe & HitPay details ────────────────────────────
+    const stripeDetails = o.stripeDetails ?? {};
+    const hitpayDetails = {
+      id: o.hitpayDetails.transactionId || o.hitpayDetails.paymentRequestId,
+      status: o.hitpayDetails.status,
+      amount: String(o.hitpayDetails.amount),
+      paymentMethod: o.hitpayDetails.paymentMethod,
+      transactionId: o.hitpayDetails.transactionId ?? '',
+      paymentRequestId: o.hitpayDetails.paymentRequestId,
+      receiptUrl: o.hitpayDetails.receiptUrl ?? '',
+    };
+
+    // ─ Products (IProduct[]) ─────────────────────────────
+    const product = Array.isArray(o.product)
+      ? o.product.map((p: any) => ({
+          product: new mongoose.Types.ObjectId(p.product),
+          price: p.price,
+          discountedPrice: p.discountedPrice,
+          quantity: p.quantity,
+          size: p.size ? new mongoose.Types.ObjectId(p.size) : undefined,
+        }))
+      : [];
+
+    // ─ OtherProducts (IOtherProduct[]) ───────────────────
+    const otherProduct = Array.isArray(o.otherProduct)
+      ? o.otherProduct.map((p: any) => ({
+          ...p,
+          moneyPulling: Array.isArray(p.moneyPulling)
+            ? p.moneyPulling.map((m: any) => ({
+                noteType: m.noteType,
+                qty: typeof m.qty === 'string' ? Number(m.qty) : m.qty,
+              }))
+            : [],
+        }))
+      : [];
+
+    // ─ CustomFormProducts (ICustomFormProduct[]) ─────────
+    const customFormProduct = Array.isArray(o.customFormProduct)
+      ? o.customFormProduct
+      : [];
+
+    // ─ IDs & OrderNumber ──────────────────────────────────
+    const _id = new mongoose.Types.ObjectId();
+    const orderNumber = o.orderNumber ?? generateUniqueIds();
+
+    // ─ Delivery subdoc (IDelivery) ───────────────────────
+    const delivery = {
+      date: toUtcDateOnly(o.delivery.date),
+      method: new mongoose.Types.ObjectId(o.delivery.method),
+      collectionTime: o.delivery.collectionTime,
+      address: new mongoose.Types.ObjectId(o.delivery.address),
+      recipientEmail: o.delivery.recipientEmail ?? '',
+      instructions: o.delivery.instructions ?? '',
+    };
+
+    return {
+      _id,
+      sqlId,
+      orderNumber,
+      gaClientId,
+      brand: o.brand,
+      deliveryType,
+      product,
+      otherProduct,
+      customFormProduct,
+      user: new mongoose.Types.ObjectId(o.user),
+      delivery,
+      pricingSummary,
+      customer,
+      recipInfo,
+      paid: Boolean(o.paid),
+      corporate: Boolean(o.corporate),
+      moneyReceivedForMoneyPulling: Boolean(o.moneyReceivedForMoneyPulling),
+      preparationStatus: o.preparationStatus ?? undefined,
+      status: o.status ?? undefined,
+      stripeDetails,
+      hitpayDetails,
+      woodeliveryTaskId: o.woodeliveryTaskId ?? '',
+      customiseCakeForm: Boolean(o.customiseCakeForm),
+      customiseCakeFormDetails: o.customiseCakeFormDetails
+        ? new mongoose.Types.ObjectId(o.customiseCakeFormDetails)
+        : undefined,
+      forKitchenUse: Boolean(o.forKitchenUse),
+      active: o.active ?? true,
+      createdAt,
+      updatedAt,
+    };
   });
 
-  // 2) Bulk‐insert Orders
+  // 3) Bulk‐insert Orders
   const orderBulk = Order.collection.initializeUnorderedBulkOp();
-  orders.forEach((order) => orderBulk.insert(order));
+  orders.forEach((doc) => orderBulk.insert(doc));
   const orderResult = await orderBulk.execute();
-  console.log('Order bulk result:', orderResult);
-
-  // 3) Record any order‐level failures
   orderResult.getWriteErrors().forEach((we) => {
-    const sqlId = orders[we.index]?.sqlId;
-    if (sqlId != null) failedOrderIds.push(sqlId);
+    failedOrderIds.push(orders[we.index].sqlId);
   });
 
-  // 4) Build & Bulk‐insert Deliveries for successful Orders
+  // 4) Bulk‐insert Deliveries (with matching timestamps)
   const deliveryBulk = Delivery.collection.initializeUnorderedBulkOp();
   orders.forEach((order, idx) => {
-    // skip failed orders
     if (orderResult.getWriteErrors().some((we) => we.index === idx)) return;
 
-    const d = order.delivery!;
-    const u = order.user;
-    const deliveryDoc: Partial<IDelivery> = {
+    deliveryBulk.insert({
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+
+      sqlId: order.sqlId,
       brand: order.brand,
       order: order._id,
       orderNumber: order.orderNumber,
-      deliveryDate: d.date,
-      method: d.method,
-      collectionTime: d.collectionTime,
-      address: d.address,
-      recipientName: order.recipInfo?.name,
-      recipientPhone: order.recipInfo?.contact,
-      recipientEmail: d.recipientEmail,
+      customiseCakeOrder: order.customiseCakeFormDetails,
+      deliveryDate: order.delivery.date,
+      method: order.delivery.method,
+      collectionTime: order.delivery.collectionTime,
+      address: order.delivery.address,
+
+      customer: order.customer,
+      recipientName: order.recipInfo.name,
+      recipientPhone: order.recipInfo.contact,
+      recipientEmail: order.delivery.recipientEmail,
       woodeliveryTaskId: order.woodeliveryTaskId,
-      instructions: d.instructions,
-      customiseCakeForm: order.customiseCakeForm ?? false,
-      customer: {
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u?.email || '',
-        phone: u?.phone || '',
-      },
-    };
-    deliveryBulk.insert(deliveryDoc);
+      driverDetails: undefined,
+      status: order.status,
+      instructions: order.delivery.instructions,
+      customiseCakeForm: order.customiseCakeForm,
+      active: order.active,
+    });
   });
   const deliveryResult = await deliveryBulk.execute();
-  console.log('Delivery bulk result:', deliveryResult);
-
-  // 5) Record any delivery‐level failures
   deliveryResult.getWriteErrors().forEach((we) => {
-    // use same sqlId index mapping
-    const sqlId = orders[we.index]?.sqlId;
-    if (sqlId != null) failedDeliveryIds.push(sqlId);
+    failedDeliveryIds.push(orders[we.index].sqlId);
   });
 
-  // Respond with counts and any failures
+  // 5) Final response
   res.status(200).json({
     message: 'Migration completed',
     insertedOrders: orderResult.insertedCount,

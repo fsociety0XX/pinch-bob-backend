@@ -105,6 +105,8 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
   }
 );
 
+deliverySchema.index({ order: 1 }, { unique: true });
+
 deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
   this.populate({
     path: 'method',
