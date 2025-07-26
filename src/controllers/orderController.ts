@@ -34,7 +34,6 @@ import {
 } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import {
-  DELIVERY_CREATE_ERROR,
   PINCH_EMAILS,
   NO_DATA_FOUND,
   ORDER_AUTH_ERR,
@@ -540,46 +539,72 @@ const createWoodeliveryTask = (order: IOrder, update = false) => {
 
 const createDeliveryDocument = async (
   order: IOrder,
-  task?: Response,
+  task?: any,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   update = false
 ) => {
-  const {
-    delivery: { address, method, date, collectionTime },
-    recipInfo,
-    user,
-    brand,
-  } = order;
-  const data: IDeliveryData = {
-    brand,
-    order: order?.id,
-    orderNumber: order.orderNumber,
-    deliveryDate: new Date(date),
-    method: method.id,
-    collectionTime,
-    recipientName: recipInfo?.name,
-    recipientPhone: recipInfo?.contact,
-    customer: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user?.email || '',
-      phone: user?.phone || '',
-    },
-  };
-  if (task) {
-    data.woodeliveryTaskId = task?.data?.guid;
-    data.status = WOODELIVERY_STATUS[task?.data?.statusId];
-  }
-  if (address?.id) {
-    data.address = address.id;
-  }
-  if (!recipInfo || recipInfo?.sameAsSender) {
-    data.recipientEmail = user?.email;
-  }
+  try {
+    const {
+      delivery: { address, method, date, collectionTime },
+      recipInfo,
+      user,
+      brand,
+    } = order;
 
-  if (update) {
-    await Delivery.findOneAndUpdate({ order: order?._id }, data);
-  } else {
-    await Delivery.create(data);
+    const data: IDeliveryData = {
+      brand,
+      order: order._id.toString(),
+      orderNumber: order.orderNumber,
+      deliveryDate: new Date(date),
+      method: method._id || method.id,
+      collectionTime,
+      recipientName: recipInfo?.name,
+      recipientPhone: recipInfo?.contact,
+      customer: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user?.email || '',
+        phone: user?.phone || '',
+      },
+    };
+
+    if (task) {
+      data.woodeliveryTaskId = task?.data?.guid;
+      data.status = WOODELIVERY_STATUS[task?.data?.statusId];
+    }
+
+    if (address?._id || address?.id) {
+      data.address = address._id || address.id;
+    }
+
+    if (!recipInfo || recipInfo?.sameAsSender) {
+      data.recipientEmail = user?.email;
+    }
+
+    // ✅ Always use upsert to prevent duplicates
+    const result = await Delivery.findOneAndUpdate(
+      { order: order._id }, // Filter by order ID
+      data, // Update data
+      {
+        new: true,
+        upsert: true, // Creates if doesn't exist, updates if exists
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error('💥 Error in createDeliveryDocument:', error);
+
+    // ✅ Handle duplicate key errors gracefully
+    if (error.code === 11000) {
+      const existing = await Delivery.findOne({ order: order._id });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    throw error;
   }
 };
 
@@ -588,72 +613,128 @@ const createDelivery = async (id: string, update = false) => {
   if (!order) {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
+
+  // ✅ Check if delivery already exists and prevent duplicates
+  const existingDelivery = await Delivery.findOne({ order: id });
+  if (existingDelivery && !update) {
+    return existingDelivery;
+  }
+
   const {
     brand,
     delivery: { method },
   } = order;
+
   const selfCollectDetails = await DeliveryMethod.findOne({
     name: SELF_COLLECT,
     brand,
   });
+
   const isSelfCollect =
-    String(method.id) ===
+    String(method._id || method.id) ===
     String(selfCollectDetails?.id || selfCollectDetails?._id);
 
-  if (isSelfCollect) {
-    createDeliveryDocument(order, undefined, update);
-  } else
-    createWoodeliveryTask(order, update)
-      .then(async (response) => {
-        const task = await response.json();
-        createDeliveryDocument(order, task, update);
-        await Order.findByIdAndUpdate(id, {
-          woodeliveryTaskId: task.data.guid,
-          status: WOODELIVERY_STATUS[task?.data?.statusId],
-        });
-      })
-      .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
-};
-
-async function updateProductAfterPurchase(order: IOrder) {
-  const updates = order.product.map((p) => {
-    const { inventory, available } = p?.product;
-    let inventoryUpdateQuery = { ...inventory };
-    let isProductAvailable = available;
-
-    if (inventory && inventory.track) {
-      let updatedRemQty = inventory.remainingQty - p.quantity;
-      updatedRemQty = Math.max(0, updatedRemQty); // Ensure quantity doesn't go below 0
-
-      inventoryUpdateQuery = {
-        'inventory.remainingQty': updatedRemQty,
-        maxQty: updatedRemQty,
-        'inventory.available': updatedRemQty > 0,
-      };
-
-      if (!updatedRemQty) {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
-        isProductAvailable = false;
-      } else if (updatedRemQty <= 20) {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
-      } else {
-        inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
-      }
+  try {
+    if (isSelfCollect) {
+      const result = await createDeliveryDocument(
+        order,
+        undefined,
+        update || !!existingDelivery
+      );
+      return result;
     }
 
-    return {
-      updateOne: {
-        filter: { _id: p.product._id },
-        update: {
+    // ✅ Fixed logic: Only create new task if order doesn't have woodeliveryTaskId
+    // For updates, use existing task ID to update the task
+    if (!order.woodeliveryTaskId) {
+      const response = await createWoodeliveryTask(order, false);
+      const task = await response.json();
+
+      const deliveryResult = await createDeliveryDocument(
+        order,
+        task,
+        !!existingDelivery
+      );
+
+      // Update order with new task ID
+      await Order.findByIdAndUpdate(id, {
+        woodeliveryTaskId: task.data.guid,
+        status: WOODELIVERY_STATUS[task?.data?.statusId],
+      });
+
+      return deliveryResult;
+    }
+
+    if (update) {
+      const response = await createWoodeliveryTask(order, true);
+      const task = await response.json();
+
+      const deliveryResult = await createDeliveryDocument(order, task, true);
+
+      // Update order status if needed
+      if (task?.data?.statusId) {
+        await Order.findByIdAndUpdate(id, {
+          status: WOODELIVERY_STATUS[task.data.statusId],
+        });
+      }
+
+      return deliveryResult;
+    }
+
+    const deliveryResult = await createDeliveryDocument(order, undefined, true);
+    return deliveryResult;
+  } catch (error) {
+    console.error('💥 Error in createDelivery:', error);
+    throw error;
+  }
+};
+async function updateProductAfterPurchase(orderId: string) {
+  const order = await Order.findById(orderId).populate('product.product');
+
+  if (!order) {
+    return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
+  }
+
+  // Process each product individually instead of using bulkWrite
+  for (let i = 0; i < order.product.length; i += 1) {
+    const p = order.product[i];
+
+    try {
+      const { inventory, available } = p?.product;
+      let inventoryUpdateQuery = { ...inventory };
+      let isProductAvailable = available;
+
+      if (inventory && inventory.track) {
+        let updatedRemQty = inventory.remainingQty - p.quantity;
+        updatedRemQty = Math.max(0, updatedRemQty);
+
+        inventoryUpdateQuery = {
+          'inventory.remainingQty': updatedRemQty,
+          maxQty: updatedRemQty,
+          'inventory.available': updatedRemQty > 0,
+        };
+
+        if (!updatedRemQty) {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
+          isProductAvailable = false;
+        } else if (updatedRemQty <= 20) {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
+        } else {
+          inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
+        }
+      }
+
+      await Product.findByIdAndUpdate(
+        p.product._id,
+        {
           $inc: { sold: p.quantity },
           $set: { ...inventoryUpdateQuery, available: isProductAvailable },
         },
-      },
-    };
-  });
-
-  if (updates.length) {
-    await Product.bulkWrite(updates);
+        { new: true }
+      );
+    } catch (error) {
+      console.error(`Error updating product ${i}:`, error);
+    }
   }
 }
 
@@ -682,10 +763,7 @@ const updateOrderAfterPaymentSuccess = async (
   ).lean();
 
   // If customer has applied coupon
-  if (
-    order!.pricingSummary.coupon &&
-    Object.keys(order!.pricingSummary.coupon).length
-  ) {
+  if (order!.pricingSummary.coupon?._id) {
     // Append coupon details in user model when customer apply a coupon successfully
     const user = await User.findById(order?.user?._id);
     if (
@@ -696,13 +774,13 @@ const updateOrderAfterPaymentSuccess = async (
     }
     // Increment the coupon's used count atomically
     await Coupon.updateOne(
-      { _id: order?.pricingSummary.coupon?._id },
+      { _id: order?.pricingSummary?.coupon?._id },
       { $inc: { used: 1 } }
     );
     await user!.save({ validateBeforeSave: false });
   }
 
-  await updateProductAfterPurchase(order!);
+  await updateProductAfterPurchase(orderId);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
   // await sendPurchaseEventToGA4(orderId);
@@ -901,7 +979,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
     await cUser.save({ validateBeforeSave: false });
   }
 
-  await updateProductAfterPurchase(order);
+  await updateProductAfterPurchase(order?._id);
   await createDelivery(order?._id);
   await sendOrderConfirmationEmail(email, order);
 
@@ -962,7 +1040,7 @@ export const bulkCreateOrders = catchAsync(
       //   }
       // }
 
-      // await updateProductAfterPurchase(order);
+      // await updateProductAfterPurchase(order._id);
       await createDelivery(order._id);
       await sendOrderConfirmationEmail(userData.email, order);
 
@@ -1151,7 +1229,7 @@ export const updateOrder = catchAsync(
     });
     // Updating delivery & woodelivery data
     if (delivery || recipInfo) {
-      createDelivery(order, true);
+      await createDelivery(order?._id, true);
     }
 
     res.status(StatusCode.SUCCESS).json({
@@ -1248,10 +1326,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       { new: true }
     ).lean();
     // If customer has applied coupon
-    if (
-      order!.pricingSummary.coupon &&
-      Object.keys(order!.pricingSummary.coupon).length
-    ) {
+    if (order!.pricingSummary?.coupon?._id) {
       // Append coupon details in user model when customer apply a coupon successfully
       const user = await User.findById(order?.user?._id);
       if (
@@ -1267,7 +1342,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       );
       await user!.save({ validateBeforeSave: false });
     }
-    await updateProductAfterPurchase(order!);
+    await updateProductAfterPurchase(orderId);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
     // await sendPurchaseEventToGA4(orderId);
@@ -1304,9 +1379,8 @@ export const hitpayWebhookHandler = catchAsync(
     const parsedBody = JSON.parse(req.body.toString()); // Need to convert raw body to string and then to JS object
     const paymentRequest = parsedBody?.payment_request;
     const { status, purpose } = paymentRequest;
-
     if (verifyHitPayHmac(req, hitpaySignature)) {
-      if (status === 'completed') {
+      if (status === 'completed' || status === 'pending') {
         // eslint-disable-next-line no-unused-expressions
         purpose === HITPAY_PAYMENT_PURPOSE[0]
           ? updateBobOrderAfterPaymentSuccess(paymentRequest, res)
