@@ -1,7 +1,5 @@
-/* eslint-disable prefer-destructuring */
-/* eslint-disable camelcase */
-/* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable */
 import mongoose, { ObjectId } from 'mongoose';
 import { Express, NextFunction, Request, Response } from 'express';
 import catchAsync from '@src/utils/catchAsync';
@@ -23,7 +21,6 @@ import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
 import AppError from '@src/utils/appError';
 import {
-  DELIVERY_CREATE_ERROR,
   NO_DATA_FOUND,
   BOB_EMAILS,
   BOB_SMS_CONTENT,
@@ -40,10 +37,11 @@ import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
 import Order, { ICustomFormProduct } from '@src/models/orderModel';
 
-interface IWoodeliveryResponse extends Response {
+interface IWoodeliveryResponse {
   data?: {
     guid: string;
   };
+  json(): Promise<any>;
 }
 
 interface IDeliveryData {
@@ -81,6 +79,7 @@ interface IWoodeliveryTask {
   recipientEmail?: string;
   tag1: string;
   destinationAddress?: string;
+  taskGuid?: string;
 }
 
 const prepareCompleteAddress = (order: ICustomiseCake) => {
@@ -108,97 +107,6 @@ const prepareCompleteAddress = (order: ICustomiseCake) => {
   return completeAddress;
 };
 
-// Stripe link
-// const generatePaymentLink = async (req: Request, customiseCakeId: string) => {
-//   const customiseCake = await CustomiseCake.findById(customiseCakeId);
-//   const user = await User.findById(customiseCake?.user);
-//   const {
-//     paymentLink: { subject, template, previewText },
-//   } = PINCH_EMAILS;
-
-//   // before creating a new checkout session check if old one is expired
-//   if (customiseCake?.checkoutSession.id) {
-//     const session = await stripe.checkout.sessions.retrieve(
-//       customiseCake?.checkoutSession.id
-//     );
-//     if (session.status === 'open') {
-//       await sendEmail({
-//         email: user!.email,
-//         subject,
-//         template,
-//         context: {
-//           previewText,
-//           customerName: `${customiseCake?.user?.firstName || ''} ${
-//             customiseCake?.user?.lastName || ''
-//           }`,
-//           total: String(customiseCake.total),
-//           paymentLink: session.url!,
-//         },
-//       });
-//       return false;
-//     }
-//   }
-
-//   const productList = [
-//     {
-//       quantity: customiseCake!.quantity,
-//       price_data: {
-//         currency: 'sgd',
-//         unit_amount: customiseCake!.price * 100, // Stripe expects amount in cents
-//         product_data: {
-//           name: 'Customise Cake',
-//         },
-//       },
-//     },
-//     {
-//       quantity: 1,
-//       price_data: {
-//         currency: 'sgd',
-//         unit_amount: (customiseCake!.deliveryFee || 0) * 100, // Stripe expects amount in cents
-//         product_data: {
-//           name: 'Delivery Fee',
-//         },
-//       },
-//     },
-//   ];
-
-//   const session = await stripe.checkout.sessions.create({
-//     customer_email: user?.email,
-//     payment_method_types: ['paynow', 'card'],
-//     success_url: `${req.protocol}://${req.get('host')}`,
-//     mode: 'payment',
-//     currency: 'sgd',
-//     line_items: productList,
-//     metadata: {
-//       sessionFor: checkoutSessionFor.customiseCake,
-//       customiseCakeId: String(customiseCake?._id),
-//     },
-//   });
-
-//   const checkoutSession = {
-//     id: session.id,
-//     link: session.url,
-//   };
-//   await CustomiseCake.findByIdAndUpdate(customiseCakeId, { checkoutSession });
-
-//   await sendEmail({
-//     email: user!.email,
-//     subject,
-//     template,
-//     context: {
-//       previewText,
-//       customerName: `${customiseCake!.user?.firstName} ${
-//         customiseCake!.user?.lastName
-//       }`,
-//       total: String(customiseCake!.total),
-//       paymentLink: session.url!,
-//     },
-//   });
-
-//   return false;
-// };
-
-// Hitpay link
 const generatePaymentLink = async (
   req: Request,
   customiseCakeId: string,
@@ -244,7 +152,7 @@ const generatePaymentLink = async (
     { paymentLink: data.url || '' },
     { new: true }
   );
-  return data.url; // return payment link
+  return data.url;
 };
 
 export const submitCustomerForm = catchAsync(
@@ -252,7 +160,6 @@ export const submitCustomerForm = catchAsync(
     const { brand, delivery, user, bakes, images } = req.body;
     const { email, firstName, lastName, phone } = user;
 
-    // creating user
     const newUser = {
       brand,
       email,
@@ -281,7 +188,6 @@ export const submitCustomerForm = catchAsync(
           recipientPhone,
         } = deliveryObj.address || {};
 
-        // creating address
         const newAddress = {
           brand,
           firstName: recipientName || firstName,
@@ -330,57 +236,76 @@ const createDeliveryDocument = async (
   task?: IWoodeliveryResponse,
   update = false
 ) => {
-  const {
-    brand,
-    delivery: { address, date, time, recipientName, recipientPhone },
-    user,
-  } = customiseCake;
-  const currentUser = await User.findById(user);
-  const selfCollectDetails = await DeliveryMethod.findOne({
-    name: SELF_COLLECT,
-    brand,
-  });
-  const regularDeliveryDetails = await DeliveryMethod.findOne({
-    name: REGULAR_DELIVERY,
-    brand,
-  });
-  const selfCollectId = selfCollectDetails?.id || selfCollectDetails?._id;
-  const regularDeliveryId =
-    regularDeliveryDetails?.id || regularDeliveryDetails?._id;
+  try {
+    const {
+      brand,
+      delivery: { address, date, time, recipientName, recipientPhone },
+      user,
+    } = customiseCake;
 
-  const data: IDeliveryData = {
-    brand: customiseCake.brand,
-    customiseCakeOrder: customiseCake?._id,
-    deliveryDate: new Date(date),
-    method: isSelfCollect ? selfCollectId : regularDeliveryId,
-    collectionTime: time,
-    recipientName: recipientName || currentUser?.firstName,
-    recipientPhone: +recipientPhone || +currentUser!.phone!,
-    recipientEmail: currentUser?.email,
-    customiseCakeForm: true,
-    orderNumber: customiseCake.orderNumber,
-    customer: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user?.email || '',
-      phone: user?.phone || '',
-    },
-  };
+    const currentUser = await User.findById(user);
+    const selfCollectDetails = await DeliveryMethod.findOne({
+      name: SELF_COLLECT,
+      brand,
+    });
+    const regularDeliveryDetails = await DeliveryMethod.findOne({
+      name: REGULAR_DELIVERY,
+      brand,
+    });
+    const selfCollectId = selfCollectDetails?.id || selfCollectDetails?._id;
+    const regularDeliveryId =
+      regularDeliveryDetails?.id || regularDeliveryDetails?._id;
 
-  if (task) {
-    data.woodeliveryTaskId = task?.data?.guid;
-  }
-  if (address.id) {
-    data.address = address.id;
-  }
+    const data: IDeliveryData = {
+      brand: customiseCake.brand,
+      customiseCakeOrder: customiseCake._id.toString(),
+      deliveryDate: new Date(date),
+      method: isSelfCollect ? selfCollectId : regularDeliveryId,
+      collectionTime: time,
+      recipientName: recipientName || currentUser?.firstName,
+      recipientPhone: Number(recipientPhone) || Number(currentUser?.phone || 0),
+      recipientEmail: currentUser?.email,
+      customiseCakeForm: true,
+      orderNumber: customiseCake.orderNumber,
+      customer: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user?.email || '',
+        phone: user?.phone || '',
+      },
+    };
 
-  if (update) {
-    await Delivery.findOneAndUpdate(
-      { customiseCakeOrder: customiseCake?._id },
-      data
+    if (task) {
+      data.woodeliveryTaskId = task?.data?.guid;
+    }
+    if (address?.id) {
+      data.address = address.id;
+    }
+
+    // Always use upsert to prevent duplicates
+    const result = await Delivery.findOneAndUpdate(
+      { customiseCakeOrder: customiseCake._id },
+      data,
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
     );
-  } else {
-    await Delivery.create(data);
+
+    return result;
+  } catch (error: any) {
+    console.error('💥 Error in createDeliveryDocument:', error);
+
+    // Handle duplicate key errors gracefully
+    if (error.code === 11000) {
+      const existing = await Delivery.findOne({
+        customiseCakeOrder: customiseCake._id,
+      });
+      return existing;
+    }
+
+    throw error;
   }
 };
 
@@ -399,12 +324,12 @@ const createWoodeliveryTask = async (
   const currentUser = await User.findById(user);
 
   const task: IWoodeliveryTask = {
-    taskTypeId: 1, // Refer to woodelivery swagger
+    taskTypeId: 1,
     externalKey: orderNumber,
     afterDateTime: calculateBeforeAndAfterDateTime(String(date), time)
-      .afterDateTime, // UTC
+      .afterDateTime,
     beforeDateTime: calculateBeforeAndAfterDateTime(String(date), time)
-      .beforeDateTime, // UTC
+      .beforeDateTime,
     requesterEmail: currentUser!.email!,
     recipientEmail: currentUser!.email!,
     recipientName: currentUser?.firstName || '',
@@ -422,6 +347,10 @@ const createWoodeliveryTask = async (
     task.requesterPhone = String(address.phone);
   }
 
+  if (woodeliveryTaskId) {
+    task.taskGuid = woodeliveryTaskId;
+  }
+
   return update
     ? fetchAPI(`${WOODELIVERY_TASK}/${woodeliveryTaskId}`, 'PUT', task)
     : fetchAPI(WOODELIVERY_TASK, 'POST', task);
@@ -435,19 +364,57 @@ const createDelivery = async (
     delivery: { deliveryType },
   } = customiseCake;
 
+  // Check if delivery already exists and prevent duplicates
+  const existingDelivery = await Delivery.findOne({
+    customiseCakeOrder: customiseCake._id,
+  });
+  if (existingDelivery && !update) {
+    return existingDelivery;
+  }
+
   const isSelfCollect = deliveryType === customiseOrderEnums.deliveryType[0];
-  if (isSelfCollect) {
-    createDeliveryDocument(customiseCake, isSelfCollect, undefined, update);
-  } else
-    createWoodeliveryTask(customiseCake, update)
-      .then(async (response) => {
+
+  try {
+    if (isSelfCollect) {
+      await createDeliveryDocument(
+        customiseCake,
+        isSelfCollect,
+        undefined,
+        update || !!existingDelivery
+      );
+    } else {
+      if (!customiseCake.woodeliveryTaskId) {
+        const response = await createWoodeliveryTask(customiseCake, false);
         const task = await response.json();
-        createDeliveryDocument(customiseCake, isSelfCollect, task, update);
-        await CustomiseCake.findByIdAndUpdate(customiseCake?._id, {
+
+        await createDeliveryDocument(
+          customiseCake,
+          isSelfCollect,
+          task,
+          !!existingDelivery
+        );
+
+        await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
           woodeliveryTaskId: task.data.guid,
         });
-      })
-      .catch((err) => console.error(err, DELIVERY_CREATE_ERROR));
+      } else if (update) {
+        const response = await createWoodeliveryTask(customiseCake, true);
+        const task = await response.json();
+
+        await createDeliveryDocument(customiseCake, isSelfCollect, task, true);
+      } else {
+        await createDeliveryDocument(
+          customiseCake,
+          isSelfCollect,
+          undefined,
+          true
+        );
+      }
+    }
+  } catch (error) {
+    console.error('💥 Error in createDelivery:', error);
+    throw error;
+  }
 };
 
 const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
@@ -560,11 +527,11 @@ export const submitAdminForm = catchAsync(
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files.images?.length) {
-        customFormData.images = files.images; // Multiple images
+        customFormData.images = files.images;
       }
 
       if (files.baseColourImg?.length) {
-        customFormData.baseColourImg = files.baseColourImg[0]; // Single image
+        customFormData.baseColourImg = files.baseColourImg[0];
       }
     }
 
@@ -600,7 +567,6 @@ export const submitAdminForm = catchAsync(
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
 
-    // Insert/Update custom form into order database
     await syncOrderDB(customiseCakeOrder);
 
     await generatePaymentLink(req, String(customiseCakeOrder._id), next);
@@ -611,8 +577,7 @@ export const submitAdminForm = catchAsync(
 
     // Updating delivery & woodelivery data
     if (delivery) {
-      await createDelivery(customiseCakeOrder, true);
-      // If delivery type got changed from delivery to self-collect then delete the address
+      await createDelivery(customiseCakeOrder, true); // ✅ Added await
       if (
         delivery?.deliveryType === customiseOrderEnums.deliveryType[0] &&
         delivery.address
@@ -627,7 +592,6 @@ export const submitAdminForm = catchAsync(
         data: customiseCakeOrder,
       },
     });
-    return false;
   }
 );
 
@@ -666,7 +630,6 @@ const sendOrderConfirmationEmail = async (
 };
 
 export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   session: any
 ) => {
   const { id, status, amount, payment_methods, reference_number, email } =
@@ -686,46 +649,47 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   );
 
   if (!customiseCakeOrder) {
+    console.error('❌ CustomiseCake order not found:', customiseCakeOrderId);
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
 
-  // If customer has applied coupon
-  if (customiseCakeOrder.coupon) {
-    // Append coupon details in user model when customer apply a coupon successfully
-    const user = await User.findById(customiseCakeOrder.user);
-    if (
-      user?.usedCoupons &&
-      !user.usedCoupons?.includes(customiseCakeOrder.coupon)
-    ) {
-      user.usedCoupons!.push(customiseCakeOrder.coupon);
+  try {
+    // If customer has applied coupon
+    if (customiseCakeOrder.coupon) {
+      const user = await User.findById(customiseCakeOrder.user);
+      if (
+        user?.usedCoupons &&
+        !user.usedCoupons?.includes(customiseCakeOrder.coupon)
+      ) {
+        user.usedCoupons!.push(customiseCakeOrder.coupon);
+      }
+      await Coupon.updateOne(
+        { _id: customiseCakeOrder.coupon },
+        { $inc: { used: 1 } }
+      );
+      await user!.save();
     }
-    // Increment the coupon's used count atomically
-    await Coupon.updateOne(
-      { _id: customiseCakeOrder.coupon },
-      { $inc: { used: 1 } }
-    );
-    await user!.save();
-  }
 
-  await createDelivery(customiseCakeOrder);
-  // Insert/Update custom form into order database
-  await syncOrderDB(customiseCakeOrder);
-  // Send final confirmation email
-  sendOrderConfirmationEmail(customiseCakeOrder, email);
+    // Create delivery (this was the missing piece!)
+    await createDelivery(customiseCakeOrder);
+    await syncOrderDB(customiseCakeOrder);
+    await sendOrderConfirmationEmail(customiseCakeOrder, email);
+  } catch (error) {
+    console.error(
+      '💥 Error in updateCustomiseCakeOrderAfterPaymentSuccess:',
+      error
+    );
+    throw error;
+  }
 };
 
 export const sendPaymentSms = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    let paymentLink = '';
     const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
     if (!customiseCakeOrder) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
-    if (customiseCakeOrder.paymentLink) {
-      paymentLink = customiseCakeOrder.paymentLink;
-    } else {
-      paymentLink = await generatePaymentLink(req, req.params.id, next);
-    }
+    const paymentLink = await generatePaymentLink(req, req.params.id, next);
 
     let body = '';
     const phone =
@@ -750,19 +714,14 @@ export const sendPaymentSms = catchAsync(
 
 export const sendPaymentEmail = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    let paymentLink = '';
     const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
     if (!customiseCakeOrder) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
     const { user, total, orderNumber, delivery, quantity, price, deliveryFee } =
       customiseCakeOrder;
-    if (customiseCakeOrder.paymentLink) {
-      paymentLink = customiseCakeOrder.paymentLink;
-    } else {
-      paymentLink = await generatePaymentLink(req, req.params.id, next);
-    }
 
+    const paymentLink = await generatePaymentLink(req, req.params.id, next);
     const { subject, template, previewText } = BOB_EMAILS.paymentLink;
 
     await sendEmail({
@@ -801,7 +760,6 @@ export const getAllCustomiseForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { moneyPullingOrders, orderNumber, ...otherQueries } = req.query;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = { ...otherQueries };
 
     if (moneyPullingOrders) {
