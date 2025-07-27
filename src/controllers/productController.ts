@@ -67,11 +67,14 @@ async function syncProductWithMerchantCenter(
 
   try {
     if (isUpdate) {
+      const googleProductToUpdate = { ...googleProduct };
+      delete googleProductToUpdate.offerId;
+
       // Update existing product in Google Merchant Center
       await content.products.update({
         merchantId: process.env.GOOGLE_MERCHANT_ID,
         productId: `online:en:SG:${googleProduct.offerId}`,
-        requestBody: googleProduct,
+        requestBody: googleProductToUpdate,
       });
     } else {
       // Insert a new product in Google Merchant Center
