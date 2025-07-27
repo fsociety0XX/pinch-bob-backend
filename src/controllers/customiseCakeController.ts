@@ -685,16 +685,11 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
 
 export const sendPaymentSms = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    let paymentLink = '';
     const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
     if (!customiseCakeOrder) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
-    if (customiseCakeOrder.paymentLink) {
-      paymentLink = customiseCakeOrder.paymentLink;
-    } else {
-      paymentLink = await generatePaymentLink(req, req.params.id, next);
-    }
+    const paymentLink = await generatePaymentLink(req, req.params.id, next);
 
     let body = '';
     const phone =
@@ -719,19 +714,14 @@ export const sendPaymentSms = catchAsync(
 
 export const sendPaymentEmail = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    let paymentLink = '';
     const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
     if (!customiseCakeOrder) {
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
     const { user, total, orderNumber, delivery, quantity, price, deliveryFee } =
       customiseCakeOrder;
-    if (customiseCakeOrder.paymentLink) {
-      paymentLink = customiseCakeOrder.paymentLink;
-    } else {
-      paymentLink = await generatePaymentLink(req, req.params.id, next);
-    }
 
+    const paymentLink = await generatePaymentLink(req, req.params.id, next);
     const { subject, template, previewText } = BOB_EMAILS.paymentLink;
 
     await sendEmail({
