@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import mongoose, { ObjectId } from 'mongoose';
 import { Express, NextFunction, Request, Response } from 'express';
 import catchAsync from '@src/utils/catchAsync';
@@ -628,25 +629,23 @@ interface IHitpaySession {
   id: string;
   status: string;
   amount: number;
-  paymentMethods: string[];
-  referenceNumber: string;
+  payment_methods: string[];
+  reference_number: string;
   email: string;
 }
 
 export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   session: IHitpaySession
 ): Promise<AppError | undefined> => {
-  const { id, status, amount, paymentMethods, referenceNumber, email } =
+  const { id, status, amount, payment_methods, reference_number, email } =
     session;
-  const customiseCakeOrderId = referenceNumber;
+  const customiseCakeOrderId = reference_number;
   const hitpayDetails = {
     status,
     amount,
-    paymentMethod: paymentMethods,
+    paymentMethod: payment_methods,
     paymentRequestId: id,
   };
-  console.log(customiseCakeOrderId, 'customiseCakeOrderId');
-  console.log(hitpayDetails, 'hitpayDetails777');
 
   const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
     customiseCakeOrderId,
