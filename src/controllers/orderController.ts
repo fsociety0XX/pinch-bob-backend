@@ -1004,11 +1004,72 @@ export const bulkCreateOrders = catchAsync(
         user: userData,
       } = orderData;
 
-      // Find or create user
+      // Find or create user - check both email and phone to avoid conflicts
       let user = await User.findOne({ email: userData.email, brand });
       if (!user) {
-        user = new User({ brand, ...userData });
-        await user.save({ validateBeforeSave: false });
+        // Check if phone number already exists for this brand
+        if (userData.phone) {
+          const existingUserWithPhone = await User.findOne({
+            phone: userData.phone,
+            brand,
+          });
+          if (existingUserWithPhone) {
+            // Phone number already exists, use the existing user
+            user = existingUserWithPhone;
+            // Update the existing user with new email if different
+            if (existingUserWithPhone.email !== userData.email) {
+              try {
+                user = await User.findByIdAndUpdate(
+                  existingUserWithPhone._id,
+                  { email: userData.email, ...userData },
+                  { new: true }
+                );
+              } catch (updateError) {
+                // If update fails due to email conflict, just use the existing user
+                console.log(
+                  'Email update failed, using existing user:',
+                  updateError
+                );
+                user = existingUserWithPhone;
+              }
+            }
+          } else {
+            // Phone number doesn't exist, create new user
+            try {
+              user = new User({ brand, ...userData });
+              await user.save({ validateBeforeSave: false });
+            } catch (createError) {
+              // If creation fails, try to find user by phone one more time
+              // (race condition handling)
+              console.log(
+                'User creation failed, checking for existing user:',
+                createError
+              );
+              user =
+                (await User.findOne({ phone: userData.phone, brand })) ||
+                (await User.findOne({ email: userData.email, brand }));
+              if (!user) {
+                throw createError; // Re-throw if we still can't find a user
+              }
+            }
+          }
+        } else {
+          // No phone number provided, create new user
+          try {
+            user = new User({ brand, ...userData });
+            await user.save({ validateBeforeSave: false });
+          } catch (createError) {
+            // If creation fails, try to find user by email one more time
+            console.log(
+              'User creation failed, checking for existing user:',
+              createError
+            );
+            user = await User.findOne({ email: userData.email, brand });
+            if (!user) {
+              throw createError; // Re-throw if we still can't find a user
+            }
+          }
+        }
       }
       orderData.user = user._id;
 
