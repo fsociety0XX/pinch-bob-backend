@@ -60,7 +60,9 @@ interface IEdiblePrint {
 
 interface IFondant {
   type: string;
+  otherType?: string;
   colour: string;
+  otherColour?: string;
   details: string;
 }
 
@@ -88,6 +90,7 @@ export interface ICustomiseCake {
   pax: number;
   specialRequest: string;
   flavour: mongoose.Schema.Types.ObjectId;
+  otherFlavour: string;
   message: string;
   cakeMsgLocation: string;
   images: IPhoto[];
@@ -120,6 +123,7 @@ export interface ICustomiseCake {
   price: number;
   quantity: number;
   size: string;
+  otherSize: string;
   orderNotes: string;
   decorationPoints: string;
   instructions: string;
@@ -206,10 +210,12 @@ const FondantNameSchema = new mongoose.Schema<IFondant>({
     type: String,
     enum: customiseOrderEnums.fondantNameTypes,
   },
+  otherType: String,
   colour: {
     type: String,
     enum: customiseOrderEnums.fondantColours,
   },
+  otherColour: String,
   details: String,
 });
 
@@ -218,10 +224,12 @@ const FondantNumberSchema = new mongoose.Schema<IFondant>({
     type: String,
     enum: customiseOrderEnums.fondantNumberTypes,
   },
+  otherType: String,
   colour: {
     type: String,
     enum: customiseOrderEnums.fondantColours,
   },
+  otherColour: String,
   details: String,
 });
 
@@ -249,10 +257,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       type: DeliverySchema,
       required: [true, 'Delivery is required'],
     },
-    pax: {
-      type: Number,
-      required: [true, 'A pax is required'],
-    },
+    pax: Number,
     specialRequest: {
       type: String,
       required: [true, 'A special request is required'],
@@ -262,6 +267,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       ref: 'Flavour',
       required: [true, 'A flavour is required'],
     },
+    otherFlavour: String,
     message: String,
     cakeMsgLocation: {
       type: String,
@@ -312,6 +318,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     price: Number,
     quantity: Number,
     size: String,
+    otherSize: String,
     orderNotes: String,
     decorationPoints: String,
     instructions: String,

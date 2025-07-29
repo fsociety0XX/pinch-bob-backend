@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable */
+/* eslint-disable camelcase */
 import mongoose, { ObjectId } from 'mongoose';
 import { Express, NextFunction, Request, Response } from 'express';
 import catchAsync from '@src/utils/catchAsync';
@@ -41,7 +40,7 @@ interface IWoodeliveryResponse {
   data?: {
     guid: string;
   };
-  json(): Promise<any>;
+  json(): Promise<unknown>;
 }
 
 interface IDeliveryData {
@@ -118,7 +117,7 @@ const generatePaymentLink = async (
     purpose: HITPAY_PAYMENT_PURPOSE[1],
     amount: customiseCake?.total,
     currency: 'SGD',
-    reference_number: customiseCake?.orderNumber,
+    reference_number: customiseCakeId,
     email: customiseCake?.user?.email || '',
     name: `${customiseCake?.user?.firstName || ''} ${
       customiseCake?.user?.lastName || ''
@@ -233,8 +232,7 @@ export const submitCustomerForm = catchAsync(
 const createDeliveryDocument = async (
   customiseCake: ICustomiseCake,
   isSelfCollect = false,
-  task?: IWoodeliveryResponse,
-  update = false
+  task?: IWoodeliveryResponse
 ) => {
   try {
     const {
@@ -243,7 +241,12 @@ const createDeliveryDocument = async (
       user,
     } = customiseCake;
 
-    const currentUser = await User.findById(user);
+    // Handle both populated and non-populated user field
+    const currentUser =
+      user && typeof user === 'object' && 'firstName' in user
+        ? user
+        : await User.findById(user);
+
     const selfCollectDetails = await DeliveryMethod.findOne({
       name: SELF_COLLECT,
       brand,
@@ -268,10 +271,10 @@ const createDeliveryDocument = async (
       customiseCakeForm: true,
       orderNumber: customiseCake.orderNumber,
       customer: {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user?.email || '',
-        phone: user?.phone || '',
+        firstName: currentUser?.firstName || '',
+        lastName: currentUser?.lastName || '',
+        email: currentUser?.email || '',
+        phone: currentUser?.phone || '',
       },
     };
 
@@ -294,11 +297,16 @@ const createDeliveryDocument = async (
     );
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('💥 Error in createDeliveryDocument:', error);
 
     // Handle duplicate key errors gracefully
-    if (error.code === 11000) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 11000
+    ) {
       const existing = await Delivery.findOne({
         customiseCakeOrder: customiseCake._id,
       });
@@ -321,7 +329,12 @@ const createWoodeliveryTask = async (
     woodeliveryTaskId,
   } = customiseCake;
 
-  const currentUser = await User.findById(user);
+  // Handle both populated and non-populated user field
+  // Handle both populated and non-populated user field
+  const currentUser =
+    user && typeof user === 'object' && 'firstName' in user
+      ? user
+      : await User.findById(user);
 
   const task: IWoodeliveryTask = {
     taskTypeId: 1,
@@ -376,40 +389,23 @@ const createDelivery = async (
 
   try {
     if (isSelfCollect) {
-      await createDeliveryDocument(
-        customiseCake,
-        isSelfCollect,
-        undefined,
-        update || !!existingDelivery
-      );
+      await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
+    } else if (!customiseCake.woodeliveryTaskId) {
+      const response = await createWoodeliveryTask(customiseCake, false);
+      const task = await response.json();
+
+      await createDeliveryDocument(customiseCake, isSelfCollect, task);
+
+      await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
+        woodeliveryTaskId: task.data.guid,
+      });
+    } else if (update) {
+      const response = await createWoodeliveryTask(customiseCake, true);
+      const task = await response.json();
+
+      await createDeliveryDocument(customiseCake, isSelfCollect, task);
     } else {
-      if (!customiseCake.woodeliveryTaskId) {
-        const response = await createWoodeliveryTask(customiseCake, false);
-        const task = await response.json();
-
-        await createDeliveryDocument(
-          customiseCake,
-          isSelfCollect,
-          task,
-          !!existingDelivery
-        );
-
-        await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
-          woodeliveryTaskId: task.data.guid,
-        });
-      } else if (update) {
-        const response = await createWoodeliveryTask(customiseCake, true);
-        const task = await response.json();
-
-        await createDeliveryDocument(customiseCake, isSelfCollect, task, true);
-      } else {
-        await createDeliveryDocument(
-          customiseCake,
-          isSelfCollect,
-          undefined,
-          true
-        );
-      }
+      await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
     }
   } catch (error) {
     console.error('💥 Error in createDelivery:', error);
@@ -531,7 +527,7 @@ export const submitAdminForm = catchAsync(
       }
 
       if (files.baseColourImg?.length) {
-        customFormData.baseColourImg = files.baseColourImg[0];
+        [customFormData.baseColourImg] = files.baseColourImg;
       }
     }
 
@@ -629,9 +625,18 @@ const sendOrderConfirmationEmail = async (
   });
 };
 
+interface IHitpaySession {
+  id: string;
+  status: string;
+  amount: number;
+  payment_methods: string[];
+  reference_number: string;
+  email: string;
+}
+
 export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
-  session: any
-) => {
+  session: IHitpaySession
+): Promise<AppError | undefined> => {
   const { id, status, amount, payment_methods, reference_number, email } =
     session;
   const customiseCakeOrderId = reference_number;
@@ -760,7 +765,7 @@ export const getAllCustomiseForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { moneyPullingOrders, orderNumber, ...otherQueries } = req.query;
 
-    const filter: any = { ...otherQueries };
+    const filter: Record<string, unknown> = { ...otherQueries };
 
     if (moneyPullingOrders) {
       filter.moneyPulling = { $exists: moneyPullingOrders };
@@ -770,7 +775,7 @@ export const getAllCustomiseForm = catchAsync(
         $in: (orderNumber as string).split(','),
       };
     }
-    req.query = filter;
+    req.query = filter as Request['query'];
     await getAll(CustomiseCake)(req, res, next);
   }
 );
