@@ -36,7 +36,7 @@ customiseCakeRouter
   .route('/:id')
   .patch(
     uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
-      { name: 'images', maxCount: 5 },
+      { name: 'images', maxCount: 10 },
       { name: 'baseColourImg', maxCount: 1 },
     ]),
     submitAdminForm
