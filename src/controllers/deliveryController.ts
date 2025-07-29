@@ -219,8 +219,29 @@ export const updateOrderStatus = catchAsync(
   }
 );
 
-const convertTo24Hour = (time: string) =>
-  moment(time, ['h:mma', 'h:mm a']).format('HH:mm');
+const convertTo24Hour = (time: string) => {
+  // Handle various time formats: "9:00am", "12:30pm", "3:00 PM", "6:30 pm", etc.
+  const formats = [
+    'h:mma', // 9:00am
+    'h:mm a', // 9:00 am
+    'h:mmA', // 9:00AM
+    'h:mm A', // 9:00 AM
+    'ha', // 9am
+    'h a', // 9 am
+    'hA', // 9AM
+    'h A', // 9 AM
+    'HH:mm', // 24-hour format (just in case)
+  ];
+
+  const parsedTime = moment(time.trim(), formats, true);
+
+  if (!parsedTime.isValid()) {
+    console.warn(`Invalid time format: ${time}`);
+    return '00:00'; // Return default time if parsing fails
+  }
+
+  return parsedTime.format('HH:mm');
+};
 
 export const getDeliveryWithCollectionTime = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -236,7 +257,9 @@ export const getDeliveryWithCollectionTime = catchAsync(
       );
     }
 
-    const [startTimeStr, endTimeStr] = (collectionTime as string).split('-');
+    const [startTimeStr, endTimeStr] = (collectionTime as string).split(
+      /\s*-\s*/
+    );
     if (!startTimeStr || !endTimeStr) {
       return next(
         new AppError(
@@ -256,10 +279,26 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const filteredDeliveries = allDeliveries.filter(({ collectionTime }) => {
-      const [storedStartTime, storedEndTime] = collectionTime
-        .split(' - ')
-        .map(convertTo24Hour);
-      return storedStartTime >= startTime && storedEndTime <= endTime;
+      if (!collectionTime) return false;
+
+      try {
+        // Handle different formats with flexible splitting
+        const timeStr = collectionTime.trim();
+        const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
+
+        if (!storedStartStr || !storedEndStr) return false;
+
+        const storedStartTime = convertTo24Hour(storedStartStr.trim());
+        const storedEndTime = convertTo24Hour(storedEndStr.trim());
+
+        return storedStartTime >= startTime && storedEndTime <= endTime;
+      } catch (error) {
+        console.warn(
+          `Error parsing collection time in getDeliveryWithCollectionTime: ${collectionTime}`,
+          error
+        );
+        return false;
+      }
     });
 
     res.json({ success: true, data: filteredDeliveries });
@@ -276,8 +315,59 @@ export const getAllDelivery = catchAsync(
     if (method) {
       req.query.method = (method as string).split(',');
     }
+
+    // Handle collection time range filtering
     if (collectionTime) {
-      req.query.collectionTime = (collectionTime as string).split(',');
+      // Remove collectionTime from query to handle it separately
+      delete req.query.collectionTime;
+
+      // Parse the requested time range
+      const [requestedStartStr, requestedEndStr] = (
+        collectionTime as string
+      ).split('-');
+      if (requestedStartStr && requestedEndStr) {
+        const requestedStartTime = convertTo24Hour(requestedStartStr.trim());
+        const requestedEndTime = convertTo24Hour(requestedEndStr.trim());
+
+        // Get all deliveries first (without collectionTime filter)
+        const allDeliveries = await Delivery.find(req.query);
+
+        // Filter deliveries where stored collection time falls within requested range
+        const filteredDeliveries = allDeliveries.filter((delivery) => {
+          if (!delivery.collectionTime) return false;
+
+          try {
+            // Handle different formats: "9:00am-12:30pm", "3:00pm - 6:30pm", "12:00 PM - 4:00 PM"
+            const timeStr = delivery.collectionTime.trim();
+            const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
+
+            if (!storedStartStr || !storedEndStr) return false;
+
+            const storedStartTime = convertTo24Hour(storedStartStr.trim());
+            const storedEndTime = convertTo24Hour(storedEndStr.trim());
+
+            // Check if stored time range falls within requested time range
+            return (
+              storedStartTime >= requestedStartTime &&
+              storedEndTime <= requestedEndTime
+            );
+          } catch (error) {
+            console.warn(
+              `Error parsing collection time: ${delivery.collectionTime}`,
+              error
+            );
+            return false;
+          }
+        });
+
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          results: filteredDeliveries.length,
+          data: {
+            data: filteredDeliveries,
+          },
+        });
+      }
     }
 
     await getAll(Delivery)(req, res, next);

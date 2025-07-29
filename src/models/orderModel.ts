@@ -79,6 +79,7 @@ export interface IProduct {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
   };
+  otherSize: string;
   pieces?: {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
@@ -87,6 +88,7 @@ export interface IProduct {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
   };
+  otherFlavour?: string;
   colour?: {
     id: mongoose.Schema.Types.ObjectId;
     name: string;
@@ -259,6 +261,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
     type: mongoose.Schema.ObjectId,
     ref: 'Size',
   },
+  otherSize: String,
   pieces: {
     type: mongoose.Schema.ObjectId,
     ref: 'Pieces',
@@ -267,6 +270,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
     type: mongoose.Schema.ObjectId,
     ref: 'Flavour',
   },
+  otherFlavour: String,
   colour: {
     type: mongoose.Schema.ObjectId,
     ref: 'Colour',

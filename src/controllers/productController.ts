@@ -56,7 +56,7 @@ async function syncProductWithMerchantCenter(
     contentLanguage: 'en',
     targetCountry: 'SG',
     channel: 'online',
-    availability: p?.available ? 'in stock' : 'out of stock',
+    availability: 'in stock',
     condition: 'new',
     price: {
       value: p.price.toString(),

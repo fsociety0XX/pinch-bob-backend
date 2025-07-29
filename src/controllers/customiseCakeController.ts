@@ -377,20 +377,28 @@ const createDelivery = async (
     delivery: { deliveryType },
   } = customiseCake;
 
-  // Check if delivery already exists and prevent duplicates
+  // Check if delivery already exists
   const existingDelivery = await Delivery.findOne({
     customiseCakeOrder: customiseCake._id,
   });
-  if (existingDelivery && !update) {
-    return existingDelivery;
-  }
 
   const isSelfCollect = deliveryType === customiseOrderEnums.deliveryType[0];
 
   try {
     if (isSelfCollect) {
+      // Self-collect: Create or update delivery document without woodelivery task
       await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
+      return;
+    }
+
+    // Regular delivery: Handle woodelivery task creation/updates
+    if (existingDelivery && customiseCake.woodeliveryTaskId && update) {
+      // Update existing woodelivery task
+      const response = await createWoodeliveryTask(customiseCake, true);
+      const task = await response.json();
+      await createDeliveryDocument(customiseCake, isSelfCollect, task);
     } else if (!customiseCake.woodeliveryTaskId) {
+      // Create new woodelivery task
       const response = await createWoodeliveryTask(customiseCake, false);
       const task = await response.json();
 
@@ -399,12 +407,8 @@ const createDelivery = async (
       await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
         woodeliveryTaskId: task.data.guid,
       });
-    } else if (update) {
-      const response = await createWoodeliveryTask(customiseCake, true);
-      const task = await response.json();
-
-      await createDeliveryDocument(customiseCake, isSelfCollect, task);
     } else {
+      // Delivery exists but no task update needed, just update delivery document
       await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
     }
   } catch (error) {
@@ -515,6 +519,40 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
   );
 };
 
+const sendOrderConfirmationEmail = async (
+  customiseCakeOrder: ICustomiseCake,
+  email: string
+) => {
+  const { subject, template, previewText } =
+    BOB_EMAILS.customiseCakeOrderConfirm;
+
+  const { orderNumber, user, quantity, price, deliveryFee, total, delivery } =
+    customiseCakeOrder;
+
+  await sendEmail({
+    email,
+    subject,
+    template,
+    context: {
+      previewText,
+      customerName: user.firstName,
+      totalAmount: total.toFixed(2),
+      orderNo: orderNumber,
+      deliveryDate: delivery.date.toDateString(),
+      collectionTime: delivery.time,
+      address: prepareCompleteAddress(customiseCakeOrder),
+      productName: 'Customised Order',
+      productQuantity: quantity.toString(),
+      productPrice: price.toString(),
+      deliveryFee: deliveryFee.toString() || 'FREE',
+      faqLink: BOB_EMAIL_DETAILS.faqLink,
+      whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
+      homeUrl: BOB_EMAIL_DETAILS.homeUrl,
+    },
+    brand: 'bob',
+  });
+};
+
 export const submitAdminForm = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
@@ -550,6 +588,10 @@ export const submitAdminForm = catchAsync(
       customFormData.delivery.address = null;
     }
 
+    // Get the original order state BEFORE updating to check if it was already paid
+    const originalOrder = await CustomiseCake.findById(req.params.id);
+    const wasAlreadyPaid = originalOrder!.paid === true;
+
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
       req.params.id,
       customFormData,
@@ -564,22 +606,59 @@ export const submitAdminForm = catchAsync(
     }
 
     await syncOrderDB(customiseCakeOrder);
+    // Check if this is a newly paid order (manual processing) vs existing paid order being updated
+    const isNewlyPaid = customiseCakeOrder.paid === true && !wasAlreadyPaid;
 
-    await generatePaymentLink(req, String(customiseCakeOrder._id), next);
+    // Handle different scenarios based on payment status and delivery changes
+    if (customiseCakeOrder.paid) {
+      // Create/update delivery for paid orders (both new and existing)
+      if (delivery || isNewlyPaid) {
+        await createDelivery(customiseCakeOrder, true);
+      }
+
+      // Handle coupon logic only for newly paid orders to prevent duplicate coupon usage
+      if (isNewlyPaid && customiseCakeOrder.coupon) {
+        const existingUser = await User.findById(customiseCakeOrder.user);
+        if (
+          existingUser?.usedCoupons &&
+          !existingUser.usedCoupons?.includes(customiseCakeOrder.coupon)
+        ) {
+          existingUser.usedCoupons!.push(customiseCakeOrder.coupon);
+          await existingUser.save();
+        }
+        await Coupon.updateOne(
+          { _id: customiseCakeOrder.coupon },
+          { $inc: { used: 1 } }
+        );
+      }
+
+      // Send confirmation email only for newly paid orders, not for updates
+      if (isNewlyPaid) {
+        await sendOrderConfirmationEmail(
+          customiseCakeOrder,
+          customiseCakeOrder.user.email
+        );
+      }
+    } else {
+      // Normal flow: Generate payment link for unpaid orders
+      await generatePaymentLink(req, String(customiseCakeOrder._id), next);
+
+      // Update delivery if delivery details changed
+      if (delivery) {
+        await createDelivery(customiseCakeOrder, true);
+      }
+    }
 
     if (user) {
       await User.findByIdAndUpdate(customiseCakeOrder.user?._id, user);
     }
 
-    // Updating delivery & woodelivery data
-    if (delivery) {
-      await createDelivery(customiseCakeOrder, true); // ✅ Added await
-      if (
-        delivery?.deliveryType === customiseOrderEnums.deliveryType[0] &&
-        delivery.address
-      ) {
-        await Address.findByIdAndDelete(delivery.address);
-      }
+    // Handle address cleanup for self-collect orders
+    if (
+      delivery?.deliveryType === customiseOrderEnums.deliveryType[0] &&
+      delivery.address
+    ) {
+      await Address.findByIdAndDelete(delivery.address);
     }
 
     res.status(StatusCode.SUCCESS).json({
@@ -590,40 +669,6 @@ export const submitAdminForm = catchAsync(
     });
   }
 );
-
-const sendOrderConfirmationEmail = async (
-  customiseCakeOrder: ICustomiseCake,
-  email: string
-) => {
-  const { subject, template, previewText } =
-    BOB_EMAILS.customiseCakeOrderConfirm;
-
-  const { orderNumber, user, quantity, price, deliveryFee, total, delivery } =
-    customiseCakeOrder;
-
-  await sendEmail({
-    email,
-    subject,
-    template,
-    context: {
-      previewText,
-      customerName: user.firstName,
-      totalAmount: total.toFixed(2),
-      orderNo: orderNumber,
-      deliveryDate: delivery.date.toDateString(),
-      collectionTime: delivery.time,
-      address: prepareCompleteAddress(customiseCakeOrder),
-      productName: 'Customised Order',
-      productQuantity: quantity.toString(),
-      productPrice: price.toString(),
-      deliveryFee: deliveryFee.toString() || 'FREE',
-      faqLink: BOB_EMAIL_DETAILS.faqLink,
-      whatsappLink: BOB_EMAIL_DETAILS.whatsappLink,
-      homeUrl: BOB_EMAIL_DETAILS.homeUrl,
-    },
-    brand: 'bob',
-  });
-};
 
 interface IHitpaySession {
   id: string;
