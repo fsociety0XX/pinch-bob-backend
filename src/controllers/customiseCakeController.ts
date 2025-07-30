@@ -452,23 +452,24 @@ const createDelivery = async (
     }
 
     // Regular delivery: Handle woodelivery task creation/updates
-    if (existingDelivery && customiseCake.woodeliveryTaskId && update) {
-      // Update existing woodelivery task
-      const response = await createWoodeliveryTask(customiseCake, true);
-      const task = await response.json();
-      await createDeliveryDocument(customiseCake, isSelfCollect, task);
-    } else if (!customiseCake.woodeliveryTaskId) {
-      // Create new woodelivery task
+    if (!customiseCake.woodeliveryTaskId) {
+      // No woodelivery task exists, create new one regardless of delivery existence
       const response = await createWoodeliveryTask(customiseCake, false);
       const task = await response.json();
 
       await createDeliveryDocument(customiseCake, isSelfCollect, task);
 
+      // Update customise cake with new task ID
       await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
         woodeliveryTaskId: task.data.guid,
       });
+    } else if (existingDelivery && update) {
+      // Woodelivery task exists and we're updating, update existing task
+      const response = await createWoodeliveryTask(customiseCake, true);
+      const task = await response.json();
+      await createDeliveryDocument(customiseCake, isSelfCollect, task);
     } else {
-      // Delivery exists but no task update needed, just update delivery document
+      // Woodelivery task exists but no update needed, just update/create delivery document
       await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
     }
   } catch (error) {
