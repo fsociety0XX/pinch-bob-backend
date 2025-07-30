@@ -159,17 +159,77 @@ export const submitCustomerForm = catchAsync(
     const { brand, delivery, user, bakes, images } = req.body;
     const { email, firstName, lastName, phone } = user;
 
-    const newUser = {
-      brand,
-      email,
-      firstName,
-      lastName,
-      phone,
-    };
-    const filter = { email, brand };
-    const update = { $set: newUser };
-    const options = { upsert: true, new: true };
-    const result = await User.findOneAndUpdate(filter, update, options);
+    // Find existing user by email and brand first
+    let result = await User.findOne({ email, brand });
+
+    if (result) {
+      // User exists, update safely without causing conflicts
+      const updateData: Partial<{
+        firstName: string;
+        lastName: string;
+        phone: string;
+      }> = {
+        firstName,
+        lastName,
+      };
+
+      // Only update phone if it doesn't conflict with another user
+      if (phone && phone !== result.phone) {
+        const existingUserWithPhone = await User.findOne({
+          phone,
+          brand,
+          _id: { $ne: result._id }, // Exclude current user
+        });
+
+        if (!existingUserWithPhone) {
+          updateData.phone = phone;
+        }
+        // If phone conflicts, keep existing phone
+      }
+
+      try {
+        result = await User.findByIdAndUpdate(result._id, updateData, {
+          new: true,
+        });
+      } catch (updateError) {
+        console.log('User update failed in submitCustomerForm:', updateError);
+        // Continue with existing user data
+      }
+    } else {
+      // User doesn't exist, create new one with conflict checks
+      const newUserData: {
+        brand: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      } = {
+        brand,
+        email,
+        firstName,
+        lastName,
+      };
+
+      // Check if phone is available before creating user
+      if (phone) {
+        const existingUserWithPhone = await User.findOne({ phone, brand });
+        if (!existingUserWithPhone) {
+          newUserData.phone = phone;
+        }
+        // If phone conflicts, create user without phone - they can update later
+      }
+
+      try {
+        result = await User.create(newUserData);
+      } catch (createError) {
+        console.log('User creation failed in submitCustomerForm:', createError);
+        // If creation fails, try to find user by email one more time
+        result = await User.findOne({ email, brand });
+        if (!result) {
+          throw createError; // Re-throw if we still can't find or create a user
+        }
+      }
+    }
 
     req.body.user = result?._id;
 

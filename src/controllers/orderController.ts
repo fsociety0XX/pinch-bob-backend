@@ -413,17 +413,66 @@ export const placeOrder = catchAsync(
         !user?.email
       ) {
         const { customer } = req.body;
-        user = await User.findByIdAndUpdate(
-          req.user?._id,
-          {
-            firstName: customer?.firstName,
-            lastName: customer?.lastName,
-            email: user?.email || customer?.email,
-            phone: user?.phone || customer?.phone,
-            userId: user?.userId || generateUniqueIds(),
-          },
-          { new: true }
-        );
+
+        // Prepare update data - only update fields that don't conflict with existing users
+        const updateData = {
+          firstName: customer?.firstName,
+          lastName: customer?.lastName,
+          userId: user?.userId || generateUniqueIds(),
+        };
+
+        // Handle email update carefully
+        if (customer?.email && customer.email !== user?.email) {
+          // Check if customer email is available (excluding current user)
+          const existingUserWithEmail = await User.findOne({
+            email: customer.email,
+            brand: req.body.brand,
+            _id: { $ne: user._id }, // Exclude current user
+          });
+
+          if (!existingUserWithEmail) {
+            updateData.email = customer.email;
+          } else {
+            // Email conflicts with another user - keep existing email
+            updateData.email = user?.email;
+          }
+        } else {
+          // No email provided or same email - keep existing
+          updateData.email = user?.email;
+        }
+
+        // Handle phone update carefully
+        if (customer?.phone && customer.phone !== user?.phone) {
+          // Check if customer phone is available (excluding current user)
+          const existingUserWithPhone = await User.findOne({
+            phone: customer.phone,
+            brand: req.body.brand,
+            _id: { $ne: user._id }, // Exclude current user
+          });
+
+          if (!existingUserWithPhone) {
+            updateData.phone = customer.phone;
+          } else {
+            // Phone conflicts with another user - keep existing phone
+            updateData.phone = user?.phone;
+          }
+        } else {
+          // No phone provided or same phone - keep existing
+          updateData.phone = user?.phone;
+        }
+
+        try {
+          user = await User.findByIdAndUpdate(req.user?._id, updateData, {
+            new: true,
+          });
+        } catch (updateError) {
+          // If update still fails, proceed with existing user data
+          console.log(
+            'User update failed during order placement:',
+            updateError
+          );
+          // user remains unchanged, order can still proceed
+        }
       }
       req.body.delivery.date = toUtcDateOnly(req.body.delivery.date);
       req.body.customer = {
