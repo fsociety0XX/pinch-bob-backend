@@ -118,6 +118,10 @@ export const createSearchQuery = (
           createdAt: 1,
           updatedAt: 1,
           driverDetails: 1,
+          customiseCakeForm: 1,
+          customiseCakeFormDetails: {
+            id: '$customiseCakeOrder',
+          },
           id: '$_id',
         },
       }
@@ -147,6 +151,9 @@ export const createSearchQuery = (
           woodeliveryTaskId: 1,
           status: 1,
           customiseCakeForm: 1,
+          customiseCakeFormDetails: {
+            id: '$customiseCakeFormDetails',
+          },
           deliveryType: 1,
           paid: 1,
           preparationStatus: 1,

@@ -119,6 +119,7 @@ export interface ICustomiseCake {
   includeCoolerBag: boolean;
   coolerBagSize: string;
   candlesAndSparklers: ICandles[];
+  isMoneyPulling: boolean;
   moneyPulling?: IMoneyPulling[];
   price: number;
   quantity: number;
@@ -311,6 +312,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     coolerBagSize: String,
     candlesAndSparklers: [CandleSchema],
+    isMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
     moneyPulling: [MoneyPullingSchema],
     deliveryFee: Number,
     discountedAmt: Number,
