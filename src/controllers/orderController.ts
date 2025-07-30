@@ -1051,6 +1051,7 @@ export const bulkCreateOrders = catchAsync(
         brand,
         delivery: { address, date },
         user: userData,
+        senderDetails,
       } = orderData;
 
       // Find or create user - check both email and phone to avoid conflicts
@@ -1128,10 +1129,10 @@ export const bulkCreateOrders = catchAsync(
       orderData.delivery.address = createdAddress._id;
       orderData.delivery.date = toUtcDateOnly(date);
       orderData.customer = {
-        firstName: user?.firstName,
-        lastName: user?.lastName,
-        email: user?.email,
-        phone: user?.phone,
+        firstName: senderDetails.name || user?.firstName,
+        lastName: senderDetails.name ? '.' : user?.lastName,
+        email: senderDetails.email || user?.email,
+        phone: senderDetails.phone || user?.phone,
       };
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
