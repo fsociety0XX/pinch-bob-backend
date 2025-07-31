@@ -1129,10 +1129,10 @@ export const bulkCreateOrders = catchAsync(
       orderData.delivery.address = createdAddress._id;
       orderData.delivery.date = toUtcDateOnly(date);
       orderData.customer = {
-        firstName: senderDetails.name || user?.firstName,
-        lastName: senderDetails.name ? '.' : user?.lastName,
-        email: senderDetails.email || user?.email,
-        phone: senderDetails.phone || user?.phone,
+        firstName: senderDetails?.name || user?.firstName,
+        lastName: senderDetails?.name ? '.' : user?.lastName,
+        email: senderDetails?.email || user?.email,
+        phone: senderDetails?.phone || user?.phone,
       };
       // Generate order number and create order
       orderData.orderNumber = generateUniqueIds();
