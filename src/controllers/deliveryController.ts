@@ -272,8 +272,48 @@ export const getDeliveryWithCollectionTime = catchAsync(
     const startTime = convertTo24Hour(startTimeStr.trim());
     const endTime = convertTo24Hour(endTimeStr.trim());
 
+    // Convert date parameters to proper date range for comparison with UTC midnight dates
+    let dateQuery = {};
+    if (gteDeliveryDate && lteDeliveryDate) {
+      // Convert to date-only for proper comparison with database UTC midnight dates
+      const startDate = new Date(gteDeliveryDate as string);
+      const endDate = new Date(lteDeliveryDate as string);
+
+      // Set start of day (00:00:00 UTC) for gte comparison
+      const startOfDay = new Date(
+        Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+          0,
+          0,
+          0,
+          0
+        )
+      );
+
+      // Set end of day (23:59:59.999 UTC) for lte comparison
+      const endOfDay = new Date(
+        Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
+
+      dateQuery = { deliveryDate: { $gte: startOfDay, $lte: endOfDay } };
+    } else {
+      dateQuery = {
+        deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+      };
+    }
+
     const allDeliveries = await Delivery.find({
-      deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+      ...dateQuery,
       brand,
     });
 
@@ -291,7 +331,11 @@ export const getDeliveryWithCollectionTime = catchAsync(
         const storedStartTime = convertTo24Hour(storedStartStr.trim());
         const storedEndTime = convertTo24Hour(storedEndStr.trim());
 
-        return storedStartTime >= startTime && storedEndTime <= endTime;
+        // Check if stored time range is completely within the requested range
+        const isWithinRange =
+          storedStartTime >= startTime && storedEndTime <= endTime;
+
+        return isWithinRange;
       } catch (error) {
         console.warn(
           `Error parsing collection time in getDeliveryWithCollectionTime: ${collectionTime}`,
