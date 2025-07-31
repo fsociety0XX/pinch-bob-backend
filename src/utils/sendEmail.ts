@@ -18,6 +18,19 @@ const sendEmail = async ({
   context,
   brand,
 }: IEmail): Promise<void> => {
+  // Validate email before attempting to send
+  if (
+    !email ||
+    typeof email !== 'string' ||
+    !email.trim() ||
+    !email.includes('@')
+  ) {
+    console.warn(`Invalid email provided to sendEmail: ${email}`);
+    throw new Error('Invalid email address provided');
+  }
+
+  const validEmail = email.trim();
+
   const transport = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: +process.env.EMAIL_PORT!,
@@ -51,7 +64,7 @@ const sendEmail = async ({
 
   const mailOptions = {
     from: process.env.EMAIL_ADDRESS,
-    to: email,
+    to: validEmail,
     subject,
     template,
     context,

@@ -1153,7 +1153,22 @@ export const bulkCreateOrders = catchAsync(
 
       // await updateProductAfterPurchase(order._id);
       await createDelivery(order._id);
-      await sendOrderConfirmationEmail(userData.email, order);
+
+      // Send confirmation email only if we have a valid email
+      const emailToSend =
+        userData.email || order.customer?.email || order.user?.email;
+      if (emailToSend && emailToSend.trim() && emailToSend.includes('@')) {
+        try {
+          await sendOrderConfirmationEmail(emailToSend.trim(), order);
+        } catch (emailError) {
+          console.error(`Failed to send email to ${emailToSend}:`, emailError);
+          // Don't fail the entire operation if email fails
+        }
+      } else {
+        console.warn(
+          `No valid email found for order ${order.orderNumber}. Skipping email.`
+        );
+      }
 
       createdOrders.push(order);
     }
