@@ -975,6 +975,25 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   } = req?.body;
   const { email, firstName, lastName, phone } = req?.body?.user;
 
+  // Sanitize product array fields to prevent casting errors
+  if (req.body.product && Array.isArray(req.body.product)) {
+    req.body.product = req.body.product.map((productItem: any) => {
+      if (productItem.size === '' || productItem.size === undefined) {
+        productItem.size = null;
+      }
+      if (productItem.flavour === '' || productItem.flavour === undefined) {
+        productItem.flavour = null;
+      }
+      if (productItem.pieces === '' || productItem.pieces === undefined) {
+        productItem.pieces = null;
+      }
+      if (productItem.colour === '' || productItem.colour === undefined) {
+        productItem.colour = null;
+      }
+      return productItem;
+    });
+  }
+
   let user;
   let customer = await User.find({ email });
   [user] = customer;
@@ -1325,12 +1344,34 @@ export const updateOrder = catchAsync(
     if (req.files?.length) {
       req.body.additionalRefImages = req.files;
     }
+
+    // Sanitize top-level size and flavour
     if (size === '' || size === undefined) {
       req.body.size = null;
     }
     if (flavour === '' || flavour === undefined) {
       req.body.flavour = null;
     }
+
+    // Sanitize nested product array fields
+    if (req.body.product && Array.isArray(req.body.product)) {
+      req.body.product = req.body.product.map((productItem: any) => {
+        if (productItem.size === '' || productItem.size === undefined) {
+          productItem.size = null;
+        }
+        if (productItem.flavour === '' || productItem.flavour === undefined) {
+          productItem.flavour = null;
+        }
+        if (productItem.pieces === '' || productItem.pieces === undefined) {
+          productItem.pieces = null;
+        }
+        if (productItem.colour === '' || productItem.colour === undefined) {
+          productItem.colour = null;
+        }
+        return productItem;
+      });
+    }
+
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
     }
