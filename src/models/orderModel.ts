@@ -298,6 +298,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   fondantName: String,
   fondantNumber: String,
   complexFonAcc: String,
+  ediblePrints: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
   fondantFigurine: String,
