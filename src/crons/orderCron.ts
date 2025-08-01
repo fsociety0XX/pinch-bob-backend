@@ -156,6 +156,7 @@ cron.schedule('0 0 * * *', async () => {
       return `<${brandDisplayName}> Your delivery from Jane Doe will arrive at ${addr} on ${date} between ${timeRange}. Details at: ${url}`;
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const smsChannelRegular = makeSmsChannel((order) => {
       const addr = formatAddress(order.delivery.address);
       const date = formatShortDate(order.delivery.date as Date);
@@ -205,17 +206,17 @@ cron.schedule('0 0 * * *', async () => {
     );
 
     // 3) Next-day SMS: regular, non–self-collect orders
-    await dispatchForOrders(
-      {
-        'delivery.date': { $gte: start, $lt: end },
-        paid: true,
-        brand,
-        corporate: false,
-        'delivery.method': { $ne: selfCollect._id },
-        status: { $ne: CANCELLED },
-      },
-      [smsChannelRegular]
-    );
+    // await dispatchForOrders(
+    //   {
+    //     'delivery.date': { $gte: start, $lt: end },
+    //     paid: true,
+    //     brand,
+    //     corporate: false,
+    //     'delivery.method': { $ne: selfCollect._id },
+    //     status: { $ne: CANCELLED },
+    //   },
+    //   [smsChannelRegular]
+    // );
 
     // 4) Next-day SMS: self-collect orders
     await dispatchForOrders(
