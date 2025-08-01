@@ -1321,9 +1321,15 @@ export const getAllOrder = catchAsync(
 
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { delivery, recipInfo } = req.body;
+    const { delivery, recipInfo, size, flavour } = req.body;
     if (req.files?.length) {
       req.body.additionalRefImages = req.files;
+    }
+    if (size === '' || size === undefined) {
+      req.body.size = null;
+    }
+    if (flavour === '' || flavour === undefined) {
+      req.body.flavour = null;
     }
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
