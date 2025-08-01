@@ -121,6 +121,8 @@ export interface ICustomiseCake {
   candlesAndSparklers: ICandles[];
   isMoneyPulling: boolean;
   moneyPulling?: IMoneyPulling[];
+  moneyPaidForMoneyPulling?: boolean;
+  moneyReceivedForMoneyPulling?: boolean;
   price: number;
   quantity: number;
   size: string;
@@ -317,6 +319,14 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       default: false,
     },
     moneyPulling: [MoneyPullingSchema],
+    moneyPaidForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
+    moneyReceivedForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
     deliveryFee: {
       type: Number,
       default: 0,
@@ -330,6 +340,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       default: 0,
     },
     quantity: {
+      type: Number,
+      default: 0,
+    },
+    total: {
       type: Number,
       default: 0,
     },
