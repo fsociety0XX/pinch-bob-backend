@@ -108,8 +108,6 @@ export interface IProduct {
   nonFondantDecor?: string;
   simpleFonAcc?: string;
   moneyPulling?: IMoneyPulling[];
-  moneyPaidForMoneyPulling?: boolean;
-  moneyReceivedForMoneyPulling?: boolean;
   address?: string; // will be used if delivery type - multi location delivery
 }
 
@@ -138,8 +136,6 @@ export interface IOtherProduct {
   fondantNumber?: string;
   complexAccessories?: string;
   moneyPulling: IMoneyPulling[];
-  moneyPaidForMoneyPulling?: boolean;
-  moneyReceivedForMoneyPulling?: boolean;
   fondantFigurine?: string;
   complexFonAcc?: string;
   nonFondantDecor?: string;
@@ -184,6 +180,7 @@ export interface IOrder {
   paid: boolean;
   corporate: boolean;
   moneyReceivedForMoneyPulling: boolean;
+  moneyPaidForMoneyPulling?: boolean;
   preparationStatus: string;
   status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
@@ -241,14 +238,6 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   fondantNumber: String,
   complexAccessories: String,
   moneyPulling: [MoneyPullingSchema],
-  moneyPaidForMoneyPulling: {
-    type: Boolean,
-    default: false,
-  },
-  moneyReceivedForMoneyPulling: {
-    type: Boolean,
-    default: false,
-  },
   fondantFigurine: String,
   complexFonAcc: String,
   nonFondantDecor: String,
@@ -317,14 +306,6 @@ const ProductSchema = new mongoose.Schema<IProduct>({
     default: false,
   },
   moneyPulling: [MoneyPullingSchema],
-  moneyPaidForMoneyPulling: {
-    type: Boolean,
-    default: false,
-  },
-  moneyReceivedForMoneyPulling: {
-    type: Boolean,
-    default: false,
-  },
   address: String,
 });
 
@@ -411,7 +392,14 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: Boolean,
       default: false,
     },
-    moneyReceivedForMoneyPulling: Boolean,
+    moneyReceivedForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
+    moneyPaidForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
     preparationStatus: {
       type: String,
       default: preparationStatusType[0],
