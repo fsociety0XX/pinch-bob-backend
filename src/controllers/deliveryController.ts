@@ -272,43 +272,22 @@ export const getDeliveryWithCollectionTime = catchAsync(
     const startTime = convertTo24Hour(startTimeStr.trim());
     const endTime = convertTo24Hour(endTimeStr.trim());
 
-    // Convert date parameters to proper date range for comparison with UTC midnight dates
+    // Use the exact date range provided, don't convert to date-only
     let dateQuery = {};
     if (gteDeliveryDate && lteDeliveryDate) {
-      // Convert to date-only for proper comparison with database UTC midnight dates
-      const startDate = new Date(gteDeliveryDate as string);
-      const endDate = new Date(lteDeliveryDate as string);
-
-      // Set start of day (00:00:00 UTC) for gte comparison
-      const startOfDay = new Date(
-        Date.UTC(
-          startDate.getUTCFullYear(),
-          startDate.getUTCMonth(),
-          startDate.getUTCDate(),
-          0,
-          0,
-          0,
-          0
-        )
-      );
-
-      // Set end of day (23:59:59.999 UTC) for lte comparison
-      const endOfDay = new Date(
-        Date.UTC(
-          endDate.getUTCFullYear(),
-          endDate.getUTCMonth(),
-          endDate.getUTCDate(),
-          23,
-          59,
-          59,
-          999
-        )
-      );
-
-      dateQuery = { deliveryDate: { $gte: startOfDay, $lte: endOfDay } };
-    } else {
       dateQuery = {
-        deliveryDate: { $gte: gteDeliveryDate, $lte: lteDeliveryDate },
+        deliveryDate: {
+          $gte: new Date(gteDeliveryDate as string),
+          $lte: new Date(lteDeliveryDate as string),
+        },
+      };
+    } else if (gteDeliveryDate) {
+      dateQuery = {
+        deliveryDate: { $gte: new Date(gteDeliveryDate as string) },
+      };
+    } else if (lteDeliveryDate) {
+      dateQuery = {
+        deliveryDate: { $lte: new Date(lteDeliveryDate as string) },
       };
     }
 
@@ -351,67 +330,13 @@ export const getDeliveryWithCollectionTime = catchAsync(
 
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { driverId, method, collectionTime } = req.query;
+    const { driverId, method } = req.query;
     if (driverId) {
       req.query['driverDetails.id'] = (driverId as string).split(',');
       delete req.query.driverId;
     }
     if (method) {
       req.query.method = (method as string).split(',');
-    }
-
-    // Handle collection time range filtering
-    if (collectionTime) {
-      // Remove collectionTime from query to handle it separately
-      delete req.query.collectionTime;
-
-      // Parse the requested time range
-      const [requestedStartStr, requestedEndStr] = (
-        collectionTime as string
-      ).split('-');
-      if (requestedStartStr && requestedEndStr) {
-        const requestedStartTime = convertTo24Hour(requestedStartStr.trim());
-        const requestedEndTime = convertTo24Hour(requestedEndStr.trim());
-
-        // Get all deliveries first (without collectionTime filter)
-        const allDeliveries = await Delivery.find(req.query);
-
-        // Filter deliveries where stored collection time falls within requested range
-        const filteredDeliveries = allDeliveries.filter((delivery) => {
-          if (!delivery.collectionTime) return false;
-
-          try {
-            // Handle different formats: "9:00am-12:30pm", "3:00pm - 6:30pm", "12:00 PM - 4:00 PM"
-            const timeStr = delivery.collectionTime.trim();
-            const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
-
-            if (!storedStartStr || !storedEndStr) return false;
-
-            const storedStartTime = convertTo24Hour(storedStartStr.trim());
-            const storedEndTime = convertTo24Hour(storedEndStr.trim());
-
-            // Check if stored time range falls within requested time range
-            return (
-              storedStartTime >= requestedStartTime &&
-              storedEndTime <= requestedEndTime
-            );
-          } catch (error) {
-            console.warn(
-              `Error parsing collection time: ${delivery.collectionTime}`,
-              error
-            );
-            return false;
-          }
-        });
-
-        return res.status(StatusCode.SUCCESS).json({
-          status: 'success',
-          results: filteredDeliveries.length,
-          data: {
-            data: filteredDeliveries,
-          },
-        });
-      }
     }
 
     await getAll(Delivery)(req, res, next);
