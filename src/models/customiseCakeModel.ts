@@ -327,11 +327,26 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       type: Boolean,
       default: false,
     },
-    deliveryFee: Number,
-    discountedAmt: Number,
-    total: Number,
-    price: Number,
-    quantity: Number,
+    deliveryFee: {
+      type: Number,
+      default: 0,
+    },
+    discountedAmt: {
+      type: Number,
+      default: 0,
+    },
+    price: {
+      type: Number,
+      default: 0,
+    },
+    quantity: {
+      type: Number,
+      default: 0,
+    },
+    total: {
+      type: Number,
+      default: 0,
+    },
     size: String,
     otherSize: String,
     orderNotes: String,
