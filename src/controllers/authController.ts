@@ -53,10 +53,12 @@ export interface IRequestWithUser extends Request {
   user?: IUser;
 }
 
-const generateToken = (id: string) =>
-  jwt.sign({ id }, process.env.JWT_SCERET, {
-    expiresIn: process.env.JWT_EXPIRES_IN as string,
-  });
+const generateToken = (id: string): string => {
+  const secret = process.env.JWT_SCERET as string;
+  const expiresIn = process.env.JWT_EXPIRES_IN as string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (jwt.sign as any)({ id }, secret, { expiresIn });
+};
 
 const createAndSendToken = (
   user: IUser,
