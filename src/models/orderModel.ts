@@ -102,7 +102,14 @@ export interface IProduct {
   fondantName?: string;
   fondantNumber?: string;
   wantMoneyPulling?: boolean;
+  ediblePrints?: string;
+  fondantFigurine?: string;
+  complexFonAcc?: string;
+  nonFondantDecor?: string;
+  simpleFonAcc?: string;
   moneyPulling?: IMoneyPulling[];
+  moneyPaidForMoneyPulling?: boolean;
+  moneyReceivedForMoneyPulling?: boolean;
   address?: string; // will be used if delivery type - multi location delivery
 }
 
@@ -131,6 +138,12 @@ export interface IOtherProduct {
   fondantNumber?: string;
   complexAccessories?: string;
   moneyPulling: IMoneyPulling[];
+  moneyPaidForMoneyPulling?: boolean;
+  moneyReceivedForMoneyPulling?: boolean;
+  fondantFigurine?: string;
+  complexFonAcc?: string;
+  nonFondantDecor?: string;
+  simpleFonAcc?: string;
 }
 
 export interface ICustomFormProduct {
@@ -228,6 +241,18 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   fondantNumber: String,
   complexAccessories: String,
   moneyPulling: [MoneyPullingSchema],
+  moneyPaidForMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
+  moneyReceivedForMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
+  fondantFigurine: String,
+  complexFonAcc: String,
+  nonFondantDecor: String,
+  simpleFonAcc: String,
 });
 
 const CustomFormProductSchema = new mongoose.Schema<ICustomFormProduct>({
@@ -283,11 +308,23 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   specialInstructions: String,
   fondantName: String,
   fondantNumber: String,
+  complexFonAcc: String,
+  nonFondantDecor: String,
+  simpleFonAcc: String,
+  fondantFigurine: String,
   wantMoneyPulling: {
     type: Boolean,
     default: false,
   },
   moneyPulling: [MoneyPullingSchema],
+  moneyPaidForMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
+  moneyReceivedForMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
   address: String,
 });
 
