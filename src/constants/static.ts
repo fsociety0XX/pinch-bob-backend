@@ -33,7 +33,7 @@ export const SELF_COLLECT_ADDRESS =
 
 export const BOB_EMAIL_DETAILS = {
   faqLink: 'https://bobthebakerboy.com/faq',
-  whatsappLink: 'https://wa.me/6583806722',
+  whatsappLink: 'https://wa.me/6588623327',
   homeUrl: 'https://bobthebakerboy.com',
   welcomeCouponCode: 'HELLOFFD',
   orderNow: 'https://bobthebakerboy.com/order',

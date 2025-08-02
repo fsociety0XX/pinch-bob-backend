@@ -37,7 +37,7 @@ export const couponApplicableEnum = [
   'Supercategory',
 ];
 export const customiseOrderEnums = {
-  deliveryType: ['Self-collect', 'Delivery'],
+  deliveryType: ['Self-collect', 'Delivery', 'TBC'],
   cakeMsgLocation: [
     'Message on cake',
     'Message on cake board',
