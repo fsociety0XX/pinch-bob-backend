@@ -263,7 +263,9 @@ export const submitCustomerForm = catchAsync(
         const createdAddress = await Address.create(newAddress);
         deliveryObj.address = createdAddress._id;
       }
-      deliveryObj.date = toUtcDateOnly(deliveryObj.date);
+      if (deliveryObj.date) {
+        deliveryObj.date = toUtcDateOnly(deliveryObj.date);
+      }
       req.body.delivery = deliveryObj;
     }
     if (bakes) {
