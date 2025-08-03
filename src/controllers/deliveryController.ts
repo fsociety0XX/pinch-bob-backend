@@ -182,8 +182,8 @@ export const updateOrderStatus = catchAsync(
     await Order.findByIdAndUpdate(order?._id, {
       status: WOODELIVERY_STATUS[req.body.StatusId],
       driverDetails: {
-        id: req.body.assignedToDriverUserId,
-        name: req.body.driverName,
+        id: req.body.AssignedToDriverUserId,
+        name: req.body.DriverName,
       },
     });
 
