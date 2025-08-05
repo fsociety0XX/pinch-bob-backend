@@ -7,7 +7,7 @@ import {
   GET_WOODELIVERY_DRIVERS,
   WOODELIVERY_TASK,
 } from '@src/constants/routeConstants';
-import { brandEnum, StatusCode } from '@src/types/customTypes';
+import { brandEnum, CANCELLED, StatusCode } from '@src/types/customTypes';
 import catchAsync from '@src/utils/catchAsync';
 import { fetchAPI } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -191,7 +191,9 @@ export const updateOrderStatus = catchAsync(
         if (order.corporate) {
           body = BOB_SMS_CONTENT.corporateDelivered;
         } else {
-          body = BOB_SMS_CONTENT.regularDelivered(order.user.firstName || '');
+          body = BOB_SMS_CONTENT.regularDelivered(
+            order.recipInfo?.name || order.user.firstName || ''
+          );
         }
         const phone =
           order.recipInfo?.contact ||
@@ -243,101 +245,126 @@ const convertTo24Hour = (time: string) => {
   return parsedTime.format('HH:mm');
 };
 
-export const getDeliveryWithCollectionTime = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { collectionTime, gteDeliveryDate, lteDeliveryDate, brand } =
-      req.query;
-
-    if (!collectionTime) {
-      return next(
-        new AppError(
-          DELIVERY_COLLECTION_TIME.collectionTime,
-          StatusCode.BAD_REQUEST
-        )
-      );
-    }
-
-    const [startTimeStr, endTimeStr] = (collectionTime as string).split(
-      /\s*-\s*/
-    );
-    if (!startTimeStr || !endTimeStr) {
-      return next(
-        new AppError(
-          DELIVERY_COLLECTION_TIME.timeFormat,
-          StatusCode.BAD_REQUEST
-        )
-      );
-    }
-
-    const startTime = convertTo24Hour(startTimeStr.trim());
-    const endTime = convertTo24Hour(endTimeStr.trim());
-
-    // Use the exact date range provided, don't convert to date-only
-    let dateQuery = {};
-    if (gteDeliveryDate && lteDeliveryDate) {
-      dateQuery = {
-        deliveryDate: {
-          $gte: new Date(gteDeliveryDate as string),
-          $lte: new Date(lteDeliveryDate as string),
-        },
-      };
-    } else if (gteDeliveryDate) {
-      dateQuery = {
-        deliveryDate: { $gte: new Date(gteDeliveryDate as string) },
-      };
-    } else if (lteDeliveryDate) {
-      dateQuery = {
-        deliveryDate: { $lte: new Date(lteDeliveryDate as string) },
-      };
-    }
-
-    const allDeliveries = await Delivery.find({
-      ...dateQuery,
-      brand,
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-shadow
-    const filteredDeliveries = allDeliveries.filter(({ collectionTime }) => {
-      if (!collectionTime) return false;
-
-      try {
-        // Handle different formats with flexible splitting
-        const timeStr = collectionTime.trim();
-        const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
-
-        if (!storedStartStr || !storedEndStr) return false;
-
-        const storedStartTime = convertTo24Hour(storedStartStr.trim());
-        const storedEndTime = convertTo24Hour(storedEndStr.trim());
-
-        // Check if stored time range is completely within the requested range
-        const isWithinRange =
-          storedStartTime >= startTime && storedEndTime <= endTime;
-
-        return isWithinRange;
-      } catch (error) {
-        console.warn(
-          `Error parsing collection time in getDeliveryWithCollectionTime: ${collectionTime}`,
-          error
-        );
-        return false;
-      }
-    });
-
-    res.json({ success: true, data: filteredDeliveries });
-  }
-);
-
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { driverId, method } = req.query;
+    const {
+      driverId,
+      method,
+      collectionTime,
+      gteDeliveryDate,
+      lteDeliveryDate,
+      brand,
+    } = req.query;
+
+    // Handle driverId filter
     if (driverId) {
       req.query['driverDetails.id'] = (driverId as string).split(',');
       delete req.query.driverId;
     }
+
+    // Handle method filter
     if (method) {
       req.query.method = (method as string).split(',');
     }
+
+    // Handle collection time filtering
+    if (collectionTime) {
+      // Validate collection time format
+      const [startTimeStr, endTimeStr] = (collectionTime as string).split(
+        /\s*-\s*/
+      );
+      if (!startTimeStr || !endTimeStr) {
+        return next(
+          new AppError(
+            DELIVERY_COLLECTION_TIME.timeFormat,
+            StatusCode.BAD_REQUEST
+          )
+        );
+      }
+
+      const startTime = convertTo24Hour(startTimeStr.trim());
+      const endTime = convertTo24Hour(endTimeStr.trim());
+
+      // Build date query for collection time filtering
+      let dateQuery = {};
+      if (gteDeliveryDate && lteDeliveryDate) {
+        dateQuery = {
+          deliveryDate: {
+            $gte: new Date(gteDeliveryDate as string),
+            $lte: new Date(lteDeliveryDate as string),
+          },
+        };
+      } else if (gteDeliveryDate) {
+        dateQuery = {
+          deliveryDate: { $gte: new Date(gteDeliveryDate as string) },
+        };
+      } else if (lteDeliveryDate) {
+        dateQuery = {
+          deliveryDate: { $lte: new Date(lteDeliveryDate as string) },
+        };
+      }
+
+      // Build the complete query including method filter
+      const query = {
+        ...dateQuery,
+        brand,
+        status: { $ne: CANCELLED }, // Exclude cancelled deliveries
+      };
+
+      // Add method filter to the database query if provided
+      if (method) {
+        query.method = { $in: (method as string).split(',') };
+      }
+
+      // Add driverId filter to the database query if provided
+      if (driverId) {
+        query['driverDetails.id'] = { $in: (driverId as string).split(',') };
+      }
+
+      // Get all deliveries with basic filters
+      const allDeliveries = await Delivery.find(query);
+
+      // Filter by collection time
+      // eslint-disable-next-line @typescript-eslint/no-shadow
+      const filteredDeliveries = allDeliveries.filter(({ collectionTime }) => {
+        if (!collectionTime) return false;
+
+        try {
+          // Handle different formats with flexible splitting
+          const timeStr = collectionTime.trim();
+          const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
+
+          if (!storedStartStr || !storedEndStr) return false;
+
+          const storedStartTime = convertTo24Hour(storedStartStr.trim());
+          const storedEndTime = convertTo24Hour(storedEndStr.trim());
+
+          // Check if stored time range is completely within the requested range
+          const isWithinRange =
+            storedStartTime >= startTime && storedEndTime <= endTime;
+
+          return isWithinRange;
+        } catch (error) {
+          console.warn(
+            `Error parsing collection time in getAllDelivery: ${collectionTime}`,
+            error
+          );
+          return false;
+        }
+      });
+
+      // Return filtered results in the same format as getDeliveryWithCollectionTime
+      return res.json({ success: true, data: filteredDeliveries });
+    }
+
+    // If no collection time filter, use standard getAll functionality
+    // Filter out cancelled deliveries
+    req.query.status = { $ne: CANCELLED };
+
+    // Remove collection time related params from query to avoid conflicts
+    delete req.query.collectionTime;
+    delete req.query.gteDeliveryDate;
+    delete req.query.lteDeliveryDate;
 
     await getAll(Delivery)(req, res, next);
   }
