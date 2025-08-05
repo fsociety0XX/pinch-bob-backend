@@ -256,6 +256,18 @@ export const getAllDelivery = catchAsync(
       brand,
     } = req.query;
 
+    // Build date query for collection time filtering
+    if (gteDeliveryDate && lteDeliveryDate) {
+      req.query.deliveryDate = {
+        gte: new Date(gteDeliveryDate as string),
+        lte: new Date(lteDeliveryDate as string),
+      };
+    } else if (gteDeliveryDate) {
+      req.query.deliveryDate = { gte: new Date(gteDeliveryDate as string) };
+    } else if (lteDeliveryDate) {
+      req.query.deliveryDate = { lte: new Date(lteDeliveryDate as string) };
+    }
+
     // Handle driverId filter
     if (driverId) {
       req.query['driverDetails.id'] = (driverId as string).split(',');
