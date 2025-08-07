@@ -320,8 +320,14 @@ export const getAllDelivery = catchAsync(
       const query = {
         ...dateQuery,
         brand,
-        status: { $ne: CANCELLED }, // Exclude cancelled deliveries
       };
+
+      // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
+      if (req.query.status) {
+        query.status = req.query.status;
+      } else {
+        query.status = { $ne: CANCELLED }; // Exclude cancelled deliveries only when no status specified
+      }
 
       // Add method filter to the database query if provided
       if (method) {
@@ -370,8 +376,10 @@ export const getAllDelivery = catchAsync(
     }
 
     // If no collection time filter, use standard getAll functionality
-    // Filter out cancelled deliveries
-    req.query.status = { $ne: CANCELLED };
+    // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
+    if (!req.query.status) {
+      req.query.status = { $ne: CANCELLED }; // Only exclude cancelled when no status specified
+    }
 
     // Remove collection time related params from query to avoid conflicts
     delete req.query.collectionTime;
