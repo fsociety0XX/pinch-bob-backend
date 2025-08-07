@@ -413,11 +413,18 @@ const createWoodeliveryTask = async (
   };
 
   if (address) {
-    task.destinationAddress = `${address.unitNumber || ''} ${
-      address.address1
-    }, ${address.address2 || ''}, ${address.company || ''}, ${
-      address.country
-    }, ${address.postalCode}`;
+    // Build address parts array and filter out empty values
+    const addressParts = [
+      address.unitNumber?.trim(),
+      address.address1?.trim(),
+      address.address2?.trim(),
+      address.company?.trim(),
+      address.city?.trim(),
+      address.country?.trim(),
+      address.postalCode?.trim(),
+    ].filter((part) => part && part !== ''); // Remove empty/undefined parts
+
+    task.destinationAddress = addressParts.join(', ');
     task.requesterName = `${address.firstName} ${address.lastName}`;
     task.requesterPhone = String(address.phone);
   }
@@ -426,9 +433,29 @@ const createWoodeliveryTask = async (
     task.taskGuid = woodeliveryTaskId;
   }
 
-  return update
-    ? fetchAPI(`${WOODELIVERY_TASK}/${woodeliveryTaskId}`, 'PUT', task)
-    : fetchAPI(WOODELIVERY_TASK, 'POST', task);
+  try {
+    const response = update
+      ? await fetchAPI(`${WOODELIVERY_TASK}/${woodeliveryTaskId}`, 'PUT', task)
+      : await fetchAPI(WOODELIVERY_TASK, 'POST', task);
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Woodelivery API Error:', responseData);
+      throw new Error(`Woodelivery API Error: ${JSON.stringify(responseData)}`);
+    }
+
+    // Return the parsed data instead of the response
+    return {
+      ok: response.ok,
+      status: response.status,
+      data: responseData,
+      json: () => Promise.resolve(responseData), // For backward compatibility
+    };
+  } catch (error) {
+    console.error('💥 Woodelivery API Call Failed:', error);
+    throw error;
+  }
 };
 
 const createDelivery = async (
