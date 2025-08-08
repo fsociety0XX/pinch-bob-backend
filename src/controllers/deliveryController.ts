@@ -31,6 +31,25 @@ import AppError from '@src/utils/appError';
 import sendSms from '@src/utils/sendTwilioOtp';
 import logActivity, { ActivityActions } from '@src/utils/activityLogger';
 
+interface DeliveryQuery {
+  deliveryDate?: {
+    $gte?: Date;
+    $lte?: Date;
+  };
+  brand?: string;
+  status?: string | { $ne: string } | { $exists: boolean };
+  method?: { $in: string[] };
+  'driverDetails.id'?: { $in: string[] };
+}
+
+interface ParsedTimeRange {
+  original: string;
+  startTime: string;
+  endTime: string;
+  startTimeStr: string;
+  endTimeStr: string;
+}
+
 export const getAllDrivers = catchAsync(async (req: Request, res: Response) => {
   const response = await fetchAPI(GET_WOODELIVERY_DRIVERS, 'GET');
   const drivers = await response.json();
@@ -238,11 +257,208 @@ const convertTo24Hour = (time: string) => {
   const parsedTime = moment(time.trim(), formats, true);
 
   if (!parsedTime.isValid()) {
-    console.warn(`Invalid time format: ${time}`);
+    console.warn(`❌ Invalid time format: ${time}`);
     return '00:00'; // Return default time if parsing fails
   }
 
   return parsedTime.format('HH:mm');
+};
+
+const parseCollectionTimeRanges = (collectionTime: string | string[]) => {
+  // collectionTime can be:
+  // 1. Array: ["9:00am-1:00pm", "3:00pm-6:30pm"]
+  // 2. Comma-separated string: "9:00am-1:00pm,3:00pm-6:30pm"
+  // 3. Single string: "9:00am-1:00pm"
+  let timeRanges;
+  if (Array.isArray(collectionTime)) {
+    timeRanges = collectionTime;
+  } else {
+    // Split by comma and trim whitespace
+    timeRanges = (collectionTime as string)
+      .split(',')
+      .map((range) => range.trim())
+      .filter((range) => range.length > 0);
+  }
+
+  // Validate and parse each time range
+  return timeRanges.map((timeRange) => {
+    const [startTimeStr, endTimeStr] = (timeRange as string).split(/\s*-\s*/);
+    if (!startTimeStr || !endTimeStr) {
+      throw new Error('Invalid time format');
+    }
+
+    const startTime = convertTo24Hour(startTimeStr.trim());
+    const endTime = convertTo24Hour(endTimeStr.trim());
+
+    return {
+      original: timeRange as string,
+      startTime,
+      endTime,
+      startTimeStr: startTimeStr.trim(),
+      endTimeStr: endTimeStr.trim(),
+    };
+  });
+};
+
+const checkTimeRangeMatch = (
+  orderCollectionTime: string,
+  parsedTimeRanges: ParsedTimeRange[]
+) => {
+  if (!orderCollectionTime) return false;
+
+  try {
+    // Parse the stored collection time
+    const timeStr = orderCollectionTime.trim();
+    const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
+
+    if (!storedStartStr || !storedEndStr) return false;
+
+    const storedStartTime = convertTo24Hour(storedStartStr.trim());
+    const storedEndTime = convertTo24Hour(storedEndStr.trim());
+
+    // Check against each requested time range
+    return parsedTimeRanges.some((timeRange) => {
+      const { startTime, endTime, original } = timeRange;
+
+      // Special case: if the requested range is exactly "9:00am-6:30pm", only show exact matches
+      const normalizedOriginal = original.toLowerCase().replace(/\s+/g, '');
+      const isNineAmToSixThirtyPm = normalizedOriginal === '9:00am-6:30pm';
+
+      if (isNineAmToSixThirtyPm) {
+        const normalizedStored = timeStr.toLowerCase().replace(/\s+/g, '');
+        const exactMatch = normalizedOriginal === normalizedStored;
+        return exactMatch;
+      }
+
+      // Special logic for ranges ending at 6:30pm (except 9am-6:30pm)
+      if (endTime === '18:30') {
+        const hasOverlap =
+          storedStartTime < endTime && storedEndTime > startTime;
+        const endTimeAfterFourPm = storedEndTime > '16:00';
+        const result = hasOverlap && endTimeAfterFourPm;
+
+        return result;
+      }
+
+      // Standard overlap logic for all other ranges
+      // The stored delivery time must be completely within the requested time range
+      const isCompletelyWithin =
+        storedStartTime >= startTime && storedEndTime <= endTime;
+
+      return isCompletelyWithin;
+    });
+  } catch (error) {
+    console.warn(
+      `Error parsing collection time in checkTimeRangeMatch: ${orderCollectionTime}`,
+      error
+    );
+    return false;
+  }
+};
+
+const filterDeliveriesByCollectionTime = async (
+  query: DeliveryQuery,
+  collectionTime: string | string[]
+) => {
+  // Parse and validate time ranges
+  const parsedTimeRanges = parseCollectionTimeRanges(collectionTime);
+
+  // Get all deliveries with basic filters
+  const allDeliveries = await Delivery.find(query);
+
+  // Filter by collection time with optimized logic
+  const matchingDeliveryIds = new Set();
+
+  const filteredDeliveries = allDeliveries.filter(
+    ({ collectionTime: orderCollectionTime, _id }) => {
+      if (matchingDeliveryIds.has(_id.toString())) return false; // Avoid duplicates
+
+      const matches = checkTimeRangeMatch(
+        orderCollectionTime,
+        parsedTimeRanges
+      );
+
+      if (matches) {
+        matchingDeliveryIds.add(_id.toString());
+        return true;
+      }
+
+      return false;
+    }
+  );
+
+  return filteredDeliveries;
+};
+
+const buildDeliveryQuery = (req: Request): DeliveryQuery => {
+  const {
+    driverId,
+    method,
+    gteDeliveryDate,
+    lteDeliveryDate,
+    brand,
+    status: requestedStatus,
+  } = req.query;
+
+  // Build date query
+  let dateQuery = {};
+  if (gteDeliveryDate && lteDeliveryDate) {
+    dateQuery = {
+      deliveryDate: {
+        $gte: new Date(gteDeliveryDate as string),
+        $lte: new Date(lteDeliveryDate as string),
+      },
+    };
+  } else if (gteDeliveryDate) {
+    dateQuery = {
+      deliveryDate: { $gte: new Date(gteDeliveryDate as string) },
+    };
+  } else if (lteDeliveryDate) {
+    dateQuery = {
+      deliveryDate: { $lte: new Date(lteDeliveryDate as string) },
+    };
+  }
+
+  // Build the complete query
+  const query = {
+    ...dateQuery,
+    brand,
+  };
+
+  // Add status filter - always exclude cancelled unless specifically requested
+  if (requestedStatus && requestedStatus !== CANCELLED) {
+    // Frontend wants a specific status (and it's not cancelled)
+    query.status = requestedStatus;
+  } else if (requestedStatus === CANCELLED) {
+    // Frontend specifically wants cancelled status, but we never show those
+    // Set impossible condition to return empty results
+    query.status = { $exists: false };
+  } else {
+    // No specific status requested, exclude cancelled
+    query.status = { $ne: CANCELLED };
+  }
+
+  // Add method filter
+  if (method) {
+    // Handle both string and array cases
+    if (Array.isArray(method)) {
+      query.method = { $in: method };
+    } else {
+      query.method = { $in: (method as string).split(',') };
+    }
+  }
+
+  // Add driverId filter
+  if (driverId) {
+    // Handle both string and array cases
+    if (Array.isArray(driverId)) {
+      query['driverDetails.id'] = { $in: driverId };
+    } else {
+      query['driverDetails.id'] = { $in: (driverId as string).split(',') };
+    }
+  }
+
+  return query;
 };
 
 export const getAllDelivery = catchAsync(
@@ -253,7 +469,6 @@ export const getAllDelivery = catchAsync(
       collectionTime,
       gteDeliveryDate,
       lteDeliveryDate,
-      brand,
     } = req.query;
 
     // Build date query for collection time filtering
@@ -281,44 +496,20 @@ export const getAllDelivery = catchAsync(
 
     // Handle collection time filtering
     if (collectionTime) {
-      // collectionTime can be:
-      // 1. Array: ["9:00am-1:00pm", "3:00pm-6:30pm"]
-      // 2. Comma-separated string: "9:00am-1:00pm,3:00pm-6:30pm"
-      // 3. Single string: "9:00am-1:00pm"
-      let timeRanges;
-      if (Array.isArray(collectionTime)) {
-        timeRanges = collectionTime;
-      } else {
-        // Split by comma and trim whitespace
-        timeRanges = (collectionTime as string)
-          .split(',')
-          .map((range) => range.trim())
-          .filter((range) => range.length > 0);
-      }
-
-      // Validate each time range format
-      let parsedTimeRanges;
       try {
-        parsedTimeRanges = timeRanges.map((timeRange) => {
-          const [startTimeStr, endTimeStr] = (timeRange as string).split(
-            /\s*-\s*/
-          );
-          if (!startTimeStr || !endTimeStr) {
-            throw new Error('Invalid time format');
-          }
+        // Build query using helper function
+        const query = buildDeliveryQuery(req);
 
-          const startTime = convertTo24Hour(startTimeStr.trim());
-          const endTime = convertTo24Hour(endTimeStr.trim());
+        // Filter deliveries by collection time using helper function
+        const filteredDeliveries = await filterDeliveriesByCollectionTime(
+          query,
+          collectionTime
+        );
 
-          return {
-            original: timeRange as string,
-            startTime,
-            endTime,
-            startTimeStr: startTimeStr.trim(),
-            endTimeStr: endTimeStr.trim(),
-          };
-        });
+        // Return filtered results
+        return res.json({ success: true, data: filteredDeliveries });
       } catch (error) {
+        console.error('❌ Error in collection time filtering:', error);
         return next(
           new AppError(
             DELIVERY_COLLECTION_TIME.timeFormat,
@@ -326,144 +517,12 @@ export const getAllDelivery = catchAsync(
           )
         );
       }
-
-      // Build date query for collection time filtering
-      let dateQuery = {};
-      if (gteDeliveryDate && lteDeliveryDate) {
-        dateQuery = {
-          deliveryDate: {
-            $gte: new Date(gteDeliveryDate as string),
-            $lte: new Date(lteDeliveryDate as string),
-          },
-        };
-      } else if (gteDeliveryDate) {
-        dateQuery = {
-          deliveryDate: { $gte: new Date(gteDeliveryDate as string) },
-        };
-      } else if (lteDeliveryDate) {
-        dateQuery = {
-          deliveryDate: { $lte: new Date(lteDeliveryDate as string) },
-        };
-      }
-
-      // Build the complete query including method filter
-      const query = {
-        ...dateQuery,
-        brand,
-      };
-
-      // Add status filter - always exclude cancelled
-      const requestedStatus = req.query.status;
-
-      if (requestedStatus && requestedStatus !== CANCELLED) {
-        // Frontend wants a specific status (and it's not cancelled)
-        query.status = requestedStatus;
-      } else if (requestedStatus === CANCELLED) {
-        // Frontend specifically wants cancelled status, but we never show those
-        // Set impossible condition to return empty results
-        query.status = { $exists: false };
-      } else {
-        // No specific status requested, exclude cancelled
-        query.status = { $ne: CANCELLED };
-      }
-
-      // Add method filter to the database query if provided
-      if (method) {
-        query.method = { $in: (method as string).split(',') };
-      }
-
-      // Add driverId filter to the database query if provided
-      if (driverId) {
-        query['driverDetails.id'] = { $in: (driverId as string).split(',') };
-      }
-
-      // Get all deliveries with basic filters
-      const allDeliveries = await Delivery.find(query);
-
-      // Filter by collection time with new logic
-      const matchingDeliveryIds = new Set();
-
-      // eslint-disable-next-line @typescript-eslint/no-shadow
-      const filteredDeliveries = allDeliveries.filter(
-        ({ collectionTime: orderCollectionTime, _id }) => {
-          if (!orderCollectionTime) return false;
-          if (matchingDeliveryIds.has(_id.toString())) return false; // Avoid duplicates
-
-          try {
-            // Parse the stored collection time
-            const timeStr = orderCollectionTime.trim();
-            const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
-
-            if (!storedStartStr || !storedEndStr) return false;
-
-            const storedStartTime = convertTo24Hour(storedStartStr.trim());
-            const storedEndTime = convertTo24Hour(storedEndStr.trim());
-
-            // Check against each requested time range
-            const matchesAnyRange = parsedTimeRanges.some((timeRange) => {
-              const { startTime, endTime, original } = timeRange;
-
-              // Special case: if the requested range is exactly "9:00am-6:30pm", only show exact matches
-              const normalizedOriginal = original
-                .toLowerCase()
-                .replace(/\s+/g, '');
-              const isNineAmToSixThirtyPm =
-                normalizedOriginal === '9:00am-6:30pm';
-
-              if (isNineAmToSixThirtyPm) {
-                const normalizedStored = timeStr
-                  .toLowerCase()
-                  .replace(/\s+/g, '');
-
-                return normalizedOriginal === normalizedStored;
-              }
-
-              // Normal overlap logic for all other ranges
-              // Special logic for ranges ending at 6:30pm (except 9am-6:30pm)
-              if (endTime === '18:30') {
-                // For 6:30pm ranges, show deliveries with end time > 4:00pm (16:00)
-                const hasOverlap =
-                  storedStartTime < endTime && storedEndTime > startTime;
-                const endTimeAfterFourPm = storedEndTime > '16:00';
-
-                return hasOverlap && endTimeAfterFourPm;
-              }
-
-              // Standard overlap logic for all other ranges
-              // 1. Check if there's any intersection between time ranges
-              // 2. Stored end time must be <= requested end time FOR THIS SPECIFIC RANGE
-              const hasOverlap =
-                storedStartTime < endTime && storedEndTime > startTime;
-              const endTimeWithinLimit = storedEndTime <= endTime;
-
-              // Both conditions must be true for this specific time range
-              return hasOverlap && endTimeWithinLimit;
-            });
-
-            if (matchesAnyRange) {
-              matchingDeliveryIds.add(_id.toString());
-              return true;
-            }
-
-            return false;
-          } catch (error) {
-            console.warn(
-              `Error parsing collection time in getAllDelivery: ${orderCollectionTime}`,
-              error
-            );
-            return false;
-          }
-        }
-      );
-
-      // Return filtered results in the same format as getDeliveryWithCollectionTime
-      return res.json({ success: true, data: filteredDeliveries });
     }
 
     // If no collection time filter, use standard getAll functionality
     // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
     if (!req.query.status) {
-      req.query.status = { $ne: CANCELLED }; // Only exclude cancelled when no status specified
+      req.query.status = { $ne: CANCELLED };
     }
 
     // Remove collection time related params from query to avoid conflicts
