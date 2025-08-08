@@ -281,11 +281,44 @@ export const getAllDelivery = catchAsync(
 
     // Handle collection time filtering
     if (collectionTime) {
-      // Validate collection time format
-      const [startTimeStr, endTimeStr] = (collectionTime as string).split(
-        /\s*-\s*/
-      );
-      if (!startTimeStr || !endTimeStr) {
+      // collectionTime can be:
+      // 1. Array: ["9:00am-1:00pm", "3:00pm-6:30pm"]
+      // 2. Comma-separated string: "9:00am-1:00pm,3:00pm-6:30pm"
+      // 3. Single string: "9:00am-1:00pm"
+      let timeRanges;
+      if (Array.isArray(collectionTime)) {
+        timeRanges = collectionTime;
+      } else {
+        // Split by comma and trim whitespace
+        timeRanges = (collectionTime as string)
+          .split(',')
+          .map((range) => range.trim())
+          .filter((range) => range.length > 0);
+      }
+
+      // Validate each time range format
+      let parsedTimeRanges;
+      try {
+        parsedTimeRanges = timeRanges.map((timeRange) => {
+          const [startTimeStr, endTimeStr] = (timeRange as string).split(
+            /\s*-\s*/
+          );
+          if (!startTimeStr || !endTimeStr) {
+            throw new Error('Invalid time format');
+          }
+
+          const startTime = convertTo24Hour(startTimeStr.trim());
+          const endTime = convertTo24Hour(endTimeStr.trim());
+
+          return {
+            original: timeRange as string,
+            startTime,
+            endTime,
+            startTimeStr: startTimeStr.trim(),
+            endTimeStr: endTimeStr.trim(),
+          };
+        });
+      } catch (error) {
         return next(
           new AppError(
             DELIVERY_COLLECTION_TIME.timeFormat,
@@ -293,9 +326,6 @@ export const getAllDelivery = catchAsync(
           )
         );
       }
-
-      const startTime = convertTo24Hour(startTimeStr.trim());
-      const endTime = convertTo24Hour(endTimeStr.trim());
 
       // Build date query for collection time filtering
       let dateQuery = {};
@@ -322,11 +352,19 @@ export const getAllDelivery = catchAsync(
         brand,
       };
 
-      // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
-      if (req.query.status) {
-        query.status = req.query.status;
+      // Add status filter - always exclude cancelled
+      const requestedStatus = req.query.status;
+
+      if (requestedStatus && requestedStatus !== CANCELLED) {
+        // Frontend wants a specific status (and it's not cancelled)
+        query.status = requestedStatus;
+      } else if (requestedStatus === CANCELLED) {
+        // Frontend specifically wants cancelled status, but we never show those
+        // Set impossible condition to return empty results
+        query.status = { $exists: false };
       } else {
-        query.status = { $ne: CANCELLED }; // Exclude cancelled deliveries only when no status specified
+        // No specific status requested, exclude cancelled
+        query.status = { $ne: CANCELLED };
       }
 
       // Add method filter to the database query if provided
@@ -342,34 +380,81 @@ export const getAllDelivery = catchAsync(
       // Get all deliveries with basic filters
       const allDeliveries = await Delivery.find(query);
 
-      // Filter by collection time
+      // Filter by collection time with new logic
+      const matchingDeliveryIds = new Set();
+
       // eslint-disable-next-line @typescript-eslint/no-shadow
-      const filteredDeliveries = allDeliveries.filter(({ collectionTime }) => {
-        if (!collectionTime) return false;
+      const filteredDeliveries = allDeliveries.filter(
+        ({ collectionTime: orderCollectionTime, _id }) => {
+          if (!orderCollectionTime) return false;
+          if (matchingDeliveryIds.has(_id.toString())) return false; // Avoid duplicates
 
-        try {
-          // Handle different formats with flexible splitting
-          const timeStr = collectionTime.trim();
-          const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
+          try {
+            // Parse the stored collection time
+            const timeStr = orderCollectionTime.trim();
+            const [storedStartStr, storedEndStr] = timeStr.split(/\s*-\s*/);
 
-          if (!storedStartStr || !storedEndStr) return false;
+            if (!storedStartStr || !storedEndStr) return false;
 
-          const storedStartTime = convertTo24Hour(storedStartStr.trim());
-          const storedEndTime = convertTo24Hour(storedEndStr.trim());
+            const storedStartTime = convertTo24Hour(storedStartStr.trim());
+            const storedEndTime = convertTo24Hour(storedEndStr.trim());
 
-          // Check if stored time range is completely within the requested range
-          const isWithinRange =
-            storedStartTime >= startTime && storedEndTime <= endTime;
+            // Check against each requested time range
+            const matchesAnyRange = parsedTimeRanges.some((timeRange) => {
+              const { startTime, endTime, original } = timeRange;
 
-          return isWithinRange;
-        } catch (error) {
-          console.warn(
-            `Error parsing collection time in getAllDelivery: ${collectionTime}`,
-            error
-          );
-          return false;
+              // Special case: if the requested range is exactly "9:00am-6:30pm", only show exact matches
+              const normalizedOriginal = original
+                .toLowerCase()
+                .replace(/\s+/g, '');
+              const isNineAmToSixThirtyPm =
+                normalizedOriginal === '9:00am-6:30pm';
+
+              if (isNineAmToSixThirtyPm) {
+                const normalizedStored = timeStr
+                  .toLowerCase()
+                  .replace(/\s+/g, '');
+
+                return normalizedOriginal === normalizedStored;
+              }
+
+              // Normal overlap logic for all other ranges
+              // Special logic for ranges ending at 6:30pm (except 9am-6:30pm)
+              if (endTime === '18:30') {
+                // For 6:30pm ranges, show deliveries with end time > 4:00pm (16:00)
+                const hasOverlap =
+                  storedStartTime < endTime && storedEndTime > startTime;
+                const endTimeAfterFourPm = storedEndTime > '16:00';
+
+                return hasOverlap && endTimeAfterFourPm;
+              }
+
+              // Standard overlap logic for all other ranges
+              // 1. Check if there's any intersection between time ranges
+              // 2. Stored end time must be <= requested end time FOR THIS SPECIFIC RANGE
+              const hasOverlap =
+                storedStartTime < endTime && storedEndTime > startTime;
+              const endTimeWithinLimit = storedEndTime <= endTime;
+
+              // Both conditions must be true for this specific time range
+              return hasOverlap && endTimeWithinLimit;
+            });
+
+            if (matchesAnyRange) {
+              matchingDeliveryIds.add(_id.toString());
+              return true;
+            }
+
+            return false;
+          } catch (error) {
+            console.warn(
+              `Error parsing collection time in getAllDelivery: ${orderCollectionTime}`,
+              error
+            );
+            return false;
+          }
         }
-      });
+      );
 
       // Return filtered results in the same format as getDeliveryWithCollectionTime
       return res.json({ success: true, data: filteredDeliveries });
