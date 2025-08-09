@@ -1334,6 +1334,10 @@ export const getAllOrder = catchAsync(
     delete req.query.dateTo;
     delete req.query.dateFrom;
     req.query = { ...req.query, ...filter };
+
+    // Only show orders where paid: true
+    req.query.paid = true;
+
     await getAll(Order)(req, res, next);
   }
 );
