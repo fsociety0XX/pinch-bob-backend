@@ -35,6 +35,7 @@ export interface IDelivery {
   status?: string;
   instructions?: string;
   customiseCakeForm: boolean;
+  paid: boolean;
   active: boolean;
 }
 
@@ -92,6 +93,7 @@ const deliverySchema = new mongoose.Schema<IDelivery>(
     status: String,
     instructions: String,
     customiseCakeForm: Boolean,
+    paid: Boolean,
     active: {
       type: Boolean,
       default: true,
