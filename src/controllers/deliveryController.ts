@@ -40,6 +40,7 @@ interface DeliveryQuery {
   status?: string | { $ne: string } | { $exists: boolean };
   method?: { $in: string[] };
   'driverDetails.id'?: { $in: string[] };
+  paid?: boolean | { $ne: boolean };
 }
 
 interface ParsedTimeRange {
@@ -179,64 +180,185 @@ export const unassignDriver = catchAsync(
 export const updateOrderStatus = catchAsync(
   // eslint-disable-next-line consistent-return
   async (req: Request, res: Response) => {
-    const { subject, template, previewText } = PINCH_EMAILS.reqForReview;
-    const orderNumber = req.params.id;
-    const { brand } = req.query;
+    try {
+      const orderNumber = req.params.id;
+      const { brand } = req.query;
 
-    const order = await Order.findOne({ orderNumber, brand });
-    if (!order) {
-      // Status code MUST be 200 here else woodelivery will mark webhook as invalid - can be removed after bob launch
-      return res.status(StatusCode.SUCCESS).json({
-        status: 'not found',
-        message: `No order found with order number: ${orderNumber} for ${brand}`,
-      });
-      // return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
-    }
-    await Delivery.findOneAndUpdate(
-      { order: order?._id },
-      {
-        status: WOODELIVERY_STATUS[req.body.StatusId],
+      // Validate required webhook data
+      if (!orderNumber) {
+        console.error('❌ No order number provided in webhook');
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'error',
+          message: 'No order number provided',
+        });
       }
-    );
-    await Order.findByIdAndUpdate(order?._id, {
-      status: WOODELIVERY_STATUS[req.body.StatusId],
-    });
 
-    // Send order delivered email and ask for google review from cx
-    if (WOODELIVERY_STATUS[req.body.StatusId] === 'Completed') {
-      // Send SMS via Twilio for Bob
-      if (brand === brandEnum[1]) {
-        let body = '';
-        if (order.corporate) {
-          body = BOB_SMS_CONTENT.corporateDelivered;
-        } else {
-          body = BOB_SMS_CONTENT.regularDelivered(
-            order.recipInfo?.name || order.user.firstName || ''
+      if (!brand) {
+        console.error('❌ No brand provided in webhook');
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'error',
+          message: 'No brand provided',
+        });
+      }
+
+      if (!req.body.StatusId) {
+        console.error('❌ No StatusId provided in webhook');
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'error',
+          message: 'No StatusId provided',
+        });
+      }
+
+      // Find the order
+      const order = await Order.findOne({ orderNumber, brand }).populate([
+        'user',
+        'delivery.address',
+        'recipInfo',
+      ]);
+
+      if (!order) {
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'not found',
+          message: `No order found with order number: ${orderNumber} for ${brand}`,
+        });
+      }
+
+      // Get the new status
+      const newStatus = WOODELIVERY_STATUS[req.body.StatusId];
+      if (!newStatus) {
+        console.error('❌ Invalid StatusId:', req.body.StatusId);
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'error',
+          message: `Invalid StatusId: ${req.body.StatusId}`,
+        });
+      }
+
+      // Update delivery status (handle case where delivery might not exist)
+      try {
+        await Delivery.findOneAndUpdate(
+          { order: order._id },
+          { status: newStatus },
+          { new: true }
+        );
+      } catch (deliveryError) {
+        console.error('❌ Error updating delivery status:', deliveryError);
+        // Continue execution - don't fail webhook for delivery update issues
+      }
+
+      // Update order status
+      try {
+        await Order.findByIdAndUpdate(order._id, { status: newStatus });
+      } catch (orderError) {
+        console.error('❌ Error updating order status:', orderError);
+        // Continue execution - don't fail webhook for order update issues
+      }
+
+      // Handle completion notifications
+      if (newStatus === 'Completed') {
+        try {
+          // Send SMS for Bob brand
+          if (brand === brandEnum[1]) {
+            // Bob
+
+            let smsBody = '';
+            try {
+              if (order.corporate) {
+                smsBody = BOB_SMS_CONTENT.corporateDelivered;
+              } else {
+                const recipientName =
+                  order.recipInfo?.name || order.user?.firstName || 'Customer';
+                smsBody = BOB_SMS_CONTENT.regularDelivered(recipientName);
+              }
+
+              // Get phone number with multiple fallbacks
+              const phone =
+                order.recipInfo?.contact ||
+                order.delivery?.address?.phone ||
+                order.user?.phone;
+
+              if (phone && String(phone).trim()) {
+                await sendSms(smsBody, String(phone).trim());
+              }
+            } catch (smsError) {
+              console.error('❌ SMS sending failed:', smsError);
+              // Continue - don't fail webhook for SMS issues
+            }
+          }
+
+          // Send email for both brands
+          try {
+            const userEmail = order.user?.email;
+            if (userEmail && userEmail.trim()) {
+              // Get brand-specific email template
+              let emailConfig;
+              if (brand === brandEnum[0]) {
+                // Pinch
+                emailConfig = PINCH_EMAILS.reqForReview;
+              } else {
+                // Bob - use similar template structure
+                emailConfig = {
+                  subject: 'Your order has been delivered!',
+                  template: 'orderDeliverAndReview',
+                  previewText: 'Your order has been delivered!',
+                };
+              }
+
+              const { subject, template, previewText } = emailConfig;
+
+              await sendEmail({
+                email: userEmail.trim(),
+                subject,
+                template,
+                context: {
+                  previewText,
+                  orderNo: order.orderNumber || orderNumber,
+                  customerName:
+                    `${order.user?.firstName || ''} ${
+                      order.user?.lastName || ''
+                    }`.trim() || 'Customer',
+                },
+                brand: brand as string,
+              });
+            }
+          } catch (emailError) {
+            console.error('❌ Email sending failed:', emailError);
+            // Continue - don't fail webhook for email issues
+          }
+        } catch (notificationError) {
+          console.error(
+            '❌ Notification processing failed:',
+            notificationError
           );
+          // Continue - notifications are not critical for webhook success
         }
-        const phone =
-          order.recipInfo?.contact ||
-          order.delivery.address.phone ||
-          order.user.phone;
-
-        await sendSms(body, phone as string);
       }
 
-      await sendEmail({
-        email: order?.user?.email,
-        subject,
-        template,
-        context: {
-          previewText,
-          orderNo: order.orderNumber || '',
-          customerName: `${order!.user?.firstName || ''} ${
-            order!.user?.lastName || ''
-          }`,
-        },
-        brand: brand as string,
+      // Always return success to woodelivery
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        message: 'Order status updated successfully',
+        orderNumber,
+        newStatus,
+        brand,
+      });
+    } catch (error) {
+      console.error('💥 Critical error in updateOrderStatus webhook:', {
+        error: error.message,
+        stack: error.stack,
+        orderNumber: req.params.id,
+        brand: req.query.brand,
+        statusId: req.body.StatusId,
+      });
+
+      // Always return 200 to prevent woodelivery from marking webhook as failed
+      res.status(StatusCode.SUCCESS).json({
+        status: 'error',
+        message: 'Error processing webhook',
+        error: error.message,
+        orderNumber: req.params.id,
+        brand: req.query.brand,
       });
     }
-    res.send(StatusCode.SUCCESS);
   }
 );
 
@@ -330,18 +452,8 @@ const checkTimeRangeMatch = (
         return exactMatch;
       }
 
-      // Special logic for ranges ending at 6:30pm (except 9am-6:30pm)
-      if (endTime === '18:30') {
-        const hasOverlap =
-          storedStartTime < endTime && storedEndTime > startTime;
-        const endTimeAfterFourPm = storedEndTime > '16:00';
-        const result = hasOverlap && endTimeAfterFourPm;
-
-        return result;
-      }
-
-      // Standard overlap logic for all other ranges
-      // The stored delivery time must be completely within the requested time range
+      // For all other ranges (including other 6:30pm ranges), use standard completely-within logic
+      // This ensures that 9am-6:30pm orders only show when specifically selecting 9am-6:30pm
       const isCompletelyWithin =
         storedStartTime >= startTime && storedEndTime <= endTime;
 
@@ -423,6 +535,7 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
   const query = {
     ...dateQuery,
     brand,
+    paid: true, // Only show deliveries where paid: true
   };
 
   // Add status filter - always exclude cancelled unless specifically requested
@@ -524,6 +637,9 @@ export const getAllDelivery = catchAsync(
     if (!req.query.status) {
       req.query.status = { $ne: CANCELLED };
     }
+
+    // Always filter out deliveries with paid: false
+    req.query.paid = true;
 
     // Remove collection time related params from query to avoid conflicts
     delete req.query.collectionTime;
