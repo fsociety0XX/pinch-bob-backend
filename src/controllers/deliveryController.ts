@@ -40,7 +40,6 @@ interface DeliveryQuery {
   status?: string | { $ne: string } | { $exists: boolean };
   method?: { $in: string[] };
   'driverDetails.id'?: { $in: string[] };
-  paid?: boolean | { $ne: boolean };
 }
 
 interface ParsedTimeRange {
@@ -535,7 +534,6 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
   const query = {
     ...dateQuery,
     brand,
-    paid: true, // Only show deliveries where paid: true
   };
 
   // Add status filter - always exclude cancelled unless specifically requested
@@ -637,9 +635,6 @@ export const getAllDelivery = catchAsync(
     if (!req.query.status) {
       req.query.status = { $ne: CANCELLED };
     }
-
-    // Always filter out deliveries with paid: false
-    req.query.paid = true;
 
     // Remove collection time related params from query to avoid conflicts
     delete req.query.collectionTime;
