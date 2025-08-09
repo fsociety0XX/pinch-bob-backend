@@ -113,6 +113,7 @@ interface IDeliveryData {
     phone: string;
   };
   status?: string;
+  paid: boolean;
 }
 
 // CRON scheduled task to run after 30 mins of placing order if the payment failed
@@ -615,6 +616,7 @@ const createDeliveryDocument = async (
         email: user?.email || '',
         phone: user?.phone || '',
       },
+      paid: order.paid || false, // Ensure paid status is set
     };
 
     if (task) {
