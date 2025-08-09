@@ -63,6 +63,7 @@ interface IDeliveryData {
   };
   customiseCakeForm: boolean;
   status?: string;
+  paid?: boolean;
 }
 
 interface IWoodeliveryTask {
@@ -338,6 +339,7 @@ const createDeliveryDocument = async (
         email: currentUser?.email || '',
         phone: currentUser?.phone || '',
       },
+      paid: customiseCake.paid || false, // Ensure paid status is set
     };
 
     if (task) {
