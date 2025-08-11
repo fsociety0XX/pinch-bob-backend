@@ -124,6 +124,9 @@ deliverySchema.pre<Query<IDelivery, IDelivery>>(/^find/, function (next) {
     select:
       'orderNumber product updatedAt createdAt otherProduct customFormProduct',
   });
+  this.populate({
+    path: 'customiseCakeOrder',
+  });
   next();
 });
 

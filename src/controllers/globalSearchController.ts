@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode } from '@src/types/customTypes';
 import Order from '@src/models/orderModel';
@@ -10,6 +11,11 @@ type Mode = 'order' | 'delivery';
 
 // Case-insensitive regex
 const regex = (search: string) => ({ $regex: new RegExp(search, 'i') });
+
+// Check if string is a valid MongoDB ObjectId
+const isValidObjectId = (str: string): boolean => {
+  return mongoose.Types.ObjectId.isValid(str) && str.length === 24;
+};
 
 export const createSearchQuery = (
   mode: Mode,
@@ -22,11 +28,12 @@ export const createSearchQuery = (
   const isTextSearch = !!search.trim();
   const isLikelyEmail = search.includes('@');
   const isLikelyPhone = /^\+?\d+$/.test(search);
+  const isLikelyObjectId = isValidObjectId(search);
 
   // Initial brand match
   pipeline.push({ $match: { brand } });
 
-  // Smart conditions
+  // Smart conditions - Order ID, Order Number, Email, Phone, and Text search
   const matchConditions: any[] = [];
 
   if (isLikelyEmail) {
@@ -39,7 +46,19 @@ export const createSearchQuery = (
     matchConditions.push({ 'recipInfo.contact': search });
   }
 
+  // Order number search (always include)
   matchConditions.push({ orderNumber: search });
+
+  // Order ID search based on mode
+  if (isLikelyObjectId) {
+    if (mode === 'order') {
+      // For orders: search by _id (order's own ID)
+      matchConditions.push({ _id: new mongoose.Types.ObjectId(search) });
+    } else if (mode === 'delivery') {
+      // For deliveries: search by order field (which contains the order ID)
+      matchConditions.push({ order: new mongoose.Types.ObjectId(search) });
+    }
+  }
 
   if (!isLikelyEmail && !isLikelyPhone && isTextSearch) {
     matchConditions.push(
