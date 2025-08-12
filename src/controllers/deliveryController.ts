@@ -253,7 +253,7 @@ export const updateOrderStatus = catchAsync(
       // Update delivery status (handle case where delivery might not exist)
       try {
         await Delivery.findOneAndUpdate(
-          { order: order._id },
+          { orderNumber, brand },
           { status: newStatus },
           { new: true }
         );
