@@ -25,6 +25,13 @@ export const fetchCustomerDataByOrder = catchAsync(
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Validate dates
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return next(
+        new AppError('Invalid date format provided', StatusCode.BAD_REQUEST)
+      );
+    }
+
     if (start > end) {
       return next(
         new AppError(
@@ -36,6 +43,17 @@ export const fetchCustomerDataByOrder = catchAsync(
 
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
+
+    // Validate pagination parameters
+    if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
+      return next(
+        new AppError(
+          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-100',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
     const skip = (pageNum - 1) * limitNum;
 
     const reportData = await Order.aggregate([
@@ -60,9 +78,6 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
       {
         $addFields: {
-          isNewCustomer: {
-            $cond: [{ $gte: ['$userDetails.createdAt', start] }, true, false],
-          },
           totalAmountValue: {
             $convert: {
               input: '$pricingSummary.total',
@@ -73,127 +88,120 @@ export const fetchCustomerDataByOrder = catchAsync(
           },
         },
       },
-      // Step 2: Group By Date and Calculate Orders and Amounts for Order Model
+      // Step 2: Group By Date and Calculate Orders and Amounts
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          orders: { $push: '$$ROOT' },
+          users: { $addToSet: '$user' },
+        },
+      },
+      // Get first order date for all users in this batch (much more efficient)
+      {
+        $lookup: {
+          from: 'orders',
+          let: { userIds: '$users' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $in: ['$user', '$$userIds'] },
+                paid: true,
+              },
+            },
+            {
+              $group: {
+                _id: '$user',
+                firstOrderDate: { $min: '$createdAt' },
+              },
+            },
+          ],
+          as: 'userFirstOrders',
+        },
+      },
+      { $unwind: '$orders' },
+      {
+        $addFields: {
+          'orders.isNewCustomer': {
+            $let: {
+              vars: {
+                userFirstOrder: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$userFirstOrders',
+                        cond: { $eq: ['$$this._id', '$orders.user'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: {
+                // A customer is "new" if this order IS their very first order ever
+                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+              },
+            },
+          },
+        },
+      },
+      {
+        $replaceRoot: { newRoot: '$orders' },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          // Customer Type Segmentation (regardless of order type)
           newCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
-          repeatCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 0, 1] } },
+          repeatCustomerOrders: {
+            $sum: { $cond: [{ $not: '$isNewCustomer' }, 1, 0] },
+          },
+          // Order Type Segmentation (regardless of customer type)
+          regularOrders: {
+            $sum: { $cond: [{ $ne: ['$customiseCakeForm', true] }, 1, 0] },
+          },
+          customiseCakeOrders: {
+            $sum: { $cond: ['$customiseCakeForm', 1, 0] },
+          },
+          // Corporate Orders (subset flag)
           corporateOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
-          // Calculate Order Amounts
+          // Calculate Amounts by Customer Type
           newCustomerAmount: {
             $sum: { $cond: ['$isNewCustomer', '$totalAmountValue', 0] },
           },
           repeatCustomerAmount: {
-            $sum: { $cond: ['$isNewCustomer', 0, '$totalAmountValue'] },
+            $sum: {
+              $cond: [{ $not: '$isNewCustomer' }, '$totalAmountValue', 0],
+            },
           },
+          // Calculate Amounts by Order Type
+          regularAmount: {
+            $sum: {
+              $cond: [
+                { $ne: ['$customiseCakeForm', true] },
+                '$totalAmountValue',
+                0,
+              ],
+            },
+          },
+          customiseCakeAmount: {
+            $sum: { $cond: ['$customiseCakeForm', '$totalAmountValue', 0] },
+          },
+          // Corporate Amount (subset)
           corporateAmount: {
             $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
           },
         },
       },
-      // Step 3: Union with CustomiseOrder Model
-      {
-        $unionWith: {
-          coll: 'customisecakes',
-          pipeline: [
-            {
-              $match: {
-                createdAt: { $gte: start, $lte: end },
-                paid: true,
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: 'user',
-                foreignField: '_id',
-                as: 'userDetails',
-              },
-            },
-            {
-              $unwind: {
-                path: '$userDetails',
-                preserveNullAndEmptyArrays: false,
-              },
-            },
-            {
-              $addFields: {
-                isNewCustomer: {
-                  $cond: [
-                    { $gte: ['$userDetails.createdAt', start] },
-                    true,
-                    false,
-                  ],
-                },
-                totalAmountValue: {
-                  $convert: {
-                    input: '$pricingSummary.total',
-                    to: 'double',
-                    onError: 0,
-                    onNull: 0,
-                  },
-                },
-              },
-            },
-            {
-              $group: {
-                _id: {
-                  $dateToString: {
-                    format: '%Y-%m-%d',
-                    date: '$createdAt',
-                  },
-                },
-                newCustomerOrders: { $sum: 0 },
-                repeatCustomerOrders: { $sum: 0 },
-                corporateOrders: { $sum: 0 },
-                newCustomerAmount: { $sum: 0 },
-                repeatCustomerAmount: { $sum: 0 },
-                corporateAmount: { $sum: 0 },
-                customiseCakeOrders: { $sum: 1 },
-                customiseCakeAmount: { $sum: '$totalAmountValue' },
-              },
-            },
-          ],
-        },
-      },
       {
         $addFields: {
-          customiseCakeOrders: { $ifNull: ['$customiseCakeOrders', 0] },
-          customiseCakeAmount: { $ifNull: ['$customiseCakeAmount', 0] },
-        },
-      },
-      // Step 4: Final Grouping to Combine Data from Both Models
-      {
-        $group: {
-          _id: '$_id',
-          newCustomerOrders: { $sum: '$newCustomerOrders' },
-          repeatCustomerOrders: { $sum: '$repeatCustomerOrders' },
-          corporateOrders: { $sum: '$corporateOrders' },
-          newCustomerAmount: { $sum: '$newCustomerAmount' },
-          repeatCustomerAmount: { $sum: '$repeatCustomerAmount' },
-          corporateAmount: { $sum: '$corporateAmount' },
-          customiseCakeOrders: { $sum: '$customiseCakeOrders' },
-          customiseCakeAmount: { $sum: '$customiseCakeAmount' },
-        },
-      },
-      {
-        $addFields: {
+          // Total can be calculated two ways (both should be equal):
+          // By Customer Type: New + Repeat
+          // By Order Type: Regular + CustomiseCake
           totalOrders: {
-            $sum: [
-              '$newCustomerOrders',
-              '$repeatCustomerOrders',
-              '$corporateOrders',
-              '$customiseCakeOrders',
-            ],
+            $sum: ['$newCustomerOrders', '$repeatCustomerOrders'],
           },
           totalAmount: {
-            $sum: [
-              '$newCustomerAmount',
-              '$repeatCustomerAmount',
-              '$corporateAmount',
-              '$customiseCakeAmount',
-            ],
+            $sum: ['$newCustomerAmount', '$repeatCustomerAmount'],
           },
         },
       },
@@ -208,8 +216,8 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
     ]);
 
-    const total = reportData[0].metadata[0]?.total || 0;
-    const totalPages = Math.ceil(total / limitNum);
+    const total = reportData[0]?.metadata?.[0]?.total || 0;
+    const totalPages = total > 0 ? Math.ceil(total / limitNum) : 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -246,6 +254,13 @@ export const fetchCustomerDataByDelivery = catchAsync(
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Validate dates
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return next(
+        new AppError('Invalid date format provided', StatusCode.BAD_REQUEST)
+      );
+    }
+
     if (start > end) {
       return next(
         new AppError(
@@ -257,6 +272,17 @@ export const fetchCustomerDataByDelivery = catchAsync(
 
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
+
+    // Validate pagination parameters
+    if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
+      return next(
+        new AppError(
+          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-100',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
     const skip = (pageNum - 1) * limitNum;
 
     const reportData = await Order.aggregate([
@@ -270,6 +296,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
               {
                 $dateFromString: {
                   dateString: '$delivery.date',
+                  onError: null, // Handle invalid date strings gracefully
                 },
               },
             ],
@@ -278,7 +305,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
       },
       {
         $match: {
-          deliveryDateConverted: { $gte: start, $lte: end },
+          deliveryDateConverted: { $gte: start, $lte: end, $ne: null },
           paid: true,
           ...(brand ? { brand } : {}),
         },
@@ -299,9 +326,6 @@ export const fetchCustomerDataByDelivery = catchAsync(
       },
       {
         $addFields: {
-          isNewCustomer: {
-            $cond: [{ $gte: ['$userDetails.createdAt', start] }, true, false],
-          },
           totalAmountValue: {
             $convert: {
               input: '$pricingSummary.total',
@@ -321,133 +345,124 @@ export const fetchCustomerDataByDelivery = catchAsync(
               date: '$deliveryDateConverted',
             },
           },
-          newCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
-          repeatCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 0, 1] } },
-          csvOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
-          newCustomerAmount: {
-            $sum: { $cond: ['$isNewCustomer', '$totalAmountValue', 0] },
-          },
-          repeatCustomerAmount: {
-            $sum: { $cond: ['$isNewCustomer', 0, '$totalAmountValue'] },
-          },
-          csvAmount: {
-            $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
-          },
-          customiseCakeOrders: { $sum: 0 },
-          customiseCakeAmount: { $sum: 0 },
+          orders: { $push: '$$ROOT' },
+          users: { $addToSet: '$user' },
         },
       },
-
-      // Step 3: Union with CustomiseOrder Model
+      // Get first order date for all users in this batch (much more efficient)
       {
-        $unionWith: {
-          coll: 'customiseorders',
+        $lookup: {
+          from: 'orders',
+          let: { userIds: '$users' },
           pipeline: [
             {
               $match: {
-                'delivery.date': { $gte: start, $lte: end },
+                $expr: { $in: ['$user', '$$userIds'] },
                 paid: true,
-                ...(brand ? { brand } : {}),
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: 'user',
-                foreignField: '_id',
-                as: 'userDetails',
-              },
-            },
-            {
-              $unwind: {
-                path: '$userDetails',
-                preserveNullAndEmptyArrays: false,
-              },
-            },
-            {
-              $addFields: {
-                isNewCustomer: {
-                  $cond: [
-                    { $gte: ['$userDetails.createdAt', start] },
-                    true,
-                    false,
-                  ],
-                },
-                totalAmountValue: {
-                  $convert: {
-                    input: '$total',
-                    to: 'double',
-                    onError: 0,
-                    onNull: 0,
-                  },
-                },
               },
             },
             {
               $group: {
-                _id: {
-                  $dateToString: {
-                    format: '%Y-%m-%d',
-                    date: '$delivery.date',
-                  },
-                },
-                customiseCakeOrders: { $sum: 1 },
-                customiseCakeAmount: { $sum: '$totalAmountValue' },
-                newCustomerOrders: { $sum: 0 },
-                repeatCustomerOrders: { $sum: 0 },
-                csvOrders: { $sum: 0 },
-                newCustomerAmount: { $sum: 0 },
-                repeatCustomerAmount: { $sum: 0 },
-                csvAmount: { $sum: 0 },
+                _id: '$user',
+                firstOrderDate: { $min: '$createdAt' },
               },
             },
           ],
+          as: 'userFirstOrders',
+        },
+      },
+      { $unwind: '$orders' },
+      {
+        $addFields: {
+          'orders.isNewCustomer': {
+            $let: {
+              vars: {
+                userFirstOrder: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$userFirstOrders',
+                        cond: { $eq: ['$$this._id', '$orders.user'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: {
+                // A customer is "new" if this order IS their very first order ever
+                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+              },
+            },
+          },
         },
       },
       {
-        $addFields: {
-          customiseCakeOrders: { $ifNull: ['$customiseCakeOrders', 0] },
-          customiseCakeAmount: { $ifNull: ['$customiseCakeAmount', 0] },
-        },
+        $replaceRoot: { newRoot: '$orders' },
       },
-      // Step 4: Final Grouping to Combine Data
       {
         $group: {
-          _id: '$_id',
-          newCustomerOrders: { $sum: '$newCustomerOrders' },
-          repeatCustomerOrders: { $sum: '$repeatCustomerOrders' },
-          csvOrders: { $sum: '$csvOrders' },
-          newCustomerAmount: { $sum: '$newCustomerAmount' },
-          repeatCustomerAmount: { $sum: '$repeatCustomerAmount' },
-          csvAmount: { $sum: '$csvAmount' },
-          customiseCakeOrders: { $sum: '$customiseCakeOrders' },
-          customiseCakeAmount: { $sum: '$customiseCakeAmount' },
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$deliveryDateConverted',
+            },
+          },
+          // Customer Type Segmentation (regardless of order type)
+          newCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
+          repeatCustomerOrders: {
+            $sum: { $cond: [{ $not: '$isNewCustomer' }, 1, 0] },
+          },
+          // Order Type Segmentation (regardless of customer type)
+          regularOrders: {
+            $sum: { $cond: [{ $ne: ['$customiseCakeForm', true] }, 1, 0] },
+          },
+          customiseCakeOrders: {
+            $sum: { $cond: ['$customiseCakeForm', 1, 0] },
+          },
+          // Corporate Orders (subset flag) - keeping csvOrders name for compatibility
+          csvOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
+          // Calculate Amounts by Customer Type
+          newCustomerAmount: {
+            $sum: { $cond: ['$isNewCustomer', '$totalAmountValue', 0] },
+          },
+          repeatCustomerAmount: {
+            $sum: {
+              $cond: [{ $not: '$isNewCustomer' }, '$totalAmountValue', 0],
+            },
+          },
+          // Calculate Amounts by Order Type
+          regularAmount: {
+            $sum: {
+              $cond: [
+                { $ne: ['$customiseCakeForm', true] },
+                '$totalAmountValue',
+                0,
+              ],
+            },
+          },
+          customiseCakeAmount: {
+            $sum: { $cond: ['$customiseCakeForm', '$totalAmountValue', 0] },
+          },
+          // Corporate Amount (subset) - keeping csvAmount name for compatibility
+          csvAmount: {
+            $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
+          },
         },
       },
-
-      // Step 5: Add Total Orders and Total Amount
+      // Step 3: Add Total Orders and Total Amount
       {
         $addFields: {
+          // Total by Customer Type: New + Repeat
           totalOrders: {
-            $sum: [
-              '$newCustomerOrders',
-              '$repeatCustomerOrders',
-              '$csvOrders',
-              '$customiseCakeOrders',
-            ],
+            $sum: ['$newCustomerOrders', '$repeatCustomerOrders'],
           },
           totalAmount: {
-            $sum: [
-              '$newCustomerAmount',
-              '$repeatCustomerAmount',
-              '$csvAmount',
-              '$customiseCakeAmount',
-            ],
+            $sum: ['$newCustomerAmount', '$repeatCustomerAmount'],
           },
         },
       },
-
-      // Step 6: Pagination
+      // Step 4: Pagination
       {
         $sort: { _id: 1 },
       },
@@ -460,8 +475,8 @@ export const fetchCustomerDataByDelivery = catchAsync(
     ]);
 
     // Extracting Pagination Data
-    const total = reportData[0]?.metadata[0]?.total || 0;
-    const totalPages = Math.ceil(total / limitNum);
+    const total = reportData[0]?.metadata?.[0]?.total || 0;
+    const totalPages = total > 0 ? Math.ceil(total / limitNum) : 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -516,23 +531,16 @@ export const aggregatedCustomerReport = catchAsync(
       {
         $match: dateMatch,
       },
-      // Step 2: Add orderType
+      // Step 2: Add orderType based on customiseCakeForm flag
       {
-        $addFields: { orderType: 'regular' },
-      },
-
-      // Step 3: Union with customiseorders
-      {
-        $unionWith: {
-          coll: 'customiseorders',
-          pipeline: [
-            { $addFields: { orderType: 'customise' } },
-            { $match: dateMatch },
-          ],
+        $addFields: {
+          orderType: {
+            $cond: ['$customiseCakeForm', 'customise', 'regular'],
+          },
         },
       },
 
-      // Step 4: Lookup user
+      // Step 3: Lookup user
       {
         $lookup: {
           from: 'users',
@@ -542,22 +550,24 @@ export const aggregatedCustomerReport = catchAsync(
         },
       },
 
-      // Step 5: Add helper fields
+      // Step 4: Add helper fields
       {
         $addFields: {
           userCreatedAt: { $arrayElemAt: ['$userDetails.createdAt', 0] },
           itemsCount: {
             $cond: {
               if: { $eq: ['$orderType', 'customise'] },
-              then: { $size: { $ifNull: ['$bakes', []] } },
+              then: { $size: { $ifNull: ['$customFormProduct', []] } },
               else: { $size: { $ifNull: ['$product', []] } },
             },
           },
           isAttachOrder: {
             $cond: {
               if: { $eq: ['$orderType', 'customise'] },
-              then: { $gte: [{ $size: '$bakes' }, 2] },
-              else: { $gte: [{ $size: '$product' }, 2] },
+              then: {
+                $gte: [{ $size: { $ifNull: ['$customFormProduct', []] } }, 2],
+              },
+              else: { $gte: [{ $size: { $ifNull: ['$product', []] } }, 2] },
             },
           },
           groupPeriod: {
@@ -569,50 +579,88 @@ export const aggregatedCustomerReport = catchAsync(
         },
       },
 
-      // Step 6: Group by user & period
+      // Step 5: Group by period and collect all orders and users
       {
         $group: {
-          _id: { user: '$user', groupPeriod: '$groupPeriod' },
-          firstOrderDate: { $min: '$createdAt' },
-          totalOrders: { $sum: 1 },
-          totalItems: { $sum: '$itemsCount' },
-          userCreatedAt: { $first: '$userCreatedAt' },
-          hasAttachOrder: { $max: '$isAttachOrder' },
+          _id: '$groupPeriod',
+          orders: { $push: '$$ROOT' },
+          users: { $addToSet: '$user' },
         },
       },
 
-      // Step 7: Add customer type flags
+      // Step 6: Get first order date for all users (efficient batch lookup)
+      {
+        $lookup: {
+          from: 'orders',
+          let: { userIds: '$users' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $in: ['$user', '$$userIds'] },
+                paid: true,
+              },
+            },
+            {
+              $group: {
+                _id: '$user',
+                firstOrderDate: { $min: '$createdAt' },
+              },
+            },
+          ],
+          as: 'userFirstOrders',
+        },
+      },
+
+      // Step 7: Unwind orders and add customer classification
+      { $unwind: '$orders' },
+      {
+        $addFields: {
+          'orders.isNewCustomer': {
+            $let: {
+              vars: {
+                userFirstOrder: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$userFirstOrders',
+                        cond: { $eq: ['$$this._id', '$orders.user'] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: {
+                // A customer is "new" if this order IS their very first order ever
+                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+              },
+            },
+          },
+        },
+      },
+
+      // Step 8: Group by user and period to calculate customer metrics
+      {
+        $group: {
+          _id: { user: '$orders.user', groupPeriod: '$_id' },
+          firstOrderDate: { $min: '$orders.createdAt' },
+          totalOrders: { $sum: 1 },
+          totalItems: { $sum: '$orders.itemsCount' },
+          hasAttachOrder: { $max: '$orders.isAttachOrder' },
+          isNewCustomer: { $max: '$orders.isNewCustomer' }, // At least one order is "new" (should be consistent for all orders of same user in period)
+        },
+      },
+
+      // Step 9: Add customer type flags
       {
         $addFields: {
           isActiveAndLoyalCustomer: true,
-          isNewCustomer: {
-            $and: [
-              {
-                $eq: [
-                  {
-                    $dateToString: {
-                      format: '%Y-%m-%d',
-                      date: '$firstOrderDate',
-                    },
-                  },
-                  {
-                    $dateToString: {
-                      format: '%Y-%m-%d',
-                      date: '$userCreatedAt',
-                    },
-                  },
-                ],
-              },
-              { $gte: ['$firstOrderDate', new Date(startDate)] },
-              { $lte: ['$firstOrderDate', new Date(endDate)] },
-            ],
-          },
           isRepeatCustomer: { $gt: ['$totalOrders', 1] },
           isAttachCustomer: { $eq: ['$hasAttachOrder', true] },
         },
       },
 
-      // Step 8: Final group by period
+      // Step 10: Final group by period
       {
         $group: {
           _id: '$_id.groupPeriod',
@@ -626,7 +674,7 @@ export const aggregatedCustomerReport = catchAsync(
         },
       },
 
-      // Step 9: Format output
+      // Step 11: Format output
       {
         $project: {
           _id: 0,
@@ -639,7 +687,7 @@ export const aggregatedCustomerReport = catchAsync(
         },
       },
 
-      // Step 10: Sort and paginate
+      // Step 12: Sort and paginate
       {
         $sort: { period: 1 },
       },
@@ -655,7 +703,7 @@ export const aggregatedCustomerReport = catchAsync(
 
     const reportData = result[0]?.paginatedResults || [];
     const totalCount = result[0]?.totalCount?.[0]?.count || 0;
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalPages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
@@ -689,6 +737,14 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
   const category = req.query.category as string;
   const superCategory = req.query.superCategory as string;
 
+  // Validate required fields
+  if (!brand) {
+    return res.status(StatusCode.BAD_REQUEST).json({
+      status: 'error',
+      message: 'Brand is required for product report',
+    });
+  }
+
   const aggregationPipeline: PipelineStage[] = [
     {
       $match: {
@@ -697,16 +753,54 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         paid: true,
       },
     },
-    { $unwind: { path: '$product', preserveNullAndEmptyArrays: false } },
+    // Handle both regular orders (product array) and customise cake orders (customFormProduct array)
+    {
+      $addFields: {
+        allProducts: {
+          $concatArrays: [
+            // Regular products from product array
+            {
+              $map: {
+                input: { $ifNull: ['$product', []] },
+                as: 'item',
+                in: {
+                  product: '$$item.product.id', // IProduct.product is an object with id field
+                  quantity: '$$item.quantity',
+                  price: '$$item.price',
+                },
+              },
+            },
+            // Products from customFormProduct array (only items that have a product reference)
+            {
+              $map: {
+                input: {
+                  $filter: {
+                    input: { $ifNull: ['$customFormProduct', []] },
+                    cond: { $ne: ['$$this.product', null] },
+                  },
+                },
+                as: 'item',
+                in: {
+                  product: '$$item.product', // ICustomFormProduct.product is directly ObjectId
+                  quantity: '$$item.quantity',
+                  price: 0, // CustomFormProduct doesn't have individual prices
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+    { $unwind: { path: '$allProducts', preserveNullAndEmptyArrays: false } },
     {
       $group: {
-        _id: '$product.product',
-        noOfItems: { $sum: '$product.quantity' },
+        _id: '$allProducts.product',
+        noOfItems: { $sum: { $ifNull: ['$allProducts.quantity', 0] } },
         totalOrderValue: {
           $sum: {
             $multiply: [
-              { $ifNull: ['$product.price', 0] },
-              '$product.quantity',
+              { $ifNull: ['$allProducts.price', 0] },
+              { $ifNull: ['$allProducts.quantity', 0] },
             ],
           },
         },
@@ -729,15 +823,19 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
           'productDetails.name': { $regex: escapeRegex(search), $options: 'i' },
         }),
         ...(category && {
-          'productDetails.category': new Types.ObjectId(category),
+          'productDetails.category': {
+            $in: [new Types.ObjectId(category)],
+          },
         }),
         ...(superCategory && {
-          'productDetails.superCategory': new Types.ObjectId(superCategory),
+          'productDetails.superCategory': {
+            $in: [new Types.ObjectId(superCategory)],
+          },
         }),
       },
     },
 
-    // Single Category lookup
+    // Category lookups - handle arrays
     {
       $lookup: {
         from: 'categories',
@@ -811,7 +909,7 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
   const result = await Order.aggregate(aggregationPipeline);
 
   const reportData = result[0]?.data || [];
-  const totalCount = result[0]?.totalCount[0]?.count || 0;
+  const totalCount = result[0]?.totalCount?.[0]?.count || 0;
 
   res.status(StatusCode.SUCCESS).json({
     status: 'success',
@@ -822,7 +920,7 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
       page,
       limit,
       totalCount,
-      totalPages: Math.ceil(totalCount / limit),
+      totalPages: totalCount > 0 ? Math.ceil(totalCount / limit) : 0,
     },
   });
 });

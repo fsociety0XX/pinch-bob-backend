@@ -44,7 +44,25 @@ async function dispatchForOrders<T>(
     return;
   }
 
-  const tasks = orders.map((order) =>
+  // Double-check status before sending (safety against race conditions)
+  const validOrders = orders.filter((order) => {
+    if (order.status === CANCELLED) {
+      // Skipping cancelled order
+      return false;
+    }
+    if (!order.paid) {
+      // Skipping unpaid order
+      return false;
+    }
+    return true;
+  });
+
+  if (!validOrders.length) {
+    console.log(`No valid orders after filtering`);
+    return;
+  }
+
+  const tasks = validOrders.map((order) =>
     Promise.all(
       channels.map(async (ch) => {
         try {
@@ -118,9 +136,9 @@ cron.schedule('0 0 * * *', async () => {
               ? PINCH_EMAILS.orderPrepare.previewText
               : BOB_EMAILS.orderPrepare.previewText,
           orderNo: order.orderNumber as string,
-          customerName: `${order.user.firstName || ''} ${
-            order.user.lastName || ''
-          }`.trim(),
+          customerName:
+            order?.recipInfo?.name ||
+            `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim(),
         },
         brand,
       }),
