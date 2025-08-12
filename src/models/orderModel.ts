@@ -186,6 +186,10 @@ export interface IOrder {
   stripeDetails: StripeWebhookEvent;
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
+  driverDetails?: {
+    id: string;
+    name: string;
+  };
   customiseCakeForm: boolean;
   customiseCakeFormDetails: mongoose.Schema.Types.ObjectId;
   forKitchenUse: boolean;
@@ -410,6 +414,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     stripeDetails: Object,
     hitpayDetails: Object,
     woodeliveryTaskId: String,
+    driverDetails: {
+      id: String,
+      name: String,
+    },
     customiseCakeForm: {
       type: Boolean,
       default: false,

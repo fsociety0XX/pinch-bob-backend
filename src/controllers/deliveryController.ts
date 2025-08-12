@@ -99,6 +99,17 @@ export const assignOrderToDriver = catchAsync(
       { new: true }
     );
 
+    await Order.findOneAndUpdate(
+      { orderNumber: doc?.orderNumber },
+      {
+        driverDetails: {
+          id: driverDetails.id,
+          name: `${driverDetails.firstName} ${driverDetails.lastName}`,
+        },
+      },
+      { new: true }
+    );
+
     if (doc && req.user) {
       await logActivity({
         user: {
@@ -144,6 +155,12 @@ export const unassignDriver = catchAsync(
 
     const doc = await Delivery.findByIdAndUpdate(
       deliveryId,
+      { driverDetails: null },
+      { new: true }
+    );
+
+    await Order.findOneAndUpdate(
+      { orderNumber: doc?.orderNumber },
       { driverDetails: null },
       { new: true }
     );
