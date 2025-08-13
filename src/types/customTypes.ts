@@ -68,6 +68,7 @@ export const customiseOrderEnums = {
     'Name placard',
     'Regular fondant name (Flat/Wall)',
     'Regular fondant name (Stand)',
+    'White Chocolate',
     'Other',
   ],
   fondantColours: [
