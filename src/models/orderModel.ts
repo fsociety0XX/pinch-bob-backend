@@ -181,11 +181,16 @@ export interface IOrder {
   corporate: boolean;
   moneyReceivedForMoneyPulling: boolean;
   moneyPaidForMoneyPulling?: boolean;
+  moneyPullingPrepared?: boolean;
   preparationStatus: string;
   status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
   hitpayDetails: IHitpayDetails;
   woodeliveryTaskId: string;
+  driverDetails?: {
+    id: string;
+    name: string;
+  };
   customiseCakeForm: boolean;
   customiseCakeFormDetails: mongoose.Schema.Types.ObjectId;
   forKitchenUse: boolean;
@@ -401,6 +406,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
       type: Boolean,
       default: false,
     },
+    moneyPullingPrepared: {
+      type: Boolean,
+      default: false,
+    },
     preparationStatus: {
       type: String,
       default: preparationStatusType[0],
@@ -410,6 +419,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
     stripeDetails: Object,
     hitpayDetails: Object,
     woodeliveryTaskId: String,
+    driverDetails: {
+      id: String,
+      name: String,
+    },
     customiseCakeForm: {
       type: Boolean,
       default: false,

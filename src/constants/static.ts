@@ -43,4 +43,5 @@ export const BOB_EMAIL_DETAILS = {
 export const BLACK_LISTED_EMAILS = [
   'angela.chia@bigtinygroup.com',
   'onegoodday.mattlam@gmail.com',
+  'kentay.propnex@gmail.com',
 ];
