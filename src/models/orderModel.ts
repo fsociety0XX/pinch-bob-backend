@@ -181,6 +181,7 @@ export interface IOrder {
   corporate: boolean;
   moneyReceivedForMoneyPulling: boolean;
   moneyPaidForMoneyPulling?: boolean;
+  moneyPullingPrepared?: boolean;
   preparationStatus: string;
   status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
@@ -402,6 +403,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
       default: false,
     },
     moneyPaidForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
+    moneyPullingPrepared: {
       type: Boolean,
       default: false,
     },

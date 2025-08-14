@@ -157,7 +157,7 @@ export const customiseOrderEnums = {
   ],
   formStatusEnum: ['New', 'Completed', 'Dismissed'],
   enquiryTypeEnum: ['Regular', 'Business'],
-  qtyType: ['Pieces', 'Dozen', ''],
+  qtyType: ['Pieces', 'Dozen', 'Boxes', ''],
 };
 
 export const checkoutSessionFor = {

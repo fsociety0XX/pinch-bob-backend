@@ -1229,6 +1229,7 @@ export const getAllOrder = catchAsync(
       dateMode,
       dateFrom,
       dateTo,
+      driverId,
     } = req.query;
 
     const timeRange =
@@ -1324,6 +1325,9 @@ export const getAllOrder = catchAsync(
       }
       filter['delivery.date'] = dateFilter;
     }
+    if (driverId) {
+      filter['driverDetails.id'] = driverId as string;
+    }
 
     delete req.query.superCategory;
     delete req.query.category;
@@ -1335,6 +1339,7 @@ export const getAllOrder = catchAsync(
     delete req.query.dateMode;
     delete req.query.dateTo;
     delete req.query.dateFrom;
+    delete req.query.driverId;
     req.query = { ...req.query, ...filter };
 
     // Only show orders where paid: true
