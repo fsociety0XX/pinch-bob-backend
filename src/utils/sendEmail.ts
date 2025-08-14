@@ -18,7 +18,9 @@ const EMAIL_BLACKLIST = new Set<string>(BLACK_LISTED_EMAILS);
 // Helper function to check if email is blacklisted
 const isEmailBlacklisted = (email: string): boolean => {
   const normalizedEmail = email.toLowerCase().trim();
-  return EMAIL_BLACKLIST.has(normalizedEmail);
+  const isBlacklisted = EMAIL_BLACKLIST.has(normalizedEmail);
+
+  return isBlacklisted;
 };
 
 const sendEmail = async ({
@@ -43,7 +45,6 @@ const sendEmail = async ({
 
   // Check if email is blacklisted
   if (isEmailBlacklisted(validEmail)) {
-    console.warn(`Email blocked by blacklist: ${validEmail}`);
     return; // Skip sending email to blacklisted addresses
   }
 
@@ -85,7 +86,14 @@ const sendEmail = async ({
     template,
     context,
   };
-  await transport.sendMail(mailOptions);
+
+  try {
+    await transport.sendMail(mailOptions);
+    console.log(`✅ Email successfully sent to: ${validEmail}`);
+  } catch (error) {
+    console.error(`❌ Failed to send email to: ${validEmail}`, error);
+    throw error;
+  }
 };
 
 export default sendEmail;
