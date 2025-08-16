@@ -286,7 +286,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
     const skip = (pageNum - 1) * limitNum;
 
     const reportData = await Order.aggregate([
-      // Step 1: Match Orders by Delivery Date and Paid Status
+      // Step 1: Convert delivery date to ensure it's a proper Date type
       {
         $addFields: {
           deliveryDateConverted: {
@@ -303,6 +303,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
           },
         },
       },
+      // Step 2: Match Orders by Delivery Date and Paid Status
       {
         $match: {
           deliveryDateConverted: { $gte: start, $lte: end, $ne: null },
@@ -336,7 +337,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
           },
         },
       },
-      // Step 2: Group By Delivery Date and Calculate Orders and Amounts
+      // Step 3: Group By Delivery Date and Calculate Orders and Amounts
       {
         $group: {
           _id: {
@@ -554,10 +555,50 @@ export const aggregatedCustomerReport = catchAsync(
       {
         $addFields: {
           userCreatedAt: { $arrayElemAt: ['$userDetails.createdAt', 0] },
+          groupPeriod: {
+            $dateToString: {
+              format: groupBy === 'month' ? '%Y-%m' : '%G-W%V',
+              date: '$createdAt',
+            },
+          },
+        },
+      },
+
+      // Step 4a: Lookup CustomiseCake details for item counting
+      {
+        $lookup: {
+          from: 'customisecakes',
+          localField: 'customiseCakeFormDetails',
+          foreignField: '_id',
+          as: 'customiseCakeDetails',
+        },
+      },
+
+      // Step 4b: Calculate accurate item counts
+      {
+        $addFields: {
           itemsCount: {
             $cond: {
               if: { $eq: ['$orderType', 'customise'] },
-              then: { $size: { $ifNull: ['$customFormProduct', []] } },
+              then: {
+                $let: {
+                  vars: {
+                    customiseCake: {
+                      $arrayElemAt: ['$customiseCakeDetails', 0],
+                    },
+                  },
+                  in: {
+                    $add: [
+                      { $size: { $ifNull: ['$$customiseCake.bakes', []] } },
+                      {
+                        $size: {
+                          $ifNull: ['$$customiseCake.candlesAndSparklers', []],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
               else: { $size: { $ifNull: ['$product', []] } },
             },
           },
@@ -565,15 +606,33 @@ export const aggregatedCustomerReport = catchAsync(
             $cond: {
               if: { $eq: ['$orderType', 'customise'] },
               then: {
-                $gte: [{ $size: { $ifNull: ['$customFormProduct', []] } }, 2],
+                $let: {
+                  vars: {
+                    customiseCake: {
+                      $arrayElemAt: ['$customiseCakeDetails', 0],
+                    },
+                  },
+                  in: {
+                    $gte: [
+                      {
+                        $add: [
+                          { $size: { $ifNull: ['$$customiseCake.bakes', []] } },
+                          {
+                            $size: {
+                              $ifNull: [
+                                '$$customiseCake.candlesAndSparklers',
+                                [],
+                              ],
+                            },
+                          },
+                        ],
+                      },
+                      2,
+                    ],
+                  },
+                },
               },
               else: { $gte: [{ $size: { $ifNull: ['$product', []] } }, 2] },
-            },
-          },
-          groupPeriod: {
-            $dateToString: {
-              format: groupBy === 'month' ? '%Y-%m' : '%G-W%V',
-              date: '$createdAt',
             },
           },
         },
@@ -753,45 +812,123 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         paid: true,
       },
     },
-    // Handle both regular orders (product array) and customise cake orders (customFormProduct array)
+    // Add total amount conversion for later use
+    {
+      $addFields: {
+        totalAmountValue: {
+          $convert: {
+            input: '$pricingSummary.total',
+            to: 'double',
+            onError: 0,
+            onNull: 0,
+          },
+        },
+      },
+    },
+    // Handle regular orders - extract products from product array
+    {
+      $addFields: {
+        allProducts: {
+          $map: {
+            input: { $ifNull: ['$product', []] },
+            as: 'item',
+            in: {
+              product: '$$item.product', // In aggregation, this is ObjectId
+              quantity: '$$item.quantity',
+              price: '$$item.price',
+              isCustomForm: false,
+            },
+          },
+        },
+      },
+    },
+    // Add lookup for customise cake details and extract products
+    {
+      $lookup: {
+        from: 'customisecakes',
+        localField: 'customiseCakeFormDetails',
+        foreignField: '_id',
+        as: 'customiseCakeDetails',
+      },
+    },
+    // Add products from customise cake orders
+    {
+      $addFields: {
+        customiseCakeProducts: {
+          $cond: [
+            { $eq: ['$customiseCakeForm', true] },
+            {
+              $let: {
+                vars: {
+                  customiseCake: { $arrayElemAt: ['$customiseCakeDetails', 0] },
+                },
+                in: {
+                  $concatArrays: [
+                    // Bakes products from customise cake
+                    {
+                      $map: {
+                        input: { $ifNull: ['$$customiseCake.bakes', []] },
+                        as: 'bake',
+                        in: {
+                          product: '$$bake.product',
+                          quantity: '$$bake.quantity',
+                          price: 0, // Will be replaced with actual product.price in grouping stage
+                          isCustomForm: true,
+                        },
+                      },
+                    },
+                    // Candles and sparklers from customise cake
+                    {
+                      $map: {
+                        input: {
+                          $ifNull: ['$$customiseCake.candlesAndSparklers', []],
+                        },
+                        as: 'candle',
+                        in: {
+                          product: '$$candle.product',
+                          quantity: '$$candle.quantity',
+                          price: 0, // Will be replaced with actual product.price in grouping stage
+                          isCustomForm: true,
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            [],
+          ],
+        },
+      },
+    },
+    // Combine all products
     {
       $addFields: {
         allProducts: {
           $concatArrays: [
-            // Regular products from product array
-            {
-              $map: {
-                input: { $ifNull: ['$product', []] },
-                as: 'item',
-                in: {
-                  product: '$$item.product.id', // IProduct.product is an object with id field
-                  quantity: '$$item.quantity',
-                  price: '$$item.price',
-                },
-              },
-            },
-            // Products from customFormProduct array (only items that have a product reference)
-            {
-              $map: {
-                input: {
-                  $filter: {
-                    input: { $ifNull: ['$customFormProduct', []] },
-                    cond: { $ne: ['$$this.product', null] },
-                  },
-                },
-                as: 'item',
-                in: {
-                  product: '$$item.product', // ICustomFormProduct.product is directly ObjectId
-                  quantity: '$$item.quantity',
-                  price: 0, // CustomFormProduct doesn't have individual prices
-                },
-              },
-            },
+            '$allProducts',
+            { $ifNull: ['$customiseCakeProducts', []] },
           ],
         },
       },
     },
     { $unwind: { path: '$allProducts', preserveNullAndEmptyArrays: false } },
+    // Filter out products where product is null (main custom cakes without specific product reference)
+    {
+      $match: {
+        'allProducts.product': { $ne: null },
+      },
+    },
+    // Lookup product details first to get the price
+    {
+      $lookup: {
+        from: 'products',
+        localField: 'allProducts.product',
+        foreignField: '_id',
+        as: 'productInfo',
+      },
+    },
+    { $unwind: '$productInfo' },
     {
       $group: {
         _id: '$allProducts.product',
@@ -799,39 +936,12 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         totalOrderValue: {
           $sum: {
             $multiply: [
-              { $ifNull: ['$allProducts.price', 0] },
               { $ifNull: ['$allProducts.quantity', 0] },
+              { $ifNull: ['$productInfo.price', 0] },
             ],
           },
         },
-      },
-    },
-    {
-      $lookup: {
-        from: 'products',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'productDetails',
-      },
-    },
-    { $unwind: '$productDetails' },
-
-    // Optional search and filtering
-    {
-      $match: {
-        ...(search && {
-          'productDetails.name': { $regex: escapeRegex(search), $options: 'i' },
-        }),
-        ...(category && {
-          'productDetails.category': {
-            $in: [new Types.ObjectId(category)],
-          },
-        }),
-        ...(superCategory && {
-          'productDetails.superCategory': {
-            $in: [new Types.ObjectId(superCategory)],
-          },
-        }),
+        productDetails: { $first: '$productInfo' },
       },
     },
 
@@ -850,6 +960,25 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         localField: 'productDetails.superCategory',
         foreignField: '_id',
         as: 'superCategoryDetails',
+      },
+    },
+
+    // Optional search and filtering
+    {
+      $match: {
+        ...(search && {
+          'productDetails.name': { $regex: escapeRegex(search), $options: 'i' },
+        }),
+        ...(category && {
+          'productDetails.category': {
+            $in: [new Types.ObjectId(category)],
+          },
+        }),
+        ...(superCategory && {
+          'productDetails.superCategory': {
+            $in: [new Types.ObjectId(superCategory)],
+          },
+        }),
       },
     },
 
