@@ -1326,7 +1326,9 @@ export const getAllOrder = catchAsync(
       filter['delivery.date'] = dateFilter;
     }
     if (driverId) {
-      filter['driverDetails.id'] = driverId as string;
+      filter['driverDetails.id'] = {
+        $in: (driverId as string).split(','),
+      };
     }
 
     delete req.query.superCategory;
