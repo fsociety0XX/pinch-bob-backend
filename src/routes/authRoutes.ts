@@ -12,6 +12,12 @@ import {
   sendPhoneOtp,
   verifyPhoneOtp,
 } from '@src/controllers/authController';
+import {
+  refreshToken,
+  logout,
+  logoutAll,
+  protect as newProtect,
+} from '@src/middleware/authMiddleware';
 import uploadImage from '@src/utils/uploadImage';
 import {
   CHANGE_PASSWORD,
@@ -43,6 +49,11 @@ authRouter.post(
 authRouter.post(SIGN_IN, signin);
 authRouter.post(FORGOT_PASSWORD, forgotPassword);
 authRouter.patch(RESET_PASSWORD, resetPassword);
+
+// New refresh token routes
+authRouter.post('/refresh-token', refreshToken);
+authRouter.post('/logout', logout);
+authRouter.post('/logout-all', newProtect, logoutAll);
 
 // User routes
 authRouter.patch(CHANGE_PASSWORD, protect, changePassword);

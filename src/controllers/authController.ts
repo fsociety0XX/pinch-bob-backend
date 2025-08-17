@@ -7,9 +7,10 @@ import { Express, NextFunction, Request, Response } from 'express';
 import User, { IUser } from '@src/models/userModel';
 import catchAsync from '@src/utils/catchAsync';
 import { StatusCode, brandEnum } from '@src/types/customTypes';
-import { BOB_EMAIL_DETAILS, PRODUCTION } from '@src/constants/static';
+import { BOB_EMAIL_DETAILS } from '@src/constants/static';
 import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
+import TokenService from '@src/services/tokenService';
 import {
   CURRENT_PASSWORD_INCORRECT,
   PINCH_EMAILS,
@@ -34,11 +35,11 @@ import {
 } from '@src/constants/messages';
 import sendSms from '@src/utils/sendTwilioOtp';
 
-interface ICookieOptions {
-  expires: Date;
-  httpOnly: boolean;
-  secure?: boolean;
-}
+// interface ICookieOptions {
+//   expires: Date;
+//   httpOnly: boolean;
+//   secure?: boolean;
+// }
 
 interface ICustomFile extends Express.Multer.File {
   key: string;
@@ -53,31 +54,31 @@ export interface IRequestWithUser extends Request {
   user?: IUser;
 }
 
-const generateToken = (id: string): string => {
-  const secret = process.env.JWT_SCERET as string;
-  const expiresIn = process.env.JWT_EXPIRES_IN as string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (jwt.sign as any)({ id }, secret, { expiresIn });
-};
+// Legacy function - keep for backward compatibility but use TokenService for new implementations
+// const generateToken = (id: string): string => {
+//   const secret = process.env.JWT_SCERET as string;
+//   const expiresIn = process.env.JWT_EXPIRES_IN as string;
+//   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//   return (jwt.sign as any)({ id }, secret, { expiresIn });
+// };
 
-const createAndSendToken = (
+const createAndSendToken = async (
   user: IUser,
   statusCode: StatusCode,
-  res: Response
+  res: Response,
+  req?: Request
 ) => {
-  const token = generateToken(user._id!);
-  const cookieOptions: ICookieOptions = {
-    expires: new Date(
-      Date.now() + +process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
-    ),
-    httpOnly: true, // if true => restrict anyone to change or manipulate cookie manually. It will be stored in browser, sent automatically on each request.
-  };
+  // Use new TokenService for token generation
+  const deviceInfo = req ? TokenService.extractDeviceInfo(req) : undefined;
+  const tokens = await TokenService.createTokenPair(user, deviceInfo);
 
-  if (process.env.NODE_ENV === PRODUCTION) cookieOptions.secure = true; // allows to access only via https
-  res.cookie('jwt', token, cookieOptions);
+  // Set secure cookies
+  TokenService.setTokenCookies(res, tokens);
+
   res.status(statusCode).json({
     status: 'success',
-    token,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
     data: {
       user,
     },
@@ -183,7 +184,7 @@ export const signup = catchAsync(
     if (!newUser) {
       return next(new AppError(REGISTER_ERROR, StatusCode.BAD_REQUEST));
     }
-    createAndSendToken(newUser, StatusCode.CREATE, res);
+    createAndSendToken(newUser, StatusCode.CREATE, res, req);
     await sendWelcomeEmail(newUser);
   }
 );
@@ -202,7 +203,7 @@ export const signin = catchAsync(
       return next(new AppError(INVALID_CREDENTIALS, StatusCode.UNAUTHORISED));
     }
 
-    return createAndSendToken(user, StatusCode.SUCCESS, res);
+    return createAndSendToken(user, StatusCode.SUCCESS, res, req);
   }
 );
 
@@ -289,7 +290,7 @@ export const resetPassword = catchAsync(
     user.resetPasswordToken = undefined;
 
     await user.save({ validateBeforeSave: false });
-    createAndSendToken(user, 200, res);
+    createAndSendToken(user, 200, res, req);
   }
 );
 
@@ -313,7 +314,7 @@ export const changePassword = catchAsync(
     await user.save();
 
     // 4. send back token
-    createAndSendToken(user, 200, res);
+    createAndSendToken(user, 200, res, req);
   }
 );
 
@@ -388,7 +389,7 @@ export const verifyOtp = catchAsync(
           { $unset: { otp: 1, otpTimestamp: 1 } },
           { new: true }
         );
-        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res);
+        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res, req);
       }
       return next(new AppError(OTP_EXPIRED, StatusCode.BAD_REQUEST));
     }
@@ -487,7 +488,7 @@ export const verifyPhoneOtp = catchAsync(
           { $unset: { otp: 1, otpTimestamp: 1 } },
           { new: true }
         );
-        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res);
+        return createAndSendToken(currentUser!, StatusCode.SUCCESS, res, req);
       }
 
       return next(new AppError(OTP_EXPIRED, StatusCode.BAD_REQUEST));

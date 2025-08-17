@@ -65,12 +65,16 @@ import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
 import '@src/crons/orderCron';
 import '@src/crons/mailchimpCron';
+import { startTokenCleanup } from '@src/crons/tokenCleanupCron';
 import subCategoryRouter from './routes/subCategoryRoutes';
 import reportRouter from './routes/reportRoutes';
 import blogRouter from './routes/blogRoutes';
 
 const app = express();
 const dirname = path.resolve();
+
+// Start token cleanup cron
+startTokenCleanup();
 
 // GLOBAL MIDDLEWARES
 
