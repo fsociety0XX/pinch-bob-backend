@@ -797,49 +797,6 @@ export const getAllDelivery = catchAsync(
       req.query.method = (method as string).split(',');
     }
 
-    // Handle collection time filtering
-    if (collectionTime) {
-      try {
-        // Build query using helper function
-        const query = buildDeliveryQuery(req);
-
-        // Filter deliveries by collection time using helper function
-        const filteredDeliveries = await filterDeliveriesByCollectionTime(
-          query,
-          collectionTime
-        );
-
-        // Apply pagination if requested
-        const pageNum = parseInt(page as string, 10) || 1;
-        const limitNum = parseInt(limit as string, 10) || 10;
-        const skip = (pageNum - 1) * limitNum;
-
-        const paginatedData = filteredDeliveries.slice(skip, skip + limitNum);
-        const totalCount = filteredDeliveries.length;
-
-        // Return filtered and paginated results with metadata
-        return res.status(StatusCode.SUCCESS).json({
-          status: 'success',
-          data: {
-            data: paginatedData,
-          },
-          meta: {
-            totalDataCount: totalCount,
-            currentPage: pageNum,
-            totalPages: Math.ceil(totalCount / limitNum),
-          },
-        });
-      } catch (error) {
-        console.error('❌ Error in collection time filtering:', error);
-        return next(
-          new AppError(
-            DELIVERY_COLLECTION_TIME.timeFormat,
-            StatusCode.BAD_REQUEST
-          )
-        );
-      }
-    }
-
     // Check if custom sorting is requested for delivery-specific fields
     const customSortFields = [
       'orderNumber',
@@ -943,7 +900,49 @@ export const getAllDelivery = catchAsync(
       }
     }
 
-    // If no custom sorting needed, use standard getAll functionality
+    // Handle collection time filtering
+    if (collectionTime) {
+      try {
+        // Build query using helper function
+        const query = buildDeliveryQuery(req);
+
+        // Filter deliveries by collection time using helper function
+        const filteredDeliveries = await filterDeliveriesByCollectionTime(
+          query,
+          collectionTime
+        );
+
+        // Apply pagination if requested
+        const pageNum = parseInt(page as string, 10) || 1;
+        const limitNum = parseInt(limit as string, 10) || 10;
+        const skip = (pageNum - 1) * limitNum;
+
+        const paginatedData = filteredDeliveries.slice(skip, skip + limitNum);
+        const totalCount = filteredDeliveries.length;
+
+        // Return filtered and paginated results with metadata
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: paginatedData,
+          },
+          meta: {
+            totalDataCount: totalCount,
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalCount / limitNum),
+          },
+        });
+      } catch (error) {
+        console.error('❌ Error in collection time filtering:', error);
+        return next(
+          new AppError(
+            DELIVERY_COLLECTION_TIME.timeFormat,
+            StatusCode.BAD_REQUEST
+          )
+        );
+      }
+    }
+
     // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
     if (!req.query.status) {
       req.query.status = { $ne: CANCELLED };
