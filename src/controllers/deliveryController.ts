@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { NextFunction, Request, Response } from 'express';
+import { Document } from 'mongoose';
 import moment from 'moment';
 import {
   ASSIGN_TASK_TO_DRIVER,
@@ -42,6 +43,181 @@ interface DeliveryQuery {
   'driverDetails.id'?: { $in: string[] };
   paid?: boolean | { $ne: boolean };
 }
+
+interface SortQuery {
+  [key: string]: number;
+}
+
+/**
+ * Enhanced sorting function for delivery queries with support for nested field sorting
+ * Supports: orderNumber, deliveryDate, collectionTime, address (maps to address.address1), and postalCode (maps to address.postalCode)
+ */
+const buildDeliverySortQuery = (sortParam?: string): SortQuery => {
+  if (!sortParam) return {};
+
+  // Support 2 common frontend formats:
+  // 1) 'field,direction' e.g. 'postalCode,desc'
+  // 2) '-field' e.g. '-postalCode' (minus indicates desc)
+  let field = sortParam;
+  let direction: string | undefined;
+
+  if (sortParam.includes(',')) {
+    const parts = sortParam.split(',');
+    [field, direction] = parts;
+  }
+
+  // If field uses '-field' shorthand, treat as desc and strip the -
+  let sortOrder = 1;
+  if (field.startsWith('-')) {
+    sortOrder = -1;
+    field = field.slice(1);
+  } else if (direction === 'desc') {
+    sortOrder = -1;
+  }
+
+  // Map logical fields to actual DB fields (supports populated nested address fields)
+  if (field === 'address') {
+    return { 'address.address1': sortOrder };
+  }
+
+  if (field === 'postalCode') {
+    return { 'address.postalCode': sortOrder };
+  }
+
+  // Direct fields on Delivery
+  const allowedFields = ['orderNumber', 'deliveryDate', 'collectionTime'];
+  if (allowedFields.includes(field)) {
+    return { [field]: sortOrder };
+  }
+
+  return {};
+};
+
+/**
+ * Custom delivery retrieval with enhanced sorting capabilities
+ */
+const getDeliveriesWithCustomSort = async (
+  query: DeliveryQuery,
+  sortParam?: string,
+  page = 1,
+  limit = 10
+): Promise<{
+  data: Document[];
+  totalCount: number;
+  currentPage: number;
+}> => {
+  const sortQuery = buildDeliverySortQuery(sortParam);
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination
+  const totalCount = await Delivery.countDocuments(query);
+
+  // If sorting targets a populated (referenced) nested field like 'address.postalCode'
+  // MongoDB cannot sort by fields on a referenced document with a simple .sort on the Delivery collection.
+  // Fallback to fetching, populating, then sorting in-memory so asc/desc behave correctly.
+  const sortKeys = Object.keys(sortQuery);
+  const isPopulatedFieldSort = sortKeys.some((k) => k.startsWith('address.'));
+
+  if (isPopulatedFieldSort) {
+    // Fetch all matching docs (no skip/limit) then sort in JS and paginate the result
+    const allDeliveries = await Delivery.find(query).populate('address').exec();
+
+    const getNestedValue = (obj: unknown, path: string): unknown =>
+      path.split('.').reduce((o: unknown, p: string) => {
+        if (o && typeof o === 'object') {
+          return (o as Record<string, unknown>)[p];
+        }
+        return undefined;
+      }, obj);
+
+    const sortKey = sortKeys[0];
+    const sortDirection = sortQuery[sortKey] === -1 ? -1 : 1;
+
+    allDeliveries.sort((a: Document, b: Document) => {
+      const va = getNestedValue(a as unknown, sortKey);
+      const vb = getNestedValue(b as unknown, sortKey);
+
+      // Normalize null/undefined
+      if (va == null && vb == null) return 0;
+      if (va == null) return -1 * sortDirection;
+      if (vb == null) return 1 * sortDirection;
+
+      const normalize = (v: unknown) => {
+        if (typeof v === 'string') return v.trim().toUpperCase();
+        if (typeof v === 'number') return v;
+        return String(v ?? '')
+          .trim()
+          .toUpperCase();
+      };
+
+      const na = normalize(va);
+      const nb = normalize(vb);
+
+      // If both normalized values are numeric (postal codes like '01234' or '12345'), compare numerically
+      const toNumber = (x: unknown) => {
+        if (typeof x === 'number') return x as number;
+        const s = String(x).replace(/[^0-9.-]+/g, '');
+        const n = s === '' ? NaN : Number(s);
+        return Number.isFinite(n) ? n : NaN;
+      };
+
+      const naNum = toNumber(na);
+      const nbNum = toNumber(nb);
+
+      if (!Number.isNaN(naNum) && !Number.isNaN(nbNum)) {
+        if (naNum < nbNum) return -1 * sortDirection;
+        if (naNum > nbNum) return 1 * sortDirection;
+        return 0;
+      }
+
+      // Lexicographic compare
+      if (na < nb) return -1 * sortDirection;
+      if (na > nb) return 1 * sortDirection;
+
+      // Tie-breaker: use orderNumber, then _id to ensure deterministic ordering
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const oa = (a as any).orderNumber || String((a as Document)._id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ob = (b as any).orderNumber || String((b as Document)._id);
+      if (oa && ob && oa !== ob) {
+        return (
+          oa.localeCompare(ob, undefined, {
+            sensitivity: 'base',
+            numeric: true,
+          }) * sortDirection
+        );
+      }
+
+      const ida = String((a as Document)._id);
+      const idb = String((b as Document)._id);
+      if (ida < idb) return -1 * sortDirection;
+      if (ida > idb) return 1 * sortDirection;
+      return 0;
+    });
+
+    const paginated = allDeliveries.slice(skip, skip + limit);
+
+    return {
+      data: paginated,
+      totalCount: allDeliveries.length,
+      currentPage: page,
+    };
+  }
+
+  // Execute query with sorting and pagination (database-side sort for non-populated fields)
+  const data = await Delivery.find(query)
+    .populate('address')
+    .sort(sortQuery)
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+  return {
+    data,
+    totalCount,
+    currentPage: page,
+  };
+};
 
 interface ParsedTimeRange {
   original: string;
@@ -521,7 +697,6 @@ const filterDeliveriesByCollectionTime = async (
 
 const buildDeliveryQuery = (req: Request): DeliveryQuery => {
   const {
-    driverId,
     method,
     gteDeliveryDate,
     lteDeliveryDate,
@@ -555,6 +730,11 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
     paid: true, // Only show deliveries where paid: true
   };
 
+  // Add driverId filter
+  if (req.query['driverDetails.id']) {
+    query['driverDetails.id'] = req.query['driverDetails.id'];
+  }
+
   // Add status filter - always exclude cancelled unless specifically requested
   if (requestedStatus && requestedStatus !== CANCELLED) {
     // Frontend wants a specific status (and it's not cancelled)
@@ -578,16 +758,6 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
     }
   }
 
-  // Add driverId filter
-  if (driverId) {
-    // Handle both string and array cases
-    if (Array.isArray(driverId)) {
-      query['driverDetails.id'] = { $in: driverId };
-    } else {
-      query['driverDetails.id'] = { $in: (driverId as string).split(',') };
-    }
-  }
-
   return query;
 };
 
@@ -599,6 +769,9 @@ export const getAllDelivery = catchAsync(
       collectionTime,
       gteDeliveryDate,
       lteDeliveryDate,
+      sort,
+      page = '1',
+      limit = '10',
     } = req.query;
 
     // Build date query for collection time filtering
@@ -636,8 +809,26 @@ export const getAllDelivery = catchAsync(
           collectionTime
         );
 
-        // Return filtered results
-        return res.json({ success: true, data: filteredDeliveries });
+        // Apply pagination if requested
+        const pageNum = parseInt(page as string, 10) || 1;
+        const limitNum = parseInt(limit as string, 10) || 10;
+        const skip = (pageNum - 1) * limitNum;
+
+        const paginatedData = filteredDeliveries.slice(skip, skip + limitNum);
+        const totalCount = filteredDeliveries.length;
+
+        // Return filtered and paginated results with metadata
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: paginatedData,
+          },
+          meta: {
+            totalDataCount: totalCount,
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalCount / limitNum),
+          },
+        });
       } catch (error) {
         console.error('❌ Error in collection time filtering:', error);
         return next(
@@ -649,7 +840,110 @@ export const getAllDelivery = catchAsync(
       }
     }
 
-    // If no collection time filter, use standard getAll functionality
+    // Check if custom sorting is requested for delivery-specific fields
+    const customSortFields = [
+      'orderNumber',
+      'deliveryDate',
+      'collectionTime',
+      'address',
+      'postalCode',
+    ];
+
+    const hasCustomSort =
+      sort &&
+      customSortFields.some((field) => {
+        const sortStr = sort as string;
+        // Extract the field name from sort parameter (format: "field,direction" or "-field")
+        const [sortField] = sortStr.split(',');
+        const cleanSortField = sortField.startsWith('-')
+          ? sortField.slice(1)
+          : sortField;
+        // Exact match only to prevent false positives like "userAddress" matching "address"
+        return cleanSortField === field;
+      });
+
+    if (hasCustomSort) {
+      // Use custom sorting for delivery-specific fields
+      try {
+        // Build base query
+        const baseQuery: DeliveryQuery = {};
+
+        // Add brand filter if provided
+        if (req.query.brand) {
+          baseQuery.brand = req.query.brand;
+        }
+
+        // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
+        if (!req.query.status) {
+          baseQuery.status = { $ne: CANCELLED };
+        } else {
+          baseQuery.status = req.query.status;
+        }
+
+        // Always filter out deliveries with paid: false
+        baseQuery.paid = true;
+
+        // Add delivery date filter
+        if (req.query.deliveryDate) {
+          const dateFilter = req.query.deliveryDate;
+          if (typeof dateFilter === 'object' && dateFilter !== null) {
+            // Convert gte/lte to MongoDB $gte/$lte format
+            const mongoDateFilter: { $gte?: Date; $lte?: Date } = {};
+            if ('gte' in dateFilter) {
+              mongoDateFilter.$gte = dateFilter.gte as Date;
+            }
+            if ('lte' in dateFilter) {
+              mongoDateFilter.$lte = dateFilter.lte as Date;
+            }
+            baseQuery.deliveryDate = mongoDateFilter;
+          } else {
+            baseQuery.deliveryDate = dateFilter;
+          }
+        }
+
+        // Add driverId filter
+        if (req.query['driverDetails.id']) {
+          baseQuery['driverDetails.id'] = req.query['driverDetails.id'];
+        }
+
+        // Add method filter
+        if (req.query.method) {
+          baseQuery.method = req.query.method;
+        }
+
+        const pageNum = parseInt(page as string, 10);
+        const limitNum = parseInt(limit as string, 10);
+
+        // Use custom sorting function
+        const result = await getDeliveriesWithCustomSort(
+          baseQuery,
+          sort as string,
+          pageNum,
+          limitNum
+        );
+
+        return res.status(StatusCode.SUCCESS).json({
+          status: 'success',
+          data: {
+            data: result.data,
+          },
+          meta: {
+            totalDataCount: result.totalCount,
+            currentPage: result.currentPage,
+          },
+        });
+      } catch (error) {
+        console.error('❌ Error in custom delivery sorting:', error);
+        return next(
+          new AppError(
+            'Error occurred while sorting deliveries',
+            StatusCode.INTERNAL_SERVER_ERROR
+          )
+        );
+      }
+    }
+
+    // If no custom sorting needed, use standard getAll functionality
     // Add status filter - if frontend provides status, use it; otherwise exclude cancelled
     if (!req.query.status) {
       req.query.status = { $ne: CANCELLED };
