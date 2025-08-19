@@ -65,6 +65,7 @@ import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
 import '@src/crons/orderCron';
 import '@src/crons/mailchimpCron';
+import '@src/crons/reviewsCron';
 import subCategoryRouter from './routes/subCategoryRoutes';
 import reportRouter from './routes/reportRoutes';
 import blogRouter from './routes/blogRoutes';
