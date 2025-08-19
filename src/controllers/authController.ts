@@ -10,6 +10,7 @@ import { StatusCode, brandEnum } from '@src/types/customTypes';
 import { BOB_EMAIL_DETAILS, PRODUCTION } from '@src/constants/static';
 import sendEmail from '@src/utils/sendEmail';
 import AppError from '@src/utils/appError';
+import ReviewsService from '@src/services/reviewsService';
 import {
   CURRENT_PASSWORD_INCORRECT,
   PINCH_EMAILS,
@@ -398,23 +399,63 @@ export const verifyOtp = catchAsync(
 
 export const fetchReviews = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const placeId = process.env.GPLACE_ID;
-    const apiKey = process.env.GAPI_KEY;
+    try {
+      const reviewsService = ReviewsService.getInstance();
+      const result = await reviewsService.getReviews();
 
-    const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?placeid=${placeId}&key=${apiKey}`;
-
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    const { reviews } = data.result;
-
-    if (data.status !== 'OK') {
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        data: {
+          reviews: result.reviews,
+          totalRating: result.totalRating,
+          reviewCount: result.reviewCount,
+          fromCache: result.fromCache,
+        },
+      });
+    } catch (error) {
+      console.error('❌ Error fetching reviews:', error);
       return next(new AppError(GOOGLE_REVIEWS_ERROR, StatusCode.BAD_REQUEST));
     }
+  }
+);
 
-    res.status(StatusCode.SUCCESS).json({
-      status: 'success',
-      data: reviews,
-    });
+export const refreshReviews = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const reviewsService = ReviewsService.getInstance();
+      const result = await reviewsService.forceRefresh();
+
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        message: 'Reviews refreshed successfully',
+        data: {
+          reviews: result.reviews,
+          totalRating: result.totalRating,
+          reviewCount: result.reviewCount,
+          fromCache: false,
+        },
+      });
+    } catch (error) {
+      console.error('❌ Error refreshing reviews:', error);
+      return next(new AppError(GOOGLE_REVIEWS_ERROR, StatusCode.BAD_REQUEST));
+    }
+  }
+);
+
+export const getReviewsCacheStatus = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const reviewsService = ReviewsService.getInstance();
+      const status = await reviewsService.getCacheStatus();
+
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        data: status,
+      });
+    } catch (error) {
+      console.error('❌ Error getting cache status:', error);
+      return next(new AppError(GOOGLE_REVIEWS_ERROR, StatusCode.BAD_REQUEST));
+    }
   }
 );
 
