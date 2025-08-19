@@ -3,6 +3,8 @@ import {
   changePassword,
   forgotPassword,
   fetchReviews,
+  refreshReviews,
+  getReviewsCacheStatus,
   protect,
   resetPassword,
   sendOtp,
@@ -11,6 +13,7 @@ import {
   verifyOtp,
   sendPhoneOtp,
   verifyPhoneOtp,
+  roleRistriction,
 } from '@src/controllers/authController';
 import uploadImage from '@src/utils/uploadImage';
 import {
@@ -30,6 +33,12 @@ const authRouter = express.Router();
 
 // Auth routes
 authRouter.route('/reviews').get(fetchReviews);
+authRouter
+  .route('/reviews/refresh')
+  .post(protect, roleRistriction('admin'), refreshReviews);
+authRouter
+  .route('/reviews/cache-status')
+  .get(protect, roleRistriction('admin'), getReviewsCacheStatus);
 authRouter.post(SEND_OTP, sendOtp);
 authRouter.post(SEND_PHONE_OTP, sendPhoneOtp);
 authRouter.post(VERIFY_OTP, verifyOtp);
