@@ -114,6 +114,11 @@ const generatePaymentLink = async (
 ) => {
   const customiseCake = await CustomiseCake.findById(customiseCakeId);
 
+  // Find the corresponding order using the orderNumber
+  const order = await Order.findOne({
+    orderNumber: customiseCake?.orderNumber,
+  });
+
   const paymentData = {
     purpose: HITPAY_PAYMENT_PURPOSE[1],
     amount: customiseCake?.total,
@@ -127,7 +132,7 @@ const generatePaymentLink = async (
     send_email: true,
     send_sms: true,
     redirect_url: `${req.protocol}://${req.get('host')}/order-confirm/${
-      customiseCake?.id || customiseCake?._id
+      order?.id || order?._id || customiseCake?.id || customiseCake?._id
     }`,
   };
 
