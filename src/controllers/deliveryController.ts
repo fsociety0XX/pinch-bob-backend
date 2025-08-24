@@ -595,6 +595,9 @@ const processDeliveryQueryParams = (req: Request): void => {
   if (method) {
     req.query.method = (method as string).split(',');
   }
+
+  // Only show orders where paid: true
+  req.query.paid = true;
 };
 
 /**

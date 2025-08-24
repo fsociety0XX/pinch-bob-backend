@@ -140,6 +140,7 @@ export interface IOtherProduct {
   complexFonAcc?: string;
   nonFondantDecor?: string;
   simpleFonAcc?: string;
+  isMoneyPulling?: boolean;
 }
 
 export interface ICustomFormProduct {
@@ -182,6 +183,7 @@ export interface IOrder {
   moneyReceivedForMoneyPulling: boolean;
   moneyPaidForMoneyPulling?: boolean;
   moneyPullingPrepared?: boolean;
+  isMoneyPulling?: boolean; // to check if money pulling is there in otherProduct or customFormProduct
   preparationStatus: string;
   status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
@@ -247,6 +249,10 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   complexFonAcc: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
+  isMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const CustomFormProductSchema = new mongoose.Schema<ICustomFormProduct>({
@@ -407,6 +413,10 @@ const orderSchema = new mongoose.Schema<IOrder>(
       default: false,
     },
     moneyPullingPrepared: {
+      type: Boolean,
+      default: false,
+    },
+    isMoneyPulling: {
       type: Boolean,
       default: false,
     },

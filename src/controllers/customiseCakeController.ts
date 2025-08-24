@@ -521,6 +521,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     brand,
     user,
     paid,
+    moneyPaidForMoneyPulling,
+    moneyPullingPrepared,
+    moneyReceivedForMoneyPulling,
     hitpayDetails,
     woodeliveryTaskId,
     delivery,
@@ -537,6 +540,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     specialRequest,
     moneyPulling,
     flavour,
+    isMoneyPulling,
   } = customiseCakeOrder;
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
@@ -587,6 +591,10 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     brand,
     user,
     paid,
+    moneyPaidForMoneyPulling,
+    moneyPullingPrepared,
+    moneyReceivedForMoneyPulling,
+    isMoneyPulling,
     hitpayDetails,
     woodeliveryTaskId,
     customiseCakeForm: true,
