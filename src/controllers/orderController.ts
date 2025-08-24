@@ -1313,7 +1313,15 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.wantMoneyPulling'] = moneyPullingOrders;
+      // Filter orders where ANY of these conditions is true:
+      // 1. Regular orders: product.wantMoneyPulling
+      // 2. Custom cake orders: isMoneyPulling
+      // 3. Corporate orders: otherProduct.isMoneyPulling
+      filter.$or = [
+        { 'product.wantMoneyPulling': moneyPullingOrders },
+        { isMoneyPulling: moneyPullingOrders },
+        { 'otherProduct.isMoneyPulling': moneyPullingOrders },
+      ];
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
@@ -1578,6 +1586,57 @@ export const hitpayWebhookHandler = catchAsync(
       }
     } else {
       res.status(400).send('Invalid HMAC signature');
+    }
+  }
+);
+
+export const resendOrderConfirmationEmail = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return next(new AppError('Order ID is required', StatusCode.BAD_REQUEST));
+    }
+
+    // Fetch the order with populated fields
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return next(new AppError(ORDER_NOT_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    // Get email address - priority: user email > customer email
+    const emailAddress = order.user?.email || order.customer?.email;
+
+    if (!emailAddress) {
+      return next(
+        new AppError(
+          'No email address found for this order',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
+    try {
+      await sendOrderConfirmationEmail(emailAddress, order);
+
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        message: 'Order confirmation email sent successfully',
+        data: {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          emailSentTo: emailAddress,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to send order confirmation email:', error);
+      return next(
+        new AppError(
+          'Failed to send confirmation email',
+          StatusCode.INTERNAL_SERVER_ERROR
+        )
+      );
     }
   }
 );

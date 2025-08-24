@@ -10,6 +10,7 @@ import {
   getWoodeliveryId,
   migrateOrders,
   placeOrder,
+  resendOrderConfirmationEmail,
   triggerOrderFailEmail,
   updateOrder,
   updateRefImages,
@@ -40,6 +41,9 @@ orderRouter.route('/:id').patch(authenticateOrderAccess, updateOrder);
 orderRouter.use(roleRistriction(Role.ADMIN));
 orderRouter.route('/').post(createOrder).patch(deleteManyOrder);
 orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
+orderRouter
+  .route('/:orderId/resend-confirmation-email')
+  .post(resendOrderConfirmationEmail);
 orderRouter
   .route(UPDATE_REF_IMG)
   .patch(
