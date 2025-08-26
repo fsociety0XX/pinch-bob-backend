@@ -114,6 +114,14 @@ interface IDeliveryData {
   };
   status?: string;
   paid: boolean;
+  driverDetails?: {
+    id: string;
+    name: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+  } | null;
 }
 
 // CRON scheduled task to run after 30 mins of placing order if the payment failed
@@ -611,13 +619,23 @@ const createDeliveryDocument = async (
       recipientName: recipInfo?.name,
       recipientPhone: recipInfo?.contact,
       customer: {
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user?.firstName,
+        lastName: user?.lastName,
         email: user?.email || '',
         phone: user?.phone || '',
       },
       paid: order.paid || false, // Ensure paid status is set
     };
+
+    // Check if delivery method is self-collect to unassign driver
+    const deliveryMethod = await DeliveryMethod.findById(
+      method._id || method.id
+    );
+    if (deliveryMethod?.name === SELF_COLLECT) {
+      data.driverDetails = null; // Unassign driver for self-collect
+    } else if (order.driverDetails) {
+      data.driverDetails = order.driverDetails; // Keep existing driver for delivery orders
+    }
 
     if (task) {
       data.woodeliveryTaskId = task?.data?.guid;
@@ -1395,6 +1413,15 @@ export const updateOrder = catchAsync(
 
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
+
+      // Check if delivery method is changing to self-collect
+      if (delivery.method) {
+        const deliveryMethod = await DeliveryMethod.findById(delivery.method);
+        if (deliveryMethod?.name === SELF_COLLECT) {
+          // Unassign driver if method changes to self-collect
+          req.body.driverDetails = null;
+        }
+      }
     }
     const before = await Order.findById(req.params.id);
 
