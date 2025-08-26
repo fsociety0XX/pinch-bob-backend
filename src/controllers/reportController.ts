@@ -25,6 +25,9 @@ export const fetchCustomerDataByOrder = catchAsync(
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Preserve exact time components from input (like getAllOrder function)
+    // No normalization to beginning/end of day
+
     // Validate dates
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return next(
@@ -150,43 +153,113 @@ export const fetchCustomerDataByOrder = catchAsync(
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          // Customer Type Segmentation (regardless of order type)
-          newCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
-          repeatCustomerOrders: {
-            $sum: { $cond: [{ $not: '$isNewCustomer' }, 1, 0] },
+          // Customer Type Segmentation (excluding corporate orders)
+          newCustomerOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                1,
+                0,
+              ],
+            },
           },
-          // Order Type Segmentation (regardless of customer type)
+          repeatCustomerOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          // Order Type Segmentation (excluding corporate orders)
           regularOrders: {
-            $sum: { $cond: [{ $ne: ['$customiseCakeForm', true] }, 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$customiseCakeForm', true] },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
           },
           customiseCakeOrders: {
-            $sum: { $cond: ['$customiseCakeForm', 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$customiseCakeForm', { $ne: ['$corporate', true] }],
+                },
+                1,
+                0,
+              ],
+            },
           },
-          // Corporate Orders (subset flag)
+          // Corporate Orders (separate category)
           corporateOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
-          // Calculate Amounts by Customer Type
+          // Calculate Amounts by Customer Type (excluding corporate orders)
           newCustomerAmount: {
-            $sum: { $cond: ['$isNewCustomer', '$totalAmountValue', 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                '$totalAmountValue',
+                0,
+              ],
+            },
           },
           repeatCustomerAmount: {
             $sum: {
-              $cond: [{ $not: '$isNewCustomer' }, '$totalAmountValue', 0],
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                '$totalAmountValue',
+                0,
+              ],
             },
           },
-          // Calculate Amounts by Order Type
+          // Calculate Amounts by Order Type (excluding corporate orders)
           regularAmount: {
             $sum: {
               $cond: [
-                { $ne: ['$customiseCakeForm', true] },
+                {
+                  $and: [
+                    { $ne: ['$customiseCakeForm', true] },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
                 '$totalAmountValue',
                 0,
               ],
             },
           },
           customiseCakeAmount: {
-            $sum: { $cond: ['$customiseCakeForm', '$totalAmountValue', 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$customiseCakeForm', { $ne: ['$corporate', true] }],
+                },
+                '$totalAmountValue',
+                0,
+              ],
+            },
           },
-          // Corporate Amount (subset)
+          // Corporate Amount (separate category)
           corporateAmount: {
             $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
           },
@@ -194,9 +267,8 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
       {
         $addFields: {
-          // Total can be calculated two ways (both should be equal):
-          // By Customer Type: New + Repeat
-          // By Order Type: Regular + CustomiseCake
+          // Total Orders and Amount (excluding corporate orders)
+          // By Customer Type: New + Repeat (Corporate orders are shown separately)
           totalOrders: {
             $sum: ['$newCustomerOrders', '$repeatCustomerOrders'],
           },
@@ -253,6 +325,9 @@ export const fetchCustomerDataByDelivery = catchAsync(
 
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    // Preserve exact time components from input (like getAllOrder function)
+    // No normalization to beginning/end of day
 
     // Validate dates
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
@@ -409,52 +484,122 @@ export const fetchCustomerDataByDelivery = catchAsync(
               date: '$deliveryDateConverted',
             },
           },
-          // Customer Type Segmentation (regardless of order type)
-          newCustomerOrders: { $sum: { $cond: ['$isNewCustomer', 1, 0] } },
-          repeatCustomerOrders: {
-            $sum: { $cond: [{ $not: '$isNewCustomer' }, 1, 0] },
+          // Customer Type Segmentation (excluding corporate orders)
+          newCustomerOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                1,
+                0,
+              ],
+            },
           },
-          // Order Type Segmentation (regardless of customer type)
+          repeatCustomerOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          // Order Type Segmentation (excluding corporate orders)
           regularOrders: {
-            $sum: { $cond: [{ $ne: ['$customiseCakeForm', true] }, 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$customiseCakeForm', true] },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
           },
           customiseCakeOrders: {
-            $sum: { $cond: ['$customiseCakeForm', 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$customiseCakeForm', { $ne: ['$corporate', true] }],
+                },
+                1,
+                0,
+              ],
+            },
           },
-          // Corporate Orders (subset flag) - keeping csvOrders name for compatibility
+          // Corporate Orders (separate category) - keeping csvOrders name for compatibility
           csvOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
-          // Calculate Amounts by Customer Type
+          // Calculate Amounts by Customer Type (excluding corporate orders)
           newCustomerAmount: {
-            $sum: { $cond: ['$isNewCustomer', '$totalAmountValue', 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                '$totalAmountValue',
+                0,
+              ],
+            },
           },
           repeatCustomerAmount: {
             $sum: {
-              $cond: [{ $not: '$isNewCustomer' }, '$totalAmountValue', 0],
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                '$totalAmountValue',
+                0,
+              ],
             },
           },
-          // Calculate Amounts by Order Type
+          // Calculate Amounts by Order Type (excluding corporate orders)
           regularAmount: {
             $sum: {
               $cond: [
-                { $ne: ['$customiseCakeForm', true] },
+                {
+                  $and: [
+                    { $ne: ['$customiseCakeForm', true] },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
                 '$totalAmountValue',
                 0,
               ],
             },
           },
           customiseCakeAmount: {
-            $sum: { $cond: ['$customiseCakeForm', '$totalAmountValue', 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: ['$customiseCakeForm', { $ne: ['$corporate', true] }],
+                },
+                '$totalAmountValue',
+                0,
+              ],
+            },
           },
-          // Corporate Amount (subset) - keeping csvAmount name for compatibility
+          // Corporate Amount (separate category) - keeping csvAmount name for compatibility
           csvAmount: {
             $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
           },
         },
       },
-      // Step 3: Add Total Orders and Total Amount
+      // Step 3: Add Total Orders and Total Amount (excluding corporate orders)
       {
         $addFields: {
-          // Total by Customer Type: New + Repeat
+          // Total by Customer Type: New + Repeat (Corporate orders are shown separately)
           totalOrders: {
             $sum: ['$newCustomerOrders', '$repeatCustomerOrders'],
           },
@@ -521,9 +666,14 @@ export const aggregatedCustomerReport = catchAsync(
     const pageNumber = parseInt(page, 10);
     const pageSize = parseInt(limit, 10);
     const skip = (pageNumber - 1) * pageSize;
+
+    // Preserve exact time components from input (like getAllOrder function)
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+
     const dateMatch = {
       paid: true,
-      createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) },
+      createdAt: { $gte: startDateObj, $lte: endDateObj },
       ...(brand ? { brand } : {}),
     };
 
@@ -786,6 +936,10 @@ const escapeRegex = (str: string) => {
 export const productReport = catchAsync(async (req: Request, res: Response) => {
   const startDate = new Date(req.query.startDate as string);
   const endDate = new Date(req.query.endDate as string);
+
+  // Preserve exact time components from input (like getAllOrder function)
+  // No normalization to beginning/end of day
+
   const brand = req.query.brand as string;
   const page = +(req.query.page as string) || 1;
   const limit = +(req.query.limit as string) || 10;
@@ -914,9 +1068,12 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
     },
     { $unwind: { path: '$allProducts', preserveNullAndEmptyArrays: false } },
     // Filter out products where product is null (main custom cakes without specific product reference)
+    // Also exclude "Birthday Kit" product
     {
       $match: {
-        'allProducts.product': { $ne: null },
+        'allProducts.product': {
+          $nin: [null, new Types.ObjectId('67f72f6fc8364d1b276fde2a')], // Exclude null and Birthday Kit
+        },
       },
     },
     // Lookup product details first to get the price
