@@ -1540,6 +1540,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
+      paymentDate: new Date(),
     };
     const order = await Order.findByIdAndUpdate(
       orderId,
@@ -1585,6 +1586,7 @@ const handlePaymentFaliureForBob = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
+      paymentDate: new Date(),
     };
     await Order.findByIdAndUpdate(orderId, {
       hitpayDetails,
