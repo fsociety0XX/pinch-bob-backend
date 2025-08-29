@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import hbs from 'nodemailer-express-handlebars';
 import path from 'path';
 import { TEMPLATES_DIR } from '@src/constants/messages';
+import { BLACK_LISTED_EMAILS } from '@src/constants/static';
 
 interface IEmail {
   email: string;
@@ -11,6 +12,17 @@ interface IEmail {
   brand: string;
 }
 
+// Email blacklist - add email addresses that should not receive emails
+const EMAIL_BLACKLIST = new Set<string>(BLACK_LISTED_EMAILS);
+
+// Helper function to check if email is blacklisted
+const isEmailBlacklisted = (email: string): boolean => {
+  const normalizedEmail = email.toLowerCase().trim();
+  const isBlacklisted = EMAIL_BLACKLIST.has(normalizedEmail);
+
+  return isBlacklisted;
+};
+
 const sendEmail = async ({
   email,
   subject,
@@ -18,6 +30,24 @@ const sendEmail = async ({
   context,
   brand,
 }: IEmail): Promise<void> => {
+  // Validate email before attempting to send
+  if (
+    !email ||
+    typeof email !== 'string' ||
+    !email.trim() ||
+    !email.includes('@')
+  ) {
+    console.warn(`Invalid email provided to sendEmail: ${email}`);
+    throw new Error('Invalid email address provided');
+  }
+
+  const validEmail = email.trim();
+
+  // Check if email is blacklisted
+  if (isEmailBlacklisted(validEmail)) {
+    return; // Skip sending email to blacklisted addresses
+  }
+
   const transport = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: +process.env.EMAIL_PORT!,
@@ -51,12 +81,19 @@ const sendEmail = async ({
 
   const mailOptions = {
     from: process.env.EMAIL_ADDRESS,
-    to: email,
+    to: validEmail,
     subject,
     template,
     context,
   };
-  await transport.sendMail(mailOptions);
+
+  try {
+    await transport.sendMail(mailOptions);
+    console.log(`✅ Email successfully sent to: ${validEmail}`);
+  } catch (error) {
+    console.error(`❌ Failed to send email to: ${validEmail}`, error);
+    throw error;
+  }
 };
 
 export default sendEmail;
