@@ -130,7 +130,7 @@ export const fetchCustomerDataByOrder = catchAsync(
           users: { $addToSet: '$user' },
         },
       },
-      // Get first order date for all users in this batch (much more efficient) - HitPay orders only
+      // Get first order date for all users in this batch (HitPay orders only for new customer determination)
       {
         $lookup: {
           from: 'orders',
@@ -172,7 +172,7 @@ export const fetchCustomerDataByOrder = catchAsync(
                 },
               },
               in: {
-                // A customer is "new" if this order IS their very first order ever
+                // A customer is "new" if this order IS their very first order ever (HitPay only)
                 $eq: [
                   '$orders.effectivePaymentDate',
                   '$$userFirstOrder.firstOrderDate',
@@ -274,8 +274,8 @@ export const fetchCustomerDataByOrder = catchAsync(
               ],
             },
           },
-          // Corporate Orders (separate category)
-          corporateOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
+          // Corporate Orders - set to 0 for now (will be calculated separately)
+          corporateOrders: { $sum: 0 },
           // Calculate Amounts by Customer Type (excluding corporate orders)
           newCustomerAmount: {
             $sum: {
@@ -328,10 +328,8 @@ export const fetchCustomerDataByOrder = catchAsync(
               ],
             },
           },
-          // Corporate Amount (separate category)
-          corporateAmount: {
-            $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
-          },
+          // Corporate Amount - set to 0 for now (will be calculated separately)
+          corporateAmount: { $sum: 0 },
         },
       },
       {
@@ -357,13 +355,93 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
     ]);
 
+    // Separate aggregation to get corporate orders for each date
+    const corporateData = await Order.aggregate([
+      {
+        $match: {
+          $or: [
+            // HitPay corporate orders
+            {
+              $and: [
+                {
+                  'hitpayDetails.paymentDate': {
+                    $gte: adjustedStart,
+                    $lte: adjustedEnd,
+                  },
+                },
+                { 'hitpayDetails.paymentDate': { $exists: true } },
+                { corporate: true },
+              ],
+            },
+            // CSV/Corporate orders without HitPay details
+            {
+              'hitpayDetails.paymentDate': { $exists: false },
+              createdAt: {
+                $gte: adjustedStart,
+                $lte: adjustedEnd,
+              },
+              corporate: true,
+            },
+          ],
+          paid: true,
+          ...(brand && { brand }),
+        },
+      },
+      {
+        $addFields: {
+          effectivePaymentDate: {
+            $cond: {
+              if: { $ifNull: ['$hitpayDetails.paymentDate', false] },
+              then: '$hitpayDetails.paymentDate',
+              else: '$createdAt',
+            },
+          },
+          totalAmountValue: {
+            $convert: {
+              input: '$pricingSummary.total',
+              to: 'double',
+              onError: 0,
+              onNull: 0,
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: {
+                $add: ['$effectivePaymentDate', 8 * 60 * 60 * 1000], // Convert to SGT
+              },
+            },
+          },
+          corporateOrders: { $sum: 1 },
+          corporateAmount: { $sum: '$totalAmountValue' },
+        },
+      },
+    ]);
+
+    // Merge corporate data with main report data
+    const corporateMap = new Map(corporateData.map((item) => [item._id, item]));
+
+    const enrichedData = reportData[0].data.map(
+      (item: Record<string, unknown>) => ({
+        ...item,
+        corporateOrders:
+          corporateMap.get(item._id as string)?.corporateOrders || 0,
+        corporateAmount:
+          corporateMap.get(item._id as string)?.corporateAmount || 0,
+      })
+    );
+
     const total = reportData[0]?.metadata?.[0]?.total || 0;
     const totalPages = total > 0 ? Math.ceil(total / limitNum) : 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: {
-        data: reportData[0].data || [],
+        data: enrichedData,
       },
       meta: {
         page: pageNum,
