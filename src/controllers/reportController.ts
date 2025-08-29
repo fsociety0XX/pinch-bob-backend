@@ -25,17 +25,31 @@ export const fetchCustomerDataByOrder = catchAsync(
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Convert filter dates to account for Singapore timezone (UTC+8)
+    // When filtering for Aug 20 SGT, we need to include orders from Aug 19 16:00 UTC to Aug 20 16:00 UTC
+    // Note: Only including orders with HitPay payment details (excluding orders without hitpayDetails.paymentDate)
+    const sgTimezoneOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+
+    // Adjust start date: subtract 8 hours to capture Singapore timezone start
+    const adjustedStart = new Date(start.getTime() - sgTimezoneOffset);
+
+    // Adjust end date: subtract 8 hours and add 1 millisecond to capture Singapore timezone end
+    const adjustedEnd = new Date(end.getTime() - sgTimezoneOffset + 1);
+
     // Preserve exact time components from input (like getAllOrder function)
     // No normalization to beginning/end of day
 
     // Validate dates
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (
+      Number.isNaN(adjustedStart.getTime()) ||
+      Number.isNaN(adjustedEnd.getTime())
+    ) {
       return next(
         new AppError('Invalid date format provided', StatusCode.BAD_REQUEST)
       );
     }
 
-    if (start > end) {
+    if (adjustedStart > adjustedEnd) {
       return next(
         new AppError(
           'Start date cannot be greater than end date',
@@ -60,12 +74,22 @@ export const fetchCustomerDataByOrder = catchAsync(
     const skip = (pageNum - 1) * limitNum;
 
     const reportData = await Order.aggregate([
-      // Step 1: Match Orders by Date Range and Paid Status
+      // Step 1: Match Orders by Date Range, Paid Status, and HitPay Details Only
       {
         $match: {
-          createdAt: { $gte: start, $lte: end },
+          'hitpayDetails.paymentDate': {
+            $gte: adjustedStart,
+            $lte: adjustedEnd,
+            $exists: true,
+          },
           paid: true,
           ...(brand && { brand }),
+        },
+      },
+      // Step 2: Add computed field for payment date (only HitPay orders now)
+      {
+        $addFields: {
+          effectivePaymentDate: '$hitpayDetails.paymentDate',
         },
       },
       {
@@ -91,15 +115,22 @@ export const fetchCustomerDataByOrder = catchAsync(
           },
         },
       },
-      // Step 2: Group By Date and Calculate Orders and Amounts
+      // Step 3: Group By Date and Calculate Orders and Amounts
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: {
+                $add: ['$effectivePaymentDate', 8 * 60 * 60 * 1000], // Convert to SGT for grouping
+              },
+            },
+          },
           orders: { $push: '$$ROOT' },
           users: { $addToSet: '$user' },
         },
       },
-      // Get first order date for all users in this batch (much more efficient)
+      // Get first order date for all users in this batch (HitPay orders only for new customer determination)
       {
         $lookup: {
           from: 'orders',
@@ -108,13 +139,14 @@ export const fetchCustomerDataByOrder = catchAsync(
             {
               $match: {
                 $expr: { $in: ['$user', '$$userIds'] },
+                'hitpayDetails.paymentDate': { $exists: true },
                 paid: true,
               },
             },
             {
               $group: {
                 _id: '$user',
-                firstOrderDate: { $min: '$createdAt' },
+                firstOrderDate: { $min: '$hitpayDetails.paymentDate' },
               },
             },
           ],
@@ -140,8 +172,11 @@ export const fetchCustomerDataByOrder = catchAsync(
                 },
               },
               in: {
-                // A customer is "new" if this order IS their very first order ever
-                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+                // A customer is "new" if this order IS their very first order ever (HitPay only)
+                $eq: [
+                  '$orders.effectivePaymentDate',
+                  '$$userFirstOrder.firstOrderDate',
+                ],
               },
             },
           },
@@ -152,7 +187,14 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: {
+                $add: ['$effectivePaymentDate', 8 * 60 * 60 * 1000], // Convert to SGT for grouping
+              },
+            },
+          },
           // Customer Type Segmentation (excluding corporate orders)
           newCustomerOrders: {
             $sum: {
@@ -162,6 +204,18 @@ export const fetchCustomerDataByOrder = catchAsync(
                 },
                 1,
                 0,
+              ],
+            },
+          },
+          // Collect order IDs for new customers (non-corporate)
+          newCustomerOrderIds: {
+            $push: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                '$_id',
+                '$$REMOVE',
               ],
             },
           },
@@ -176,6 +230,21 @@ export const fetchCustomerDataByOrder = catchAsync(
                 },
                 1,
                 0,
+              ],
+            },
+          },
+          // Collect order IDs for repeat customers (non-corporate)
+          repeatCustomerOrderIds: {
+            $push: {
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                '$_id',
+                '$$REMOVE',
               ],
             },
           },
@@ -205,8 +274,8 @@ export const fetchCustomerDataByOrder = catchAsync(
               ],
             },
           },
-          // Corporate Orders (separate category)
-          corporateOrders: { $sum: { $cond: ['$corporate', 1, 0] } },
+          // Corporate Orders - set to 0 for now (will be calculated separately)
+          corporateOrders: { $sum: 0 },
           // Calculate Amounts by Customer Type (excluding corporate orders)
           newCustomerAmount: {
             $sum: {
@@ -259,10 +328,8 @@ export const fetchCustomerDataByOrder = catchAsync(
               ],
             },
           },
-          // Corporate Amount (separate category)
-          corporateAmount: {
-            $sum: { $cond: ['$corporate', '$totalAmountValue', 0] },
-          },
+          // Corporate Amount - set to 0 for now (will be calculated separately)
+          corporateAmount: { $sum: 0 },
         },
       },
       {
@@ -288,13 +355,93 @@ export const fetchCustomerDataByOrder = catchAsync(
       },
     ]);
 
+    // Separate aggregation to get corporate orders for each date
+    const corporateData = await Order.aggregate([
+      {
+        $match: {
+          $or: [
+            // HitPay corporate orders
+            {
+              $and: [
+                {
+                  'hitpayDetails.paymentDate': {
+                    $gte: adjustedStart,
+                    $lte: adjustedEnd,
+                  },
+                },
+                { 'hitpayDetails.paymentDate': { $exists: true } },
+                { corporate: true },
+              ],
+            },
+            // CSV/Corporate orders without HitPay details
+            {
+              'hitpayDetails.paymentDate': { $exists: false },
+              createdAt: {
+                $gte: adjustedStart,
+                $lte: adjustedEnd,
+              },
+              corporate: true,
+            },
+          ],
+          paid: true,
+          ...(brand && { brand }),
+        },
+      },
+      {
+        $addFields: {
+          effectivePaymentDate: {
+            $cond: {
+              if: { $ifNull: ['$hitpayDetails.paymentDate', false] },
+              then: '$hitpayDetails.paymentDate',
+              else: '$createdAt',
+            },
+          },
+          totalAmountValue: {
+            $convert: {
+              input: '$pricingSummary.total',
+              to: 'double',
+              onError: 0,
+              onNull: 0,
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: {
+                $add: ['$effectivePaymentDate', 8 * 60 * 60 * 1000], // Convert to SGT
+              },
+            },
+          },
+          corporateOrders: { $sum: 1 },
+          corporateAmount: { $sum: '$totalAmountValue' },
+        },
+      },
+    ]);
+
+    // Merge corporate data with main report data
+    const corporateMap = new Map(corporateData.map((item) => [item._id, item]));
+
+    const enrichedData = reportData[0].data.map(
+      (item: Record<string, unknown>) => ({
+        ...item,
+        corporateOrders:
+          corporateMap.get(item._id as string)?.corporateOrders || 0,
+        corporateAmount:
+          corporateMap.get(item._id as string)?.corporateAmount || 0,
+      })
+    );
+
     const total = reportData[0]?.metadata?.[0]?.total || 0;
     const totalPages = total > 0 ? Math.ceil(total / limitNum) : 0;
 
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       data: {
-        data: reportData[0].data || [],
+        data: enrichedData,
       },
       meta: {
         page: pageNum,
@@ -438,9 +585,20 @@ export const fetchCustomerDataByDelivery = catchAsync(
               },
             },
             {
+              $addFields: {
+                effectivePaymentDate: {
+                  $cond: {
+                    if: { $ifNull: ['$hitpayDetails.paymentDate', false] },
+                    then: '$hitpayDetails.paymentDate',
+                    else: '$createdAt',
+                  },
+                },
+              },
+            },
+            {
               $group: {
                 _id: '$user',
-                firstOrderDate: { $min: '$createdAt' },
+                firstOrderDate: { $min: '$effectivePaymentDate' },
               },
             },
           ],
@@ -467,7 +625,18 @@ export const fetchCustomerDataByDelivery = catchAsync(
               },
               in: {
                 // A customer is "new" if this order IS their very first order ever
-                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+                $eq: [
+                  {
+                    $cond: {
+                      if: {
+                        $ifNull: ['$orders.hitpayDetails.paymentDate', false],
+                      },
+                      then: '$orders.hitpayDetails.paymentDate',
+                      else: '$orders.createdAt',
+                    },
+                  },
+                  '$$userFirstOrder.firstOrderDate',
+                ],
               },
             },
           },
@@ -496,6 +665,18 @@ export const fetchCustomerDataByDelivery = catchAsync(
               ],
             },
           },
+          // Collect order IDs for new customers (non-corporate)
+          newCustomerOrderIds: {
+            $push: {
+              $cond: [
+                {
+                  $and: ['$isNewCustomer', { $ne: ['$corporate', true] }],
+                },
+                '$_id',
+                '$$REMOVE',
+              ],
+            },
+          },
           repeatCustomerOrders: {
             $sum: {
               $cond: [
@@ -507,6 +688,21 @@ export const fetchCustomerDataByDelivery = catchAsync(
                 },
                 1,
                 0,
+              ],
+            },
+          },
+          // Collect order IDs for repeat customers (non-corporate)
+          repeatCustomerOrderIds: {
+            $push: {
+              $cond: [
+                {
+                  $and: [
+                    { $not: '$isNewCustomer' },
+                    { $ne: ['$corporate', true] },
+                  ],
+                },
+                '$_id',
+                '$$REMOVE',
               ],
             },
           },
@@ -671,11 +867,36 @@ export const aggregatedCustomerReport = catchAsync(
     const startDateObj = new Date(startDate);
     const endDateObj = new Date(endDate);
 
-    const dateMatch = {
+    // Create base match for paid orders
+    const baseMatch = {
       paid: true,
-      createdAt: { $gte: startDateObj, $lte: endDateObj },
       ...(brand ? { brand } : {}),
     };
+
+    // Create date filter that works for both HitPay and CSV orders
+    const dateFilter = {
+      $or: [
+        // HitPay orders: use hitpayDetails.paymentDate
+        {
+          $and: [
+            {
+              'hitpayDetails.paymentDate': {
+                $gte: startDateObj,
+                $lte: endDateObj,
+              },
+            },
+            { 'hitpayDetails.paymentDate': { $exists: true } },
+          ],
+        },
+        // CSV/Corporate orders: use createdAt when hitpayDetails.paymentDate doesn't exist
+        {
+          'hitpayDetails.paymentDate': { $exists: false },
+          createdAt: { $gte: startDateObj, $lte: endDateObj },
+        },
+      ],
+    };
+
+    const dateMatch = { ...baseMatch, ...dateFilter };
 
     const pipeline: PipelineStage[] = [
       // Step 1: Filter paid orders in date range
@@ -708,7 +929,15 @@ export const aggregatedCustomerReport = catchAsync(
           groupPeriod: {
             $dateToString: {
               format: groupBy === 'month' ? '%Y-%m' : '%G-W%V',
-              date: '$createdAt',
+              date: {
+                $cond: {
+                  if: {
+                    $ifNull: ['$hitpayDetails.paymentDate', false],
+                  },
+                  then: '$hitpayDetails.paymentDate',
+                  else: '$createdAt',
+                },
+              },
             },
           },
         },
@@ -812,7 +1041,17 @@ export const aggregatedCustomerReport = catchAsync(
             {
               $group: {
                 _id: '$user',
-                firstOrderDate: { $min: '$createdAt' },
+                firstOrderDate: {
+                  $min: {
+                    $cond: {
+                      if: {
+                        $ifNull: ['$hitpayDetails.paymentDate', false],
+                      },
+                      then: '$hitpayDetails.paymentDate',
+                      else: '$createdAt',
+                    },
+                  },
+                },
               },
             },
           ],
@@ -841,7 +1080,18 @@ export const aggregatedCustomerReport = catchAsync(
               },
               in: {
                 // A customer is "new" if this order IS their very first order ever
-                $eq: ['$orders.createdAt', '$$userFirstOrder.firstOrderDate'],
+                $eq: [
+                  {
+                    $cond: {
+                      if: {
+                        $ifNull: ['$orders.hitpayDetails.paymentDate', false],
+                      },
+                      then: '$orders.hitpayDetails.paymentDate',
+                      else: '$orders.createdAt',
+                    },
+                  },
+                  '$$userFirstOrder.firstOrderDate',
+                ],
               },
             },
           },
@@ -852,7 +1102,17 @@ export const aggregatedCustomerReport = catchAsync(
       {
         $group: {
           _id: { user: '$orders.user', groupPeriod: '$_id' },
-          firstOrderDate: { $min: '$orders.createdAt' },
+          firstOrderDate: {
+            $min: {
+              $cond: {
+                if: {
+                  $ifNull: ['$orders.hitpayDetails.paymentDate', false],
+                },
+                then: '$orders.hitpayDetails.paymentDate',
+                else: '$orders.createdAt',
+              },
+            },
+          },
           totalOrders: { $sum: 1 },
           totalItems: { $sum: '$orders.itemsCount' },
           hasAttachOrder: { $max: '$orders.isAttachOrder' },
@@ -961,7 +1221,25 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
   const aggregationPipeline: PipelineStage[] = [
     {
       $match: {
-        createdAt: { $gte: startDate, $lte: endDate },
+        $or: [
+          // HitPay orders: use hitpayDetails.paymentDate
+          {
+            $and: [
+              {
+                'hitpayDetails.paymentDate': {
+                  $gte: startDate,
+                  $lte: endDate,
+                },
+              },
+              { 'hitpayDetails.paymentDate': { $exists: true } },
+            ],
+          },
+          // CSV/Corporate orders: use createdAt when hitpayDetails.paymentDate doesn't exist
+          {
+            'hitpayDetails.paymentDate': { $exists: false },
+            createdAt: { $gte: startDate, $lte: endDate },
+          },
+        ],
         brand,
         paid: true,
       },
@@ -1138,7 +1416,6 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         }),
       },
     },
-
     {
       $addFields: {
         productDetails: {

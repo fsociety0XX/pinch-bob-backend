@@ -795,6 +795,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
     amount,
     paymentMethod: payment_methods,
     paymentRequestId: id,
+    paymentDate: new Date(),
   };
 
   const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
