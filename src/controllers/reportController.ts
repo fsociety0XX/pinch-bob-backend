@@ -62,10 +62,10 @@ export const fetchCustomerDataByOrder = catchAsync(
     const limitNum = parseInt(limit, 10);
 
     // Validate pagination parameters
-    if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
+    if (pageNum < 1 || limitNum < 1 || limitNum > 600) {
       return next(
         new AppError(
-          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-100',
+          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-600',
           StatusCode.BAD_REQUEST
         )
       );
@@ -496,10 +496,10 @@ export const fetchCustomerDataByDelivery = catchAsync(
     const limitNum = parseInt(limit, 10);
 
     // Validate pagination parameters
-    if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
+    if (pageNum < 1 || limitNum < 1 || limitNum > 600) {
       return next(
         new AppError(
-          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-100',
+          'Invalid pagination parameters. Page must be >= 1 and limit must be between 1-600',
           StatusCode.BAD_REQUEST
         )
       );
