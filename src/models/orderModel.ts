@@ -107,6 +107,7 @@ export interface IProduct {
   complexFonAcc?: string;
   nonFondantDecor?: string;
   simpleFonAcc?: string;
+  baseColour?: string;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -141,6 +142,7 @@ export interface IOtherProduct {
   complexFonAcc?: string;
   nonFondantDecor?: string;
   simpleFonAcc?: string;
+  baseColour?: string;
   isMoneyPulling?: boolean;
 }
 
@@ -250,6 +252,7 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   complexFonAcc: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
+  baseColour: String,
   isMoneyPulling: {
     type: Boolean,
     default: false,
@@ -313,6 +316,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   ediblePrints: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
+  baseColour: String,
   fondantFigurine: String,
   wantMoneyPulling: {
     type: Boolean,
