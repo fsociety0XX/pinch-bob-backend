@@ -819,7 +819,7 @@ export const assignOrderToDriver = catchAsync(
 
     const doc = await Delivery.findByIdAndUpdate(
       deliveryId,
-      { driverDetails },
+      { driverDetails, status: 'Assigned' },
       { new: true }
     );
 
@@ -830,6 +830,7 @@ export const assignOrderToDriver = catchAsync(
           id: driverDetails.id,
           name: `${driverDetails.firstName} ${driverDetails.lastName}`,
         },
+        status: 'Assigned',
       },
       { new: true }
     );
@@ -879,13 +880,13 @@ export const unassignDriver = catchAsync(
 
     const doc = await Delivery.findByIdAndUpdate(
       deliveryId,
-      { driverDetails: null },
+      { driverDetails: null, status: 'Unassigned' },
       { new: true }
     );
 
     await Order.findOneAndUpdate(
       { orderNumber: doc?.orderNumber },
-      { driverDetails: null },
+      { driverDetails: null, status: 'Unassigned' },
       { new: true }
     );
 
