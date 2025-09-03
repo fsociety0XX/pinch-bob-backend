@@ -42,6 +42,7 @@ export const customiseOrderEnums = {
     'Message on cake',
     'Message on cake board',
     'Message on gift card',
+    '',
   ],
   baseSponge: ['Chocolate', 'Vanilla', 'Pandan', 'Other'],
   colourCode: [
