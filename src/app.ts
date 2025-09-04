@@ -14,7 +14,7 @@ import {
   PRODUCTION,
   RATE_LIMIT_CONFIG,
 } from './constants/static';
-import { routeNotFound, TOO_MANY_REQUEST } from './constants/messages';
+import { routeNotFound } from './constants/messages';
 import AppError from './utils/appError';
 import { Role, StatusCode } from './types/customTypes';
 import {
@@ -43,6 +43,10 @@ import {
   SIGN_UP,
   FORGOT_PASSWORD,
   RESET_PASSWORD,
+  SEND_OTP,
+  SEND_PHONE_OTP,
+  VERIFY_OTP,
+  VERIFY_PHONE_OTP,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -106,25 +110,10 @@ if (process.env.NODE_ENV === DEVELOPMENT) {
   app.use(morgan('dev'));
 }
 
-// Smart Rate Limiting - Different limits for different user types
+// Smart Rate Limiting - Only for authentication endpoints
 if (process.env.NODE_ENV === PRODUCTION) {
-  // Lenient rate limiter for admin/management routes
-  const adminLimiter = rateLimit({
-    max: RATE_LIMIT_CONFIG.ADMIN.max,
-    windowMs: RATE_LIMIT_CONFIG.ADMIN.windowMs,
-    message: TOO_MANY_REQUEST,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-
-  // Standard rate limiter for public endpoints
-  const publicLimiter = rateLimit({
-    max: RATE_LIMIT_CONFIG.PUBLIC.max,
-    windowMs: RATE_LIMIT_CONFIG.PUBLIC.windowMs,
-    message: TOO_MANY_REQUEST,
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  // Note: Only authentication routes have rate limiting for security
+  // All other routes have unlimited access
 
   // Strict rate limiter for authentication endpoints
   const authLimiter = rateLimit({
@@ -136,45 +125,18 @@ if (process.env.NODE_ENV === PRODUCTION) {
     legacyHeaders: false,
   });
 
-  // Moderate rate limiter for order endpoints (checkout process)
-  const orderLimiter = rateLimit({
-    max: RATE_LIMIT_CONFIG.ORDER.max,
-    windowMs: RATE_LIMIT_CONFIG.ORDER.windowMs,
-    message: 'Too many order requests, please try again later',
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-
   // Apply rate limiters to specific routes based on sensitivity
-
-  // Authentication routes - strictest limits (20 per hour)
+  // Authentication routes - strictest limits (20 per hour) - SECURITY CRITICAL
   app.use(AUTH_ROUTE + SIGN_IN, authLimiter);
   app.use(AUTH_ROUTE + SIGN_UP, authLimiter);
   app.use(AUTH_ROUTE + FORGOT_PASSWORD, authLimiter);
   app.use(AUTH_ROUTE + RESET_PASSWORD.replace('/:token', ''), authLimiter); // Remove param for middleware
 
-  // Order routes - moderate limits (50 per hour, important for checkout)
-  app.use(ORDER_ROUTE, orderLimiter);
-
-  // Admin/management routes - lenient limits (500 per hour)
-  app.use(REPORT_ROUTE, adminLimiter);
-  app.use(USER_ROUTE, adminLimiter);
-  app.use(DELIVERY_ROUTE, adminLimiter);
-
-  // Public/catalog routes - standard limits (100 per hour)
-  app.use(PRODUCT_ROUTE, publicLimiter);
-  app.use(CATEGORY_ROUTE, publicLimiter);
-  app.use(BLOG_ROUTE, publicLimiter);
-  app.use(SUPER_CATEGORY_ROUTE, publicLimiter);
-  app.use(SUB_CATEGORY_ROUTE, publicLimiter);
-  app.use(SIZE_ROUTE, publicLimiter);
-  app.use(PIECES_ROUTE, publicLimiter);
-  app.use(FLAVOUR_ROUTE, publicLimiter);
-  app.use(COLOUR_ROUTE, publicLimiter);
-  app.use(COUPON_ROUTE, publicLimiter);
-
-  // Fallback: apply public limiter to any remaining /api routes
-  app.use('/api', publicLimiter);
+  // Twilio SMS/OTP routes - SECURITY CRITICAL (prevent SMS abuse and OTP spam)
+  app.use(AUTH_ROUTE + SEND_OTP, authLimiter);
+  app.use(AUTH_ROUTE + SEND_PHONE_OTP, authLimiter);
+  app.use(AUTH_ROUTE + VERIFY_OTP, authLimiter);
+  app.use(AUTH_ROUTE + VERIFY_PHONE_OTP, authLimiter);
 }
 
 // Body parser -> Reading data from body into req.body
