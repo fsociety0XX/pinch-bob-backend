@@ -71,6 +71,7 @@ interface IDeliveryData {
   };
   customiseCakeForm: boolean;
   status?: string;
+  paid?: boolean;
 }
 
 interface IWoodeliveryTask {
@@ -121,6 +122,11 @@ const generatePaymentLink = async (
 ) => {
   const customiseCake = await CustomiseCake.findById(customiseCakeId);
 
+  // Find the corresponding order using the orderNumber
+  const order = await Order.findOne({
+    orderNumber: customiseCake?.orderNumber,
+  });
+
   const paymentData = {
     purpose: HITPAY_PAYMENT_PURPOSE[1],
     amount: customiseCake?.total,
@@ -134,7 +140,7 @@ const generatePaymentLink = async (
     send_email: true,
     send_sms: true,
     redirect_url: `${req.protocol}://${req.get('host')}/order-confirm/${
-      customiseCake?.id || customiseCake?._id
+      order?.id || order?._id || customiseCake?.id || customiseCake?._id
     }`,
   };
 
@@ -346,6 +352,7 @@ const createDeliveryDocument = async (
         email: currentUser?.email || '',
         phone: currentUser?.phone || '',
       },
+      paid: customiseCake.paid || false, // Ensure paid status is set
     };
 
     if (task) {
@@ -421,11 +428,18 @@ const createWoodeliveryTask = async (
   };
 
   if (address) {
-    task.destinationAddress = `${address.unitNumber || ''} ${
-      address.address1
-    }, ${address.address2 || ''}, ${address.company || ''}, ${
-      address.country
-    }, ${address.postalCode}`;
+    // Build address parts array and filter out empty values
+    const addressParts = [
+      address.unitNumber?.trim(),
+      address.address1?.trim(),
+      address.address2?.trim(),
+      address.company?.trim(),
+      address.city?.trim(),
+      address.country?.trim(),
+      address.postalCode?.trim(),
+    ].filter((part) => part && part !== ''); // Remove empty/undefined parts
+
+    task.destinationAddress = addressParts.join(', ');
     task.requesterName = `${address.firstName} ${address.lastName}`;
     task.requesterPhone = String(address.phone);
   }
@@ -434,9 +448,29 @@ const createWoodeliveryTask = async (
     task.taskGuid = woodeliveryTaskId;
   }
 
-  return update
-    ? fetchAPI(`${WOODELIVERY_TASK}/${woodeliveryTaskId}`, 'PUT', task)
-    : fetchAPI(WOODELIVERY_TASK, 'POST', task);
+  try {
+    const response = update
+      ? await fetchAPI(`${WOODELIVERY_TASK}/${woodeliveryTaskId}`, 'PUT', task)
+      : await fetchAPI(WOODELIVERY_TASK, 'POST', task);
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Woodelivery API Error:', responseData);
+      throw new Error(`Woodelivery API Error: ${JSON.stringify(responseData)}`);
+    }
+
+    // Return the parsed data instead of the response
+    return {
+      ok: response.ok,
+      status: response.status,
+      data: responseData,
+      json: () => Promise.resolve(responseData), // For backward compatibility
+    };
+  } catch (error) {
+    console.error('💥 Woodelivery API Call Failed:', error);
+    throw error;
+  }
 };
 
 const createDelivery = async (
@@ -495,6 +529,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     brand,
     user,
     paid,
+    moneyPaidForMoneyPulling,
+    moneyPullingPrepared,
+    moneyReceivedForMoneyPulling,
     hitpayDetails,
     woodeliveryTaskId,
     delivery,
@@ -511,6 +548,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     specialRequest,
     moneyPulling,
     flavour,
+    isMoneyPulling,
   } = customiseCakeOrder;
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
@@ -561,6 +599,10 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     brand,
     user,
     paid,
+    moneyPaidForMoneyPulling,
+    moneyPullingPrepared,
+    moneyReceivedForMoneyPulling,
+    isMoneyPulling,
     hitpayDetails,
     woodeliveryTaskId,
     customiseCakeForm: true,
@@ -753,6 +795,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
     amount,
     paymentMethod: payment_methods,
     paymentRequestId: id,
+    paymentDate: new Date(),
   };
 
   const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(

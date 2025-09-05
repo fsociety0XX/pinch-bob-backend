@@ -11,6 +11,7 @@ import {
   migrateOrders,
   placeOrder,
   removeRefImage,
+  resendOrderConfirmationEmail,
   triggerOrderFailEmail,
   updateOrder,
   updateRefImages,
@@ -30,19 +31,20 @@ import uploadImage from '@src/utils/uploadImage';
 
 const orderRouter = express.Router();
 orderRouter.get(GET_WOO_ID, getWoodeliveryId);
+orderRouter.route('/:id').get(getOneOrder);
 orderRouter.use(protect);
 orderRouter.post(PLACE_ORDER, placeOrder);
 orderRouter.get(TRIGGER_ORDER_FAIL_EMAIL, triggerOrderFailEmail);
 
 orderRouter.route('/').get(appendUserIdInReqQuery, getAllOrder);
-orderRouter
-  .route('/:id')
-  .get(authenticateOrderAccess, getOneOrder)
-  .patch(authenticateOrderAccess, updateOrder);
+orderRouter.route('/:id').patch(authenticateOrderAccess, updateOrder);
 
 orderRouter.use(roleRistriction(Role.ADMIN));
 orderRouter.route('/').post(createOrder).patch(deleteManyOrder);
 orderRouter.route(BULK_ORDER).post(bulkCreateOrders);
+orderRouter
+  .route('/:orderId/resend-confirmation-email')
+  .post(resendOrderConfirmationEmail);
 orderRouter
   .route(UPDATE_REF_IMG)
   .patch(

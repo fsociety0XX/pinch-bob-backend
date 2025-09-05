@@ -42,6 +42,7 @@ export const customiseOrderEnums = {
     'Message on cake',
     'Message on cake board',
     'Message on gift card',
+    '',
   ],
   baseSponge: ['Chocolate', 'Vanilla', 'Pandan', 'Other'],
   colourCode: [
@@ -68,6 +69,7 @@ export const customiseOrderEnums = {
     'Name placard',
     'Regular fondant name (Flat/Wall)',
     'Regular fondant name (Stand)',
+    'White Chocolate',
     'Other',
   ],
   fondantColours: [
@@ -156,7 +158,7 @@ export const customiseOrderEnums = {
   ],
   formStatusEnum: ['New', 'Completed', 'Dismissed'],
   enquiryTypeEnum: ['Regular', 'Business'],
-  qtyType: ['Pieces', 'Dozen', ''],
+  qtyType: ['Pieces', 'Dozen', 'Boxes', ''],
 };
 
 export const checkoutSessionFor = {

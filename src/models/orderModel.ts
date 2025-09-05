@@ -107,6 +107,7 @@ export interface IProduct {
   complexFonAcc?: string;
   nonFondantDecor?: string;
   simpleFonAcc?: string;
+  baseColour?: string;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -119,6 +120,7 @@ export interface IHitpayDetails {
   transactionId: string;
   paymentRequestId: string;
   receiptUrl: string;
+  paymentDate: Date;
 }
 
 export interface IOtherProduct {
@@ -141,6 +143,8 @@ export interface IOtherProduct {
   complexFonAcc?: string;
   nonFondantDecor?: string;
   simpleFonAcc?: string;
+  baseColour?: string;
+  isMoneyPulling?: boolean;
 }
 
 export interface ICustomFormProduct {
@@ -182,6 +186,8 @@ export interface IOrder {
   corporate: boolean;
   moneyReceivedForMoneyPulling: boolean;
   moneyPaidForMoneyPulling?: boolean;
+  moneyPullingPrepared?: boolean;
+  isMoneyPulling?: boolean; // to check if money pulling is there in otherProduct or customFormProduct
   preparationStatus: string;
   status: string; // woodelivery
   stripeDetails: StripeWebhookEvent;
@@ -248,6 +254,11 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   complexFonAcc: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
+  baseColour: String,
+  isMoneyPulling: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const CustomFormProductSchema = new mongoose.Schema<ICustomFormProduct>({
@@ -307,6 +318,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   ediblePrints: String,
   nonFondantDecor: String,
   simpleFonAcc: String,
+  baseColour: String,
   fondantFigurine: String,
   wantMoneyPulling: {
     type: Boolean,
@@ -404,6 +416,14 @@ const orderSchema = new mongoose.Schema<IOrder>(
       default: false,
     },
     moneyPaidForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
+    moneyPullingPrepared: {
+      type: Boolean,
+      default: false,
+    },
+    isMoneyPulling: {
       type: Boolean,
       default: false,
     },

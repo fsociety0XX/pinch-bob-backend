@@ -74,6 +74,7 @@ export interface IHitpayDetails {
   transactionId: string;
   paymentRequestId: string;
   receiptUrl: string;
+  paymentDate: Date;
 }
 
 interface IMoneyPulling {
@@ -124,6 +125,7 @@ export interface ICustomiseCake {
   moneyPulling?: IMoneyPulling[];
   moneyPaidForMoneyPulling?: boolean;
   moneyReceivedForMoneyPulling?: boolean;
+  moneyPullingPrepared?: boolean;
   price: number;
   quantity: number;
   size: string;
@@ -326,6 +328,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       default: false,
     },
     moneyReceivedForMoneyPulling: {
+      type: Boolean,
+      default: false,
+    },
+    moneyPullingPrepared: {
       type: Boolean,
       default: false,
     },

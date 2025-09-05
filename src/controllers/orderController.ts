@@ -113,6 +113,15 @@ interface IDeliveryData {
     phone: string;
   };
   status?: string;
+  paid: boolean;
+  driverDetails?: {
+    id: string;
+    name: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+  } | null;
 }
 
 // CRON scheduled task to run after 30 mins of placing order if the payment failed
@@ -610,12 +619,23 @@ const createDeliveryDocument = async (
       recipientName: recipInfo?.name,
       recipientPhone: recipInfo?.contact,
       customer: {
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user?.firstName,
+        lastName: user?.lastName,
         email: user?.email || '',
         phone: user?.phone || '',
       },
+      paid: order.paid || false, // Ensure paid status is set
     };
+
+    // Check if delivery method is self-collect to unassign driver
+    const deliveryMethod = await DeliveryMethod.findById(
+      method._id || method.id
+    );
+    if (deliveryMethod?.name === SELF_COLLECT) {
+      data.driverDetails = null; // Unassign driver for self-collect
+    } else if (order.driverDetails) {
+      data.driverDetails = order.driverDetails; // Keep existing driver for delivery orders
+    }
 
     if (task) {
       data.woodeliveryTaskId = task?.data?.guid;
@@ -1227,6 +1247,7 @@ export const getAllOrder = catchAsync(
       dateMode,
       dateFrom,
       dateTo,
+      driverId,
     } = req.query;
 
     const timeRange =
@@ -1310,7 +1331,15 @@ export const getAllOrder = catchAsync(
       filter['product.flavour'] = { $in: (flavour as string).split(',') };
     }
     if (moneyPullingOrders) {
-      filter['product.wantMoneyPulling'] = moneyPullingOrders;
+      // Filter orders where ANY of these conditions is true:
+      // 1. Regular orders: product.wantMoneyPulling
+      // 2. Custom cake orders: isMoneyPulling
+      // 3. Corporate orders: otherProduct.isMoneyPulling
+      filter.$or = [
+        { 'product.wantMoneyPulling': moneyPullingOrders },
+        { isMoneyPulling: moneyPullingOrders },
+        { 'otherProduct.isMoneyPulling': moneyPullingOrders },
+      ];
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
@@ -1321,6 +1350,11 @@ export const getAllOrder = catchAsync(
         dateFilter.lte = new Date(deliveryEndDate as string);
       }
       filter['delivery.date'] = dateFilter;
+    }
+    if (driverId) {
+      filter['driverDetails.id'] = {
+        $in: (driverId as string).split(','),
+      };
     }
 
     delete req.query.superCategory;
@@ -1333,7 +1367,12 @@ export const getAllOrder = catchAsync(
     delete req.query.dateMode;
     delete req.query.dateTo;
     delete req.query.dateFrom;
+    delete req.query.driverId;
     req.query = { ...req.query, ...filter };
+
+    // Only show orders where paid: true
+    req.query.paid = true;
+
     await getAll(Order)(req, res, next);
   }
 );
@@ -1378,6 +1417,15 @@ export const updateOrder = catchAsync(
 
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
+
+      // Check if delivery method is changing to self-collect
+      if (delivery.method) {
+        const deliveryMethod = await DeliveryMethod.findById(delivery.method);
+        if (deliveryMethod?.name === SELF_COLLECT) {
+          // Unassign driver if method changes to self-collect
+          req.body.driverDetails = null;
+        }
+      }
     }
     const before = await Order.findById(req.params.id);
 
@@ -1618,6 +1666,7 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
+      paymentDate: new Date(),
     };
     const order = await Order.findByIdAndUpdate(
       orderId,
@@ -1663,6 +1712,7 @@ const handlePaymentFaliureForBob = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
+      paymentDate: new Date(),
     };
     await Order.findByIdAndUpdate(orderId, {
       hitpayDetails,
@@ -1691,6 +1741,57 @@ export const hitpayWebhookHandler = catchAsync(
       }
     } else {
       res.status(400).send('Invalid HMAC signature');
+    }
+  }
+);
+
+export const resendOrderConfirmationEmail = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return next(new AppError('Order ID is required', StatusCode.BAD_REQUEST));
+    }
+
+    // Fetch the order with populated fields
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return next(new AppError(ORDER_NOT_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    // Get email address - priority: user email > customer email
+    const emailAddress = order.user?.email || order.customer?.email;
+
+    if (!emailAddress) {
+      return next(
+        new AppError(
+          'No email address found for this order',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
+    try {
+      await sendOrderConfirmationEmail(emailAddress, order);
+
+      res.status(StatusCode.SUCCESS).json({
+        status: 'success',
+        message: 'Order confirmation email sent successfully',
+        data: {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          emailSentTo: emailAddress,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to send order confirmation email:', error);
+      return next(
+        new AppError(
+          'Failed to send confirmation email',
+          StatusCode.INTERNAL_SERVER_ERROR
+        )
+      );
     }
   }
 );

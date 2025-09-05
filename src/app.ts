@@ -3,7 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import morgan from 'morgan';
-// import rateLimit from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
@@ -11,8 +11,8 @@ import {
   BODY_PARSER_LIMIT,
   DEVELOPMENT,
   PREVENT_PARAMETER_POLLUTION,
-  // PRODUCTION,
-  // RATE_LIMIT,
+  PRODUCTION,
+  RATE_LIMIT_CONFIG,
 } from './constants/static';
 import { routeNotFound } from './constants/messages';
 import AppError from './utils/appError';
@@ -39,6 +39,14 @@ import {
   SUB_CATEGORY_ROUTE,
   REPORT_ROUTE,
   BLOG_ROUTE,
+  SIGN_IN,
+  SIGN_UP,
+  FORGOT_PASSWORD,
+  RESET_PASSWORD,
+  SEND_OTP,
+  SEND_PHONE_OTP,
+  VERIFY_OTP,
+  VERIFY_PHONE_OTP,
 } from './constants/routeConstants';
 import categoryRouter from './routes/categoryRoutes';
 import globalErrorController from './controllers/globalErrorController';
@@ -65,6 +73,7 @@ import customiseCakeRouter from './routes/customiseCakeRoutes';
 import '@src/controllers/orderController';
 import '@src/crons/orderCron';
 import '@src/crons/mailchimpCron';
+import '@src/crons/reviewsCron';
 import subCategoryRouter from './routes/subCategoryRoutes';
 import reportRouter from './routes/reportRoutes';
 import blogRouter from './routes/blogRoutes';
@@ -101,15 +110,34 @@ if (process.env.NODE_ENV === DEVELOPMENT) {
   app.use(morgan('dev'));
 }
 
-// Limit requests from same API
-// if (process.env.NODE_ENV === PRODUCTION) {
-//   const limiter = rateLimit({
-//     max: RATE_LIMIT.max,
-//     windowMs: RATE_LIMIT.windowMs,
-//     message: TOO_MANY_REQUEST,
-//   });
-//   app.use('/api', limiter);
-// }
+// Smart Rate Limiting - Only for authentication endpoints
+if (process.env.NODE_ENV === PRODUCTION) {
+  // Note: Only authentication routes have rate limiting for security
+  // All other routes have unlimited access
+
+  // Strict rate limiter for authentication endpoints
+  const authLimiter = rateLimit({
+    max: RATE_LIMIT_CONFIG.AUTH.max,
+    windowMs: RATE_LIMIT_CONFIG.AUTH.windowMs,
+    message: 'Too many authentication attempts, please try again later',
+    skipSuccessfulRequests: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Apply rate limiters to specific routes based on sensitivity
+  // Authentication routes - strictest limits (20 per hour) - SECURITY CRITICAL
+  app.use(AUTH_ROUTE + SIGN_IN, authLimiter);
+  app.use(AUTH_ROUTE + SIGN_UP, authLimiter);
+  app.use(AUTH_ROUTE + FORGOT_PASSWORD, authLimiter);
+  app.use(AUTH_ROUTE + RESET_PASSWORD.replace('/:token', ''), authLimiter); // Remove param for middleware
+
+  // Twilio SMS/OTP routes - SECURITY CRITICAL (prevent SMS abuse and OTP spam)
+  app.use(AUTH_ROUTE + SEND_OTP, authLimiter);
+  app.use(AUTH_ROUTE + SEND_PHONE_OTP, authLimiter);
+  app.use(AUTH_ROUTE + VERIFY_OTP, authLimiter);
+  app.use(AUTH_ROUTE + VERIFY_PHONE_OTP, authLimiter);
+}
 
 // Body parser -> Reading data from body into req.body
 app.use(express.json({ limit: BODY_PARSER_LIMIT }));
