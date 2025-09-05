@@ -143,6 +143,7 @@ export interface ICustomiseCake {
   hitpayDetails: IHitpayDetails;
   paymentLink: string;
   woodeliveryTaskId: string;
+  manuallyProcessed: boolean;
   active: boolean;
 }
 
@@ -379,6 +380,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     hitpayDetails: Object,
     paymentLink: String,
     woodeliveryTaskId: String,
+    manuallyProcessed: {
+      type: Boolean,
+      default: false,
+    },
     active: {
       type: Boolean,
       default: true,
