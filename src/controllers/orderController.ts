@@ -1370,8 +1370,10 @@ export const getAllOrder = catchAsync(
     delete req.query.driverId;
     req.query = { ...req.query, ...filter };
 
-    // Only show orders where paid: true
+    // Only show orders where paid: true, active: true and status is not 'Cancelled' by default
     req.query.paid = true;
+    req.query.status = { $ne: CANCELLED };
+    req.query.active = true;
 
     await getAll(Order)(req, res, next);
   }
