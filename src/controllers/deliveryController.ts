@@ -136,7 +136,6 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
   const query = {
     ...dateQuery,
     brand,
-    paid: true, // Only show deliveries where paid: true
   };
 
   // Add driverId filter
@@ -595,9 +594,6 @@ const processDeliveryQueryParams = (req: Request): void => {
   if (method) {
     req.query.method = (method as string).split(',');
   }
-
-  // Only show orders where paid: true
-  req.query.paid = true;
 };
 
 /**
@@ -690,9 +686,6 @@ const handleCustomSorting = async (
       baseQuery.status = req.query.status;
     }
 
-    // Always filter out deliveries with paid: false
-    baseQuery.paid = true;
-
     // Add delivery date filter
     if (req.query.deliveryDate) {
       const dateFilter = req.query.deliveryDate;
@@ -763,9 +756,6 @@ const handleStandardRetrieval = async (
   if (!req.query.status) {
     req.query.status = { $ne: CANCELLED };
   }
-
-  // Always filter out deliveries with paid: false
-  req.query.paid = true;
 
   // Remove collection time related params from query to avoid conflicts
   delete req.query.collectionTime;
@@ -1113,6 +1103,10 @@ export const updateOrderStatus = catchAsync(
 export const getAllDelivery = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { collectionTime, sort, page = '1', limit = '10' } = req.query;
+
+    // Only show deliveries where active: true and paid: true by default
+    req.query.active = true;
+    req.query.paid = true;
 
     // Process common query parameters (driverId, method, date ranges)
     processDeliveryQueryParams(req);

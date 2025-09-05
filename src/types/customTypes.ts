@@ -57,6 +57,7 @@ export const customiseOrderEnums = {
     'Red, Burgundy',
     'Solid Rainbow, Multi Colour',
     'Yellow, Gold, Ivory, Brown',
+    'Black and Gray',
     'N/A',
   ],
   ediblePrintType: ['Flat', 'Stand', 'Wall'],
