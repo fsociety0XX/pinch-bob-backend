@@ -519,7 +519,8 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
     return res.status(429).json({
       status: 'error',
       code: 'SMS_OTP_LIMIT_EXCEEDED',
-      message: 'Maximum 3 SMS OTPs allowed per 24 hours.',
+      message:
+        'Maximum 3 OTPs allowed per 24 hours. Please try other login methods',
       details: {
         limit: '3 per 24h',
         used: dailyCount,
