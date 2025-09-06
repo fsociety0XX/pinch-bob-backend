@@ -1100,6 +1100,9 @@ export const getAllOrder = catchAsync(
       filter['delivery.date'] = dateFilter;
     }
 
+    req.query.paid = true;
+    req.query.status = { $ne: CANCELLED };
+
     delete req.query.superCategory;
     delete req.query.category;
     delete req.query.subCategory;

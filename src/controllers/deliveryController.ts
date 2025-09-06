@@ -7,7 +7,7 @@ import {
   GET_WOODELIVERY_DRIVERS,
   WOODELIVERY_TASK,
 } from '@src/constants/routeConstants';
-import { brandEnum, StatusCode } from '@src/types/customTypes';
+import { brandEnum, CANCELLED, StatusCode } from '@src/types/customTypes';
 import catchAsync from '@src/utils/catchAsync';
 import { fetchAPI } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -279,6 +279,8 @@ export const getAllDelivery = catchAsync(
     if (collectionTime) {
       req.query.collectionTime = (collectionTime as string).split(',');
     }
+    req.query.paid = true;
+    req.query.status = { $ne: CANCELLED };
 
     await getAll(Delivery)(req, res, next);
   }
