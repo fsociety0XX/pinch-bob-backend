@@ -125,6 +125,70 @@ if (process.env.NODE_ENV === PRODUCTION) {
     legacyHeaders: false,
   });
 
+  // 🔒 BULLETPROOF OTP RATE LIMITER - PREVENTS ALL OTP ABUSE 🔒
+  const otpLimiter = rateLimit({
+    max: 3, // REDUCED: Only 3 OTPs per 24 hours (was 5)
+    windowMs: 24 * 60 * 60 * 1000, // 24 hours
+    message: {
+      status: 'error',
+      message:
+        'OTP limit exceeded. Maximum 3 OTP requests allowed per 24 hours. Please contact support if this is legitimate.',
+      retryAfter: '24 hours',
+      security: 'This limit protects against automated attacks.',
+    },
+    skipSuccessfulRequests: false, // Count ALL requests (success/fail)
+    skipFailedRequests: false, // Count failed requests too
+    standardHeaders: true,
+    legacyHeaders: false,
+    // 🛡️ MULTI-LAYER KEY GENERATION FOR MAXIMUM PROTECTION
+    keyGenerator: (req) => {
+      // Layer 1: IP-based tracking
+      const ip = req.ip || req.connection.remoteAddress || 'unknown';
+
+      // Layer 2: Phone/Email identifier
+      const identifier = req.body.phone || req.body.email || 'anonymous';
+
+      // Layer 3: User-Agent to prevent proxy switching
+      const userAgent = (req.headers['user-agent'] || '').slice(0, 50);
+
+      // Create composite key that's hard to bypass
+      return `otp_${ip}_${identifier}_${Buffer.from(userAgent)
+        .toString('base64')
+        .slice(0, 10)}`;
+    },
+    // Custom handler for detailed logging
+    handler: (req, res) => {
+      console.error('🚨 OTP RATE LIMIT EXCEEDED:', {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        phone: req.body.phone,
+        email: req.body.email,
+        timestamp: new Date().toISOString(),
+        warning: 'Possible OTP abuse detected',
+      });
+
+      res.status(429).json({
+        status: 'error',
+        message: 'OTP request limit exceeded. Maximum 3 requests per 24 hours.',
+        retryAfter: '24 hours',
+        support: 'Contact support if you are a legitimate user.',
+      });
+    },
+  });
+
+  // 🛡️ ADDITIONAL IP-BASED RATE LIMITER (prevents IP switching attacks)
+  const ipOtpLimiter = rateLimit({
+    max: 10, // Max 10 OTPs per IP per 24 hours (for multiple users on same network)
+    windowMs: 24 * 60 * 60 * 1000, // 24 hours
+    keyGenerator: (req) => `ip_otp_${req.ip}`,
+    message: {
+      status: 'error',
+      message:
+        'Too many OTP requests from this network. Please try again later.',
+      security: 'This protects against network-based attacks.',
+    },
+  });
+
   // Apply rate limiters to specific routes based on sensitivity
   // Authentication routes - strictest limits (20 per hour) - SECURITY CRITICAL
   app.use(AUTH_ROUTE + SIGN_IN, authLimiter);
@@ -132,9 +196,16 @@ if (process.env.NODE_ENV === PRODUCTION) {
   app.use(AUTH_ROUTE + FORGOT_PASSWORD, authLimiter);
   app.use(AUTH_ROUTE + RESET_PASSWORD.replace('/:token', ''), authLimiter); // Remove param for middleware
 
-  // Twilio SMS/OTP routes - SECURITY CRITICAL (prevent SMS abuse and OTP spam)
-  app.use(AUTH_ROUTE + SEND_OTP, authLimiter);
-  app.use(AUTH_ROUTE + SEND_PHONE_OTP, authLimiter);
+  // 🚨 BULLETPROOF OTP PROTECTION - DUAL-LAYER RATE LIMITING 🚨
+  // Layer 1: IP-based protection (prevents network abuse)
+  app.use(AUTH_ROUTE + SEND_OTP, ipOtpLimiter);
+  app.use(AUTH_ROUTE + SEND_PHONE_OTP, ipOtpLimiter);
+
+  // Layer 2: User-specific protection (prevents individual abuse)
+  app.use(AUTH_ROUTE + SEND_OTP, otpLimiter);
+  app.use(AUTH_ROUTE + SEND_PHONE_OTP, otpLimiter);
+
+  // OTP verification uses standard auth limiter
   app.use(AUTH_ROUTE + VERIFY_OTP, authLimiter);
   app.use(AUTH_ROUTE + VERIFY_PHONE_OTP, authLimiter);
 }

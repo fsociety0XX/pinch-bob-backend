@@ -321,6 +321,21 @@ export const changePassword = catchAsync(
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   const { email, brand } = req.body;
 
+  // 🛡️ ADDITIONAL SECURITY: Check for recent OTP requests
+  const existingUser = await User.findOne({ email, brand });
+  if (existingUser?.otpTimestamp) {
+    const timeSinceLastOtp = Date.now() - existingUser.otpTimestamp.getTime();
+    const minWaitTime = 2 * 60 * 1000; // 2 minutes minimum between OTPs
+
+    if (timeSinceLastOtp < minWaitTime) {
+      return res.status(429).json({
+        status: 'error',
+        message: 'Please wait at least 2 minutes between OTP requests.',
+        retryAfter: Math.ceil((minWaitTime - timeSinceLastOtp) / 1000),
+      });
+    }
+  }
+
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
@@ -468,6 +483,22 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
       message: PHONE_BRAND_REQ,
     });
   }
+
+  // 🛡️ ADDITIONAL SECURITY: Check for recent SMS OTP requests
+  const existingUser = await User.findOne({ phone, brand });
+  if (existingUser?.otpTimestamp) {
+    const timeSinceLastOtp = Date.now() - existingUser.otpTimestamp.getTime();
+    const minWaitTime = 2 * 60 * 1000; // 2 minutes minimum between SMS OTPs
+
+    if (timeSinceLastOtp < minWaitTime) {
+      return res.status(429).json({
+        status: 'error',
+        message: 'Please wait at least 2 minutes between SMS OTP requests.',
+        retryAfter: Math.ceil((minWaitTime - timeSinceLastOtp) / 1000),
+      });
+    }
+  }
+
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
