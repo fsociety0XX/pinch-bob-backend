@@ -321,21 +321,7 @@ export const changePassword = catchAsync(
 export const sendOtp = catchAsync(async (req: Request, res: Response) => {
   const { email, brand } = req.body;
 
-  // 🛡️ ADDITIONAL SECURITY: Check for recent OTP requests
-  const existingUser = await User.findOne({ email, brand });
-  if (existingUser?.otpTimestamp) {
-    const timeSinceLastOtp = Date.now() - existingUser.otpTimestamp.getTime();
-    const minWaitTime = 2 * 60 * 1000; // 2 minutes minimum between OTPs
-
-    if (timeSinceLastOtp < minWaitTime) {
-      return res.status(429).json({
-        status: 'error',
-        message: 'Please wait at least 2 minutes between OTP requests.',
-        retryAfter: Math.ceil((minWaitTime - timeSinceLastOtp) / 1000),
-      });
-    }
-  }
-
+  // Generate and send OTP
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
@@ -343,6 +329,7 @@ export const sendOtp = catchAsync(async (req: Request, res: Response) => {
     specialChars: false,
   });
   const otpTimestamp = new Date();
+
   await User.findOneAndUpdate(
     { email, brand },
     { otp, otpTimestamp },
@@ -484,44 +471,102 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // 🛡️ ADDITIONAL SECURITY: Check for recent SMS OTP requests
-  const existingUser = await User.findOne({ phone, brand });
-  if (existingUser?.otpTimestamp) {
-    const timeSinceLastOtp = Date.now() - existingUser.otpTimestamp.getTime();
-    const minWaitTime = 2 * 60 * 1000; // 2 minutes minimum between SMS OTPs
+  // (optional) Only allow Singapore mobiles: +65 8/9xxxxxxx
+  // if (!/^\+65[89]\d{7}$/.test(phone)) {
+  //   return res.status(400).json({ status: 'fail', message: 'Only Singapore mobile numbers are allowed' });
+  // }
 
-    if (timeSinceLastOtp < minWaitTime) {
-      return res.status(429).json({
-        status: 'error',
-        message: 'Please wait at least 2 minutes between SMS OTP requests.',
-        retryAfter: Math.ceil((minWaitTime - timeSinceLastOtp) / 1000),
-      });
-    }
+  const now = new Date();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const COOLDOWN_SEC = 60;
+
+  // Fetch current counters (if any)
+  const user = await User.findOne({ phone, brand })
+    .select('otpDailyCount otpWindowStart otpCooldownUntil')
+    .lean();
+
+  // If within cooldown, block
+  if (
+    user?.otpCooldownUntil &&
+    user.otpCooldownUntil.getTime() > now.getTime()
+  ) {
+    const retryIn = Math.ceil(
+      (user.otpCooldownUntil.getTime() - now.getTime()) / 1000
+    );
+    return res.status(429).json({
+      status: 'error',
+      code: 'OTP_COOLDOWN',
+      message: `Please wait ${retryIn}s before requesting another OTP.`,
+      retryAfter: `${retryIn}s`,
+    });
   }
 
+  // Handle 24h window rollover
+  let windowStart = user?.otpWindowStart;
+  let dailyCount = user?.otpDailyCount ?? 0;
+
+  const windowExpired =
+    !windowStart || now.getTime() - new Date(windowStart).getTime() >= DAY_MS;
+  if (windowExpired) {
+    windowStart = now; // start a fresh 24h window
+    dailyCount = 0; // reset counter for checks
+  }
+
+  // Enforce 3 per 24h
+  if (dailyCount >= 3) {
+    const resetInMs = new Date(windowStart!).getTime() + DAY_MS - now.getTime();
+    const resetInMin = Math.max(1, Math.ceil(resetInMs / 60000));
+    return res.status(429).json({
+      status: 'error',
+      code: 'SMS_OTP_LIMIT_EXCEEDED',
+      message:
+        'Maximum 3 OTPs allowed per 24 hours. Please try other login methods',
+      details: {
+        limit: '3 per 24h',
+        used: dailyCount,
+        resetsInMinutes: resetInMin,
+      },
+      retryAfter: `${resetInMin}m`,
+    });
+  }
+
+  // Generate OTP
   const otp = otpGenerator.generate(6, {
     digits: true,
     lowerCaseAlphabets: false,
     upperCaseAlphabets: false,
     specialChars: false,
   });
-  const otpTimestamp = new Date();
 
-  // Update/create user with phone OTP
-  await User.findOneAndUpdate(
-    { phone, brand },
-    { otp, otpTimestamp },
-    { upsert: true }
-  );
-
-  // Send SMS via Twilio for Bob
+  // Build SMS
   let body = '';
   if (brand === brandEnum[1]) {
     body = BOB_SMS_CONTENT.otp(otp);
+  } else {
+    body = `Your OTP is ${otp}`;
   }
+
+  // Send SMS first; only then increment counters
   await sendSms(body, phone);
 
-  res.status(StatusCode.SUCCESS).json({
+  // Persist OTP + counters atomically (creates user if missing)
+  await User.updateOne(
+    { phone, brand },
+    {
+      $setOnInsert: { phone, brand },
+      $set: {
+        otp,
+        otpTimestamp: now,
+        otpCooldownUntil: new Date(now.getTime() + COOLDOWN_SEC * 1000),
+        // keep rolled-over window start, otherwise preserve existing
+        otpWindowStart: windowExpired ? now : (windowStart as Date),
+      },
+      $inc: { otpDailyCount: 1 }, // if field doesn't exist, MongoDB sets it to 1
+    },
+    { upsert: true }
+  );
+
+  return res.status(StatusCode.SUCCESS).json({
     status: 'success',
     message: OTP_SENT,
   });

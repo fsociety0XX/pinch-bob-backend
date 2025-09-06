@@ -88,6 +88,9 @@ export interface IUser {
   otp: string;
   otpTimestamp: Date;
   usedCoupons?: mongoose.Schema.Types.ObjectId[];
+  otpDailyCount: number;
+  otpWindowStart: Date | undefined;
+  otpCooldownUntil: Date | undefined;
   active: boolean;
 }
 
@@ -203,6 +206,17 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: String,
       required: [true, USER_SCHEMA_VALIDATION.brand],
       enum: brandEnum,
+    },
+    otpDailyCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    otpWindowStart: {
+      type: Date, // start of the current 24h window
+    },
+    otpCooldownUntil: {
+      type: Date, // block rapid resends (e.g., 60s)
     },
     role: {
       type: String,
