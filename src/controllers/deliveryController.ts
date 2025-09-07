@@ -279,7 +279,7 @@ export const getAllDelivery = catchAsync(
     if (collectionTime) {
       req.query.collectionTime = (collectionTime as string).split(',');
     }
-    req.query.paid = true;
+    // req.query.paid = true;
     req.query.status = { $ne: CANCELLED };
 
     await getAll(Delivery)(req, res, next);
