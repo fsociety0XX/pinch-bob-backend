@@ -541,6 +541,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     moneyPulling,
     flavour,
     isMoneyPulling,
+    superCategory,
+    category,
+    subCategory,
   } = customiseCakeOrder;
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
@@ -584,6 +587,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       giftCardMsg,
       specialRequest,
       moneyPulling,
+      superCategory,
+      category,
+      subCategory,
     },
   ];
   const orderData = {
