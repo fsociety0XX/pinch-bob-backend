@@ -42,6 +42,7 @@ interface DeliveryQuery {
   method?: { $in: string[] };
   'driverDetails.id'?: { $in: string[] };
   paid?: boolean | { $ne: boolean };
+  active?: boolean | { $ne: boolean };
 }
 
 interface SortQuery {
@@ -141,6 +142,16 @@ const buildDeliveryQuery = (req: Request): DeliveryQuery => {
   // Add driverId filter
   if (req.query['driverDetails.id']) {
     query['driverDetails.id'] = req.query['driverDetails.id'];
+  }
+
+  // Add paid filter
+  if (req.query.paid !== undefined) {
+    query.paid = req.query.paid;
+  }
+
+  // Add active filter
+  if (req.query.active !== undefined) {
+    query.active = req.query.active;
   }
 
   // Add status filter - always exclude cancelled unless specifically requested
@@ -706,6 +717,16 @@ const handleCustomSorting = async (
     // Add driverId filter
     if (req.query['driverDetails.id']) {
       baseQuery['driverDetails.id'] = req.query['driverDetails.id'];
+    }
+
+    // Add paid filter
+    if (req.query.paid !== undefined) {
+      baseQuery.paid = req.query.paid;
+    }
+
+    // Add active filter
+    if (req.query.active !== undefined) {
+      baseQuery.active = req.query.active;
     }
 
     // Add method filter

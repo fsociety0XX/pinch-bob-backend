@@ -1248,6 +1248,9 @@ export const getAllOrder = catchAsync(
       dateFrom,
       dateTo,
       driverId,
+      status,
+      paid,
+      active,
     } = req.query;
 
     const timeRange =
@@ -1357,6 +1360,34 @@ export const getAllOrder = catchAsync(
       };
     }
 
+    // Handle status filtering - if status is provided in query, use it; otherwise exclude cancelled orders
+    if (status) {
+      // If status is provided as a query parameter, use it directly
+      if (typeof status === 'string') {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    } else {
+      // Default: exclude cancelled orders if no status is specified
+      filter.status = { $ne: CANCELLED };
+    }
+
+    // Handle paid filtering - default to true if not specified
+    if (paid !== undefined) {
+      filter.paid = paid === 'true' || paid === true;
+    } else {
+      filter.paid = true;
+    }
+
+    // Handle active filtering - default to true if not specified
+    if (active !== undefined) {
+      filter.active = active === 'true' || active === true;
+    } else {
+      filter.active = true;
+    }
+
+    // Clean up query parameters before merging filters
     delete req.query.superCategory;
     delete req.query.category;
     delete req.query.subCategory;
@@ -1368,12 +1399,12 @@ export const getAllOrder = catchAsync(
     delete req.query.dateTo;
     delete req.query.dateFrom;
     delete req.query.driverId;
-    req.query = { ...req.query, ...filter };
+    delete req.query.status;
+    delete req.query.paid;
+    delete req.query.active;
 
-    // Only show orders where paid: true, active: true and status is not 'Cancelled' by default
-    req.query.paid = true;
-    req.query.status = { $ne: CANCELLED };
-    req.query.active = true;
+    // Apply all filters to req.query
+    req.query = { ...req.query, ...filter };
 
     await getAll(Order)(req, res, next);
   }
