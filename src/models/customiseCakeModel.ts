@@ -39,6 +39,7 @@ interface IDelivery {
   };
   recipientName: string;
   recipientPhone: string;
+  instructions: string;
 }
 
 interface IBakes {
@@ -129,6 +130,9 @@ export interface ICustomiseCake {
   quantity: number;
   size: string;
   otherSize: string;
+  superCategory: mongoose.Schema.Types.ObjectId;
+  category: mongoose.Schema.Types.ObjectId;
+  subCategory: mongoose.Schema.Types.ObjectId;
   orderNotes: string;
   decorationPoints: string;
   instructions: string;
@@ -180,6 +184,7 @@ const DeliverySchema = new mongoose.Schema<IDelivery>({
   },
   recipientName: String,
   recipientPhone: String,
+  instructions: String,
 });
 
 const ImageSchema = new mongoose.Schema<IPhoto>({
@@ -356,6 +361,21 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     size: String,
     otherSize: String,
+    superCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SuperCategory',
+      required: false,
+    },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: false,
+    },
+    subCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubCategory',
+      required: false,
+    },
     orderNotes: String,
     decorationPoints: String,
     instructions: String,
@@ -414,7 +434,7 @@ customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
       select: 'firstName lastName email phone',
     });
     this.populate({
-      path: 'bakes.product candlesAndSparklers.product flavour',
+      path: 'bakes.product candlesAndSparklers.product flavour superCategory category subCategory',
       select: 'name images',
     });
     this.populate({
