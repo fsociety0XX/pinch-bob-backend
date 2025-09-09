@@ -108,6 +108,8 @@ export interface IProduct {
   nonFondantDecor?: string;
   simpleFonAcc?: string;
   baseColour?: string;
+  toys?: string;
+  candlesAndSparklers?: string;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -143,6 +145,8 @@ export interface IOtherProduct {
   nonFondantDecor?: string;
   simpleFonAcc?: string;
   baseColour?: string;
+  toys?: string;
+  candlesAndSparklers?: string;
   isMoneyPulling?: boolean;
   superCategory: mongoose.Schema.Types.ObjectId;
   category: mongoose.Schema.Types.ObjectId;
@@ -259,6 +263,8 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   nonFondantDecor: String,
   simpleFonAcc: String,
   baseColour: String,
+  toys: String,
+  candlesAndSparklers: String,
   superCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SuperCategory' },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
   subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' },
@@ -341,6 +347,8 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   nonFondantDecor: String,
   simpleFonAcc: String,
   baseColour: String,
+  toys: String,
+  candlesAndSparklers: String,
   fondantFigurine: String,
   wantMoneyPulling: {
     type: Boolean,
