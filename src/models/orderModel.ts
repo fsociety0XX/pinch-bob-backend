@@ -521,7 +521,11 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     select: 'code type applicableOn ids discountType discount',
   });
   this.populate({
-    path: 'customiseCakeFormDetails product.product',
+    path: 'customiseCakeFormDetails',
+  });
+  this.populate({
+    path: 'product.product',
+    populate: [{ path: 'flavour', model: 'Flavour' }],
   });
   next();
 });

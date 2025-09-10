@@ -1382,44 +1382,9 @@ export const getAllOrder = catchAsync(
       }
     }
     if (moneyPullingOrders) {
-      // Filter orders where ANY of these conditions is true:
-      // 1. Regular orders: product.wantMoneyPulling
-      // 2. Custom cake orders: isMoneyPulling
-      // 3. Corporate orders: otherProduct.isMoneyPulling
-      // 4. Custom form orders: customFormProduct.moneyPulling exists and not empty
-      const moneyPullingConditions = [
-        { 'product.wantMoneyPulling': moneyPullingOrders },
-        { isMoneyPulling: moneyPullingOrders },
-        { 'otherProduct.isMoneyPulling': moneyPullingOrders },
-      ];
-
-      // For customFormProduct, check if any item has non-empty moneyPulling array
-      if (moneyPullingOrders === true || moneyPullingOrders === 'true') {
-        moneyPullingConditions.push({
-          'customFormProduct.moneyPulling': { $exists: true, $ne: [] },
-        });
-      } else {
-        // If looking for orders WITHOUT money pulling, check that moneyPulling is empty or doesn't exist
-        moneyPullingConditions.push({
-          $or: [
-            { 'customFormProduct.moneyPulling': { $exists: false } },
-            { 'customFormProduct.moneyPulling': { $size: 0 } },
-          ],
-        });
-      }
-
-      // If we already have other filters using $or or $and, combine them properly
-      if (filter.$and) {
-        // Already have $and structure, add another condition
-        filter.$and.push({ $or: moneyPullingConditions });
-      } else if (filter.$or) {
-        // Have $or structure, convert to $and
-        filter.$and = [{ $or: filter.$or }, { $or: moneyPullingConditions }];
-        delete filter.$or;
-      } else {
-        // No existing $or/$and, just set $or
-        filter.$or = moneyPullingConditions;
-      }
+      // Simple check for isMoneyPulling property at order level
+      filter.isMoneyPulling =
+        moneyPullingOrders === 'true' || moneyPullingOrders === true;
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
