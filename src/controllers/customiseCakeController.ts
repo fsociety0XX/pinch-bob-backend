@@ -36,6 +36,14 @@ import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
 import Order, { ICustomFormProduct } from '@src/models/orderModel';
 
+interface IPhoto {
+  key: string;
+  originalname: string;
+  mimetype: string;
+  size: number;
+  location: string;
+}
+
 interface IWoodeliveryResponse {
   data?: {
     guid: string;
@@ -681,16 +689,12 @@ export const submitAdminForm = catchAsync(
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
     const customFormData = { ...req.body };
 
-    if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.images?.length) {
-        customFormData.images = files.images;
-      }
+    // Get the original order state to check payment status
+    const originalOrder = await CustomiseCake.findById(req.params.id);
+    const wasAlreadyPaid = originalOrder!.paid === true;
 
-      if (files.baseColourImg?.length) {
-        [customFormData.baseColourImg] = files.baseColourImg;
-      }
-    }
+    // Image uploads are handled by dedicated APIs (addRefImages/removeRefImage)
+    // This API focuses on form data updates only
 
     if (coupon === '') {
       customFormData.coupon = null;
@@ -710,10 +714,6 @@ export const submitAdminForm = catchAsync(
     ) {
       customFormData.delivery.address = null;
     }
-
-    // Get the original order state BEFORE updating to check if it was already paid
-    const originalOrder = await CustomiseCake.findById(req.params.id);
-    const wasAlreadyPaid = originalOrder!.paid === true;
 
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
       req.params.id,
@@ -950,3 +950,156 @@ export const getAllCustomiseForm = catchAsync(
 );
 
 export const getOneCustomiseCakeForm = getOne(CustomiseCake);
+
+export const addRefImages = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { imageType = 'additionalRefImages' } = req.body;
+
+    // Ensure files are attached
+    if (!req.files || (Array.isArray(req.files) && req.files.length === 0)) {
+      return next(new AppError('No images provided', StatusCode.BAD_REQUEST));
+    }
+
+    const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    // Handle different upload formats from multer .any()
+    let files: Express.Multer.File[] = [];
+    if (Array.isArray(req.files)) {
+      files = req.files;
+    } else {
+      // req.files is an object with field names as keys
+      const fileObj = req.files as {
+        [fieldname: string]: Express.Multer.File[];
+      };
+      if (fileObj.additionalRefImages) {
+        files = fileObj.additionalRefImages;
+      } else if (fileObj.baseColourImg) {
+        files = fileObj.baseColourImg;
+      } else {
+        // Get first available field
+        const firstKey = Object.keys(fileObj)[0];
+        if (firstKey) {
+          files = fileObj[firstKey];
+        }
+      }
+    }
+
+    if (files.length === 0) {
+      return next(new AppError('No images provided', StatusCode.BAD_REQUEST));
+    }
+
+    if (imageType === 'baseColourImg') {
+      // For baseColourImg, only allow single image
+      if (files.length > 1) {
+        return next(
+          new AppError(
+            'Only one base colour image allowed',
+            StatusCode.BAD_REQUEST
+          )
+        );
+      }
+      customiseCakeOrder.baseColourImg = files[0] as unknown as IPhoto;
+    } else {
+      // For additionalRefImages, allow multiple images
+      if (!customiseCakeOrder.additionalRefImages) {
+        customiseCakeOrder.additionalRefImages = [];
+      }
+      customiseCakeOrder.additionalRefImages.push(
+        ...(files as unknown as IPhoto[])
+      );
+    }
+
+    await customiseCakeOrder.save();
+
+    const responseData: Record<string, unknown> = {};
+    if (imageType === 'baseColourImg') {
+      responseData.baseColourImg = customiseCakeOrder.baseColourImg;
+    } else {
+      responseData.additionalRefImages = customiseCakeOrder.additionalRefImages;
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: `${
+        imageType === 'baseColourImg'
+          ? 'Base colour image'
+          : 'Additional reference images'
+      } uploaded successfully`,
+      data: responseData,
+    });
+  }
+);
+
+export const removeRefImage = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { imageKey, imageType = 'additionalRefImages' } = req.body;
+
+    if (!imageKey) {
+      return next(
+        new AppError('Image key is required', StatusCode.BAD_REQUEST)
+      );
+    }
+
+    const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    let removedFromArray = false;
+
+    if (imageType === 'images') {
+      // Remove from customer uploaded images
+      if (customiseCakeOrder.images && customiseCakeOrder.images.length > 0) {
+        customiseCakeOrder.images = customiseCakeOrder.images.filter(
+          (img: IPhoto) => img.key !== imageKey
+        );
+        removedFromArray = true;
+      }
+    } else if (imageType === 'additionalRefImages') {
+      // Remove from admin uploaded additional images
+      if (
+        customiseCakeOrder.additionalRefImages &&
+        customiseCakeOrder.additionalRefImages.length > 0
+      ) {
+        customiseCakeOrder.additionalRefImages =
+          customiseCakeOrder.additionalRefImages.filter(
+            (img: IPhoto) => img.key !== imageKey
+          );
+        removedFromArray = true;
+      }
+    } else if (imageType === 'baseColourImg') {
+      // Remove base colour image
+      if (
+        customiseCakeOrder.baseColourImg &&
+        customiseCakeOrder.baseColourImg.key === imageKey
+      ) {
+        customiseCakeOrder.set('baseColourImg', undefined);
+        removedFromArray = true;
+      }
+    }
+
+    if (!removedFromArray) {
+      return next(
+        new AppError(
+          `No image found with key: ${imageKey}`,
+          StatusCode.NOT_FOUND
+        )
+      );
+    }
+
+    await customiseCakeOrder.save();
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: 'Image removed successfully',
+      data: {
+        images: customiseCakeOrder.images,
+        additionalRefImages: customiseCakeOrder.additionalRefImages,
+        baseColourImg: customiseCakeOrder.baseColourImg,
+      },
+    });
+  }
+);
