@@ -1382,9 +1382,22 @@ export const getAllOrder = catchAsync(
       }
     }
     if (moneyPullingOrders) {
-      // Simple check for isMoneyPulling property at order level
-      filter.isMoneyPulling =
+      // Check for both isMoneyPulling at order level AND wantMoneyPulling in product array
+      const moneyPullingValue =
         moneyPullingOrders === 'true' || moneyPullingOrders === true;
+
+      const moneyPullingConditions = [
+        { isMoneyPulling: moneyPullingValue },
+        { 'product.wantMoneyPulling': moneyPullingValue },
+      ];
+
+      // If we already have other $or conditions, combine them with $and
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: moneyPullingConditions }];
+        delete filter.$or;
+      } else {
+        filter.$or = moneyPullingConditions;
+      }
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
