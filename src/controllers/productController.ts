@@ -342,19 +342,13 @@ async function getProductBySuperCategory(
     },
     {
       $match: {
-        $and: [
-          {
-            'superCategory.name': superCategory,
-          },
-          {
-            brand,
-          },
-          {
-            active: true,
-          },
-        ],
-        _id: {
-          $nin: excludedIds,
+        _id: { $nin: excludedIds },
+        brand,
+        active: true,
+        available: true,
+        'superCategory.name': superCategory,
+        $expr: {
+          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
         },
       },
     },
@@ -499,6 +493,10 @@ async function getRandomProducts(
         _id: { $nin: excludedIds },
         brand,
         active: true,
+        available: true,
+        $expr: {
+          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
+        },
       },
     },
     {
@@ -595,18 +593,14 @@ async function getRandomProductsFromSameSupercategory(
     {
       $match: {
         $and: [
-          {
-            'superCategory.name': superCategory,
-          },
-          {
-            brand,
-          },
-          {
-            active: true,
-          },
+          { 'superCategory.name': superCategory },
+          { brand },
+          { active: true },
+          { available: true },
         ],
-        _id: {
-          $nin: excludedIds,
+        _id: { $nin: excludedIds },
+        $expr: {
+          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
         },
       },
     },
@@ -676,6 +670,37 @@ async function getRandomProductsFromSameSupercategory(
     },
   ]);
   return randomProducts;
+}
+
+async function getGiftCardProduct(
+  brand: string,
+  excludedIds: Array<mongoose.Types.ObjectId>
+) {
+  const result = await Product.aggregate([
+    {
+      $match: {
+        brand,
+        active: true,
+        available: true,
+        _id: { $nin: excludedIds },
+        name: { $regex: /gift card/i },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        price: 1,
+        discountedPrice: 1,
+        slug: 1,
+        brand: 1,
+        refImageType: 1,
+      },
+    },
+    { $limit: 1 },
+  ]);
+  return result[0];
 }
 
 const insertIntoFbtSlot = (
@@ -961,6 +986,22 @@ export const getFbtAlsoLike = catchAsync(
         break;
     }
 
+    // Always pin a Gift Card at position 1 of alsoLikeDocs (index 0)
+    const giftCard = await getGiftCardProduct(brand, excludedIds);
+    if (giftCard) {
+      // remove if already present
+      const idx = alsoLikeDocs.findIndex(
+        (p) => String(p._id) === String(giftCard._id)
+      );
+      if (idx !== -1) alsoLikeDocs.splice(idx, 1);
+
+      // put at the front
+      alsoLikeDocs.unshift(giftCard);
+
+      // prevent duplicates from later queries
+      excludedIds.push(new mongoose.Types.ObjectId(giftCard._id));
+    }
+
     // If any of the slots are empty, retrieve random & unique products for these empty slots
     // If all slots are empty, retrieve random products for all the slots
     if (fbtDocs.length < noOfSlots) {
@@ -988,6 +1029,11 @@ export const getFbtAlsoLike = catchAsync(
           alsoLikeDocs.push(p);
         });
       }
+    }
+
+    // Cap the list length after topping up (ensures exactly up to noOfMayLikeProducts)
+    if (alsoLikeDocs.length > noOfMayLikeProducts) {
+      alsoLikeDocs.splice(noOfMayLikeProducts);
     }
 
     res.status(StatusCode.SUCCESS).json({

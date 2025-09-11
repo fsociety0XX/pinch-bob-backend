@@ -1248,6 +1248,9 @@ export const getAllOrder = catchAsync(
       dateFrom,
       dateTo,
       driverId,
+      status,
+      paid,
+      active,
     } = req.query;
 
     const timeRange =
@@ -1259,6 +1262,7 @@ export const getAllOrder = catchAsync(
         : undefined;
 
     const filter: any = {};
+    const baseConditions = []; // For conditions that should be ANDed together
 
     if (timeRange) {
       if (dateMode === 'created') {
@@ -1266,7 +1270,10 @@ export const getAllOrder = catchAsync(
       } else if (dateMode === 'updated') {
         filter.updatedAt = timeRange;
       } else if (dateMode === 'both') {
-        filter.$or = [{ createdAt: timeRange }, { updatedAt: timeRange }];
+        // Store this for later combination with other $or conditions
+        baseConditions.push({
+          $or: [{ createdAt: timeRange }, { updatedAt: timeRange }],
+        });
       }
     }
 
@@ -1276,70 +1283,121 @@ export const getAllOrder = catchAsync(
       };
     }
 
+    // Collect category filter conditions
+    const categoryOrConditions = [];
+
     if (superCategory) {
+      const superCategoryIds = (superCategory as string).split(',');
       const query = {};
       query.superCategory = {
-        $in: (superCategory as string).split(','),
+        $in: superCategoryIds,
       };
       const products = await Product.find(query);
-      if (!products || !products.length) {
-        res.status(StatusCode.SUCCESS).json({
-          status: 'success',
-          data: {
-            data: [],
-          },
-        });
-      }
       const productIds = products.map((product) => product._id);
-      filter['product.product'] = { $in: productIds };
+
+      // Add conditions for regular products, otherProduct, and customFormProduct with matching superCategory
+      // Always add direct category conditions, even if no products found (for otherProduct and customFormProduct)
+      categoryOrConditions.push(
+        { 'otherProduct.superCategory': { $in: superCategoryIds } },
+        { 'customFormProduct.superCategory': { $in: superCategoryIds } }
+      );
+
+      // Only add product-based conditions if products exist
+      if (products.length > 0) {
+        categoryOrConditions.push(
+          { 'product.product': { $in: productIds } },
+          { 'customFormProduct.product': { $in: productIds } }
+        );
+      }
     }
     if (category) {
+      const categoryIds = (category as string).split(',');
       const query = {};
       query.category = {
-        $in: (category as string).split(','),
+        $in: categoryIds,
       };
       const products = await Product.find(query);
-      if (!products || !products.length) {
-        res.status(StatusCode.SUCCESS).json({
-          status: 'success',
-          data: {
-            data: [],
-          },
-        });
-      }
       const productIds = products.map((product) => product._id);
-      filter['product.product'] = { $in: productIds };
+
+      // Add conditions for regular products, otherProduct, and customFormProduct with matching category
+      // Always add direct category conditions, even if no products found
+      categoryOrConditions.push(
+        { 'otherProduct.category': { $in: categoryIds } },
+        { 'customFormProduct.category': { $in: categoryIds } }
+      );
+
+      // Only add product-based conditions if products exist
+      if (products.length > 0) {
+        categoryOrConditions.push(
+          { 'product.product': { $in: productIds } },
+          { 'customFormProduct.product': { $in: productIds } }
+        );
+      }
     }
     if (subCategory) {
+      const subCategoryIds = (subCategory as string).split(',');
       const query = {};
       query.subCategory = {
-        $in: (subCategory as string).split(','),
+        $in: subCategoryIds,
       };
       const products = await Product.find(query);
-      if (!products || !products.length) {
-        res.status(StatusCode.SUCCESS).json({
-          status: 'success',
-          data: {
-            data: [],
-          },
-        });
-      }
       const productIds = products.map((product) => product._id);
-      filter['product.product'] = { $in: productIds };
+
+      // Add conditions for regular products, otherProduct, and customFormProduct with matching subCategory
+      // Always add direct category conditions, even if no products found
+      categoryOrConditions.push(
+        { 'otherProduct.subCategory': { $in: subCategoryIds } },
+        { 'customFormProduct.subCategory': { $in: subCategoryIds } }
+      );
+
+      // Only add product-based conditions if products exist
+      if (products.length > 0) {
+        categoryOrConditions.push(
+          { 'product.product': { $in: productIds } },
+          { 'customFormProduct.product': { $in: productIds } }
+        );
+      }
+    }
+
+    // Apply category filters if any exist
+    if (categoryOrConditions.length > 0) {
+      filter.$or = categoryOrConditions;
     }
     if (flavour) {
-      filter['product.flavour'] = { $in: (flavour as string).split(',') };
+      const flavourConditions = [
+        { 'product.flavour': { $in: (flavour as string).split(',') } },
+        {
+          'customFormProduct.flavour': { $in: (flavour as string).split(',') },
+        },
+        // Note: otherProduct.flavour is a string field, not ObjectId, so we need to handle it differently
+        // For now, we'll skip otherProduct.flavour as it would require flavour name matching instead of ID matching
+      ];
+
+      // If we already have category filters, combine them with $and
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: flavourConditions }];
+        delete filter.$or;
+      } else {
+        filter.$or = flavourConditions;
+      }
     }
     if (moneyPullingOrders) {
-      // Filter orders where ANY of these conditions is true:
-      // 1. Regular orders: product.wantMoneyPulling
-      // 2. Custom cake orders: isMoneyPulling
-      // 3. Corporate orders: otherProduct.isMoneyPulling
-      filter.$or = [
-        { 'product.wantMoneyPulling': moneyPullingOrders },
-        { isMoneyPulling: moneyPullingOrders },
-        { 'otherProduct.isMoneyPulling': moneyPullingOrders },
+      // Check for both isMoneyPulling at order level AND wantMoneyPulling in product array
+      const moneyPullingValue =
+        moneyPullingOrders === 'true' || moneyPullingOrders === true;
+
+      const moneyPullingConditions = [
+        { isMoneyPulling: moneyPullingValue },
+        { 'product.wantMoneyPulling': moneyPullingValue },
       ];
+
+      // If we already have other $or conditions, combine them with $and
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: moneyPullingConditions }];
+        delete filter.$or;
+      } else {
+        filter.$or = moneyPullingConditions;
+      }
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
@@ -1357,6 +1415,52 @@ export const getAllOrder = catchAsync(
       };
     }
 
+    // Handle status filtering - if status is provided in query, use it; otherwise exclude cancelled orders
+    if (status) {
+      // If status is provided as a query parameter, use it directly
+      if (typeof status === 'string') {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    } else {
+      // Default: exclude cancelled orders if no status is specified
+      filter.status = { $ne: CANCELLED };
+    }
+
+    // Handle paid filtering - default to true if not specified
+    if (paid !== undefined) {
+      filter.paid = paid === 'true' || paid === true;
+    } else {
+      filter.paid = true;
+    }
+
+    // Handle active filtering - default to true if not specified
+    if (active !== undefined) {
+      filter.active = active === 'true' || active === true;
+    } else {
+      filter.active = true;
+    }
+
+    // Combine all base conditions that need to be ANDed together
+    if (baseConditions.length > 0) {
+      if (filter.$and) {
+        // Already have $and, add base conditions
+        filter.$and = [...baseConditions, ...filter.$and];
+      } else if (filter.$or) {
+        // Have $or, convert to $and with base conditions
+        filter.$and = [...baseConditions, { $or: filter.$or }];
+        delete filter.$or;
+      } else if (baseConditions.length === 1) {
+        // Single base condition, merge it directly
+        Object.assign(filter, baseConditions[0]);
+      } else {
+        // Multiple base conditions, use $and
+        filter.$and = baseConditions;
+      }
+    }
+
+    // Clean up query parameters before merging filters
     delete req.query.superCategory;
     delete req.query.category;
     delete req.query.subCategory;
@@ -1368,10 +1472,12 @@ export const getAllOrder = catchAsync(
     delete req.query.dateTo;
     delete req.query.dateFrom;
     delete req.query.driverId;
-    req.query = { ...req.query, ...filter };
+    delete req.query.status;
+    delete req.query.paid;
+    delete req.query.active;
 
-    // Only show orders where paid: true
-    req.query.paid = true;
+    // Apply all filters to req.query
+    req.query = { ...req.query, ...filter };
 
     await getAll(Order)(req, res, next);
   }

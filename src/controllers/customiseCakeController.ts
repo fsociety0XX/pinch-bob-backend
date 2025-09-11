@@ -72,6 +72,7 @@ interface IDeliveryData {
   customiseCakeForm: boolean;
   status?: string;
   paid?: boolean;
+  instructions?: string;
 }
 
 interface IWoodeliveryTask {
@@ -88,6 +89,7 @@ interface IWoodeliveryTask {
   tag1: string;
   destinationAddress?: string;
   taskGuid?: string;
+  destinationNotes?: string;
 }
 
 const prepareCompleteAddress = (order: ICustomiseCake) => {
@@ -313,7 +315,14 @@ const createDeliveryDocument = async (
   try {
     const {
       brand,
-      delivery: { address, date, time, recipientName, recipientPhone },
+      delivery: {
+        address,
+        date,
+        time,
+        recipientName,
+        recipientPhone,
+        instructions,
+      },
       user,
     } = customiseCake;
 
@@ -353,6 +362,7 @@ const createDeliveryDocument = async (
         phone: currentUser?.phone || '',
       },
       paid: customiseCake.paid || false, // Ensure paid status is set
+      instructions: instructions || '',
     };
 
     if (task) {
@@ -401,7 +411,7 @@ const createWoodeliveryTask = async (
   const {
     brand,
     orderNumber,
-    delivery: { address, date, time },
+    delivery: { address, date, time, instructions },
     user,
     woodeliveryTaskId,
   } = customiseCake;
@@ -425,6 +435,7 @@ const createWoodeliveryTask = async (
     recipientName: currentUser?.firstName || '',
     recipientPhone: String(currentUser?.phone || ''),
     tag1: brand,
+    destinationNotes: instructions || '',
   };
 
   if (address) {
@@ -549,6 +560,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     moneyPulling,
     flavour,
     isMoneyPulling,
+    superCategory,
+    category,
+    subCategory,
   } = customiseCakeOrder;
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
@@ -572,6 +586,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     date: delivery.date,
     collectionTime: delivery.time,
     address: delivery.address,
+    instructions: delivery.instructions || '',
   };
   const pricingSummary = {
     subTotal: String(price),
@@ -592,6 +607,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       giftCardMsg,
       specialRequest,
       moneyPulling,
+      superCategory,
+      category,
+      subCategory,
     },
   ];
   const orderData = {

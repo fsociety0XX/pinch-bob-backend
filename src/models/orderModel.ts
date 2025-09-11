@@ -108,6 +108,8 @@ export interface IProduct {
   nonFondantDecor?: string;
   simpleFonAcc?: string;
   baseColour?: string;
+  toys?: string;
+  candlesAndSparklers?: string;
   moneyPulling?: IMoneyPulling[];
   address?: string; // will be used if delivery type - multi location delivery
 }
@@ -144,7 +146,12 @@ export interface IOtherProduct {
   nonFondantDecor?: string;
   simpleFonAcc?: string;
   baseColour?: string;
+  toys?: string;
+  candlesAndSparklers?: string;
   isMoneyPulling?: boolean;
+  superCategory: mongoose.Schema.Types.ObjectId;
+  category: mongoose.Schema.Types.ObjectId;
+  subCategory: mongoose.Schema.Types.ObjectId;
 }
 
 export interface ICustomFormProduct {
@@ -158,6 +165,9 @@ export interface ICustomFormProduct {
   giftCardMsg?: string;
   specialRequest?: string;
   moneyPulling?: IMoneyPulling[];
+  superCategory?: mongoose.Schema.Types.ObjectId;
+  category?: mongoose.Schema.Types.ObjectId;
+  subCategory?: mongoose.Schema.Types.ObjectId;
 }
 
 interface ICustomer {
@@ -255,6 +265,11 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   nonFondantDecor: String,
   simpleFonAcc: String,
   baseColour: String,
+  toys: String,
+  candlesAndSparklers: String,
+  superCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SuperCategory' },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' },
   isMoneyPulling: {
     type: Boolean,
     default: false,
@@ -278,6 +293,21 @@ const CustomFormProductSchema = new mongoose.Schema<ICustomFormProduct>({
   giftCardMsg: String,
   specialRequest: String,
   moneyPulling: [MoneyPullingSchema],
+  superCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SuperCategory',
+    required: false,
+  },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: false,
+  },
+  subCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SubCategory',
+    required: false,
+  },
 });
 
 const ProductSchema = new mongoose.Schema<IProduct>({
@@ -319,6 +349,8 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   nonFondantDecor: String,
   simpleFonAcc: String,
   baseColour: String,
+  toys: String,
+  candlesAndSparklers: String,
   fondantFigurine: String,
   wantMoneyPulling: {
     type: Boolean,
@@ -491,7 +523,11 @@ orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
     select: 'code type applicableOn ids discountType discount',
   });
   this.populate({
-    path: 'customiseCakeFormDetails product.product',
+    path: 'customiseCakeFormDetails',
+  });
+  this.populate({
+    path: 'product.product',
+    populate: [{ path: 'flavour', model: 'Flavour' }],
   });
   next();
 });

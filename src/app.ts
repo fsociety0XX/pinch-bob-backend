@@ -43,8 +43,6 @@ import {
   SIGN_UP,
   FORGOT_PASSWORD,
   RESET_PASSWORD,
-  SEND_OTP,
-  SEND_PHONE_OTP,
   VERIFY_OTP,
   VERIFY_PHONE_OTP,
 } from './constants/routeConstants';
@@ -125,18 +123,15 @@ if (process.env.NODE_ENV === PRODUCTION) {
     legacyHeaders: false,
   });
 
-  // Apply rate limiters to specific routes based on sensitivity
-  // Authentication routes - strictest limits (20 per hour) - SECURITY CRITICAL
+  // Apply rate limiters to authentication routes (excluding OTP routes)
   app.use(AUTH_ROUTE + SIGN_IN, authLimiter);
   app.use(AUTH_ROUTE + SIGN_UP, authLimiter);
   app.use(AUTH_ROUTE + FORGOT_PASSWORD, authLimiter);
-  app.use(AUTH_ROUTE + RESET_PASSWORD.replace('/:token', ''), authLimiter); // Remove param for middleware
-
-  // Twilio SMS/OTP routes - SECURITY CRITICAL (prevent SMS abuse and OTP spam)
-  app.use(AUTH_ROUTE + SEND_OTP, authLimiter);
-  app.use(AUTH_ROUTE + SEND_PHONE_OTP, authLimiter);
+  app.use(AUTH_ROUTE + RESET_PASSWORD.replace('/:token', ''), authLimiter);
   app.use(AUTH_ROUTE + VERIFY_OTP, authLimiter);
   app.use(AUTH_ROUTE + VERIFY_PHONE_OTP, authLimiter);
+
+  // NOTE: OTP sending routes (SEND_OTP, SEND_PHONE_OTP) are handled in controller
 }
 
 // Body parser -> Reading data from body into req.body
