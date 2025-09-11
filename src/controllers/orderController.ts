@@ -1486,9 +1486,9 @@ export const getAllOrder = catchAsync(
 export const updateOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { delivery, recipInfo, size, flavour } = req.body;
-    if (req.files?.length) {
-      req.body.additionalRefImages = req.files;
-    }
+
+    // Image uploads are handled by dedicated APIs (updateRefImages/removeRefImage)
+    // This API focuses on form data updates only
 
     // Sanitize top-level size and flavour
     if (size === '' || size === undefined) {
@@ -1513,9 +1513,13 @@ export const updateOrder = catchAsync(
         if (productItem.colour === '' || productItem.colour === undefined) {
           productItem.colour = null;
         }
+
         return productItem;
       });
     }
+
+    // Handle otherProduct array - no preservation logic needed
+    // MongoDB will only update fields that are explicitly provided
 
     if (delivery) {
       req.body.delivery.date = toUtcDateOnly(delivery.date);
@@ -1570,7 +1574,7 @@ export const updateOrder = catchAsync(
 
 export const updateRefImages = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { productItemId } = req.body;
+    const { productItemId, productType = 'product' } = req.body; // productType can be 'product' or 'otherProduct'
 
     // Ensure files are attached
     if (!req.files?.length) {
@@ -1582,9 +1586,20 @@ export const updateRefImages = catchAsync(
       return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
     }
 
-    const productItem = order.product[productItemId];
+    let productItem;
+    if (productType === 'otherProduct') {
+      productItem = order.otherProduct[productItemId];
+    } else {
+      productItem = order.product[productItemId];
+    }
+
     if (!productItem) {
       return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
+    }
+
+    // Initialize additionalRefImages if it doesn't exist
+    if (!productItem.additionalRefImages) {
+      productItem.additionalRefImages = [];
     }
 
     productItem.additionalRefImages.push(...req.files);
@@ -1594,6 +1609,117 @@ export const updateRefImages = catchAsync(
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       message: REF_IMG_UPDATE.imgUploadSuccess,
+      data: {
+        additionalRefImages: productItem.additionalRefImages,
+      },
+    });
+  }
+);
+
+// New function to remove specific additional images
+export const removeRefImage = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const {
+      productItemId,
+      imageKey,
+      productType = 'product',
+      imageType = 'additionalRefImages',
+    } = req.body;
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return next(new AppError(REF_IMG_UPDATE.noOrder, StatusCode.NOT_FOUND));
+    }
+
+    let removedFromArray = false;
+
+    // Require productItemId for all image operations
+    if (productItemId === undefined || productItemId === null) {
+      return next(
+        new AppError(
+          'Product item ID is required for image operations',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
+    // Restrict refImage deletion to product array only
+    if (
+      (imageType === 'refImage' || imageType === 'refImages') &&
+      productType === 'otherProduct'
+    ) {
+      return next(
+        new AppError(
+          'refImage deletion is only supported for product items, not otherProduct items',
+          StatusCode.BAD_REQUEST
+        )
+      );
+    }
+
+    let productItem;
+    if (productType === 'otherProduct') {
+      productItem = order.otherProduct[productItemId];
+    } else {
+      productItem = order.product[productItemId];
+    }
+
+    if (!productItem) {
+      return next(new AppError(REF_IMG_UPDATE.noProduct, StatusCode.NOT_FOUND));
+    }
+
+    if (imageType === 'refImage') {
+      // Handle product-level refImage (single image inside product item)
+      if (productItem.refImage && productItem.refImage.key === imageKey) {
+        productItem.set('refImage', undefined);
+        removedFromArray = true;
+      }
+    } else {
+      // Handle product-level additionalRefImages
+      if (!productItem.additionalRefImages) {
+        return next(
+          new AppError('No additional images found', StatusCode.NOT_FOUND)
+        );
+      }
+
+      // Remove the image with the specified key
+      productItem.additionalRefImages = productItem.additionalRefImages.filter(
+        (img: any) => img.key !== imageKey
+      );
+      removedFromArray = true;
+    }
+
+    if (!removedFromArray) {
+      return next(
+        new AppError(
+          `No image found with key: ${imageKey}`,
+          StatusCode.NOT_FOUND
+        )
+      );
+    }
+
+    await order.save();
+
+    // Prepare response data based on imageType and productType
+    let additionalRefImages;
+    let refImage;
+
+    if (imageType === 'refImage') {
+      // Only product items can have refImage deleted
+      refImage = order.product[productItemId]?.refImage;
+    } else if (productType === 'otherProduct') {
+      additionalRefImages =
+        order.otherProduct[productItemId]?.additionalRefImages;
+    } else {
+      additionalRefImages = order.product[productItemId]?.additionalRefImages;
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: 'Image removed successfully',
+      data: {
+        refImage,
+        additionalRefImages,
+      },
     });
   }
 );

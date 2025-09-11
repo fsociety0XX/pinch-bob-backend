@@ -10,6 +10,7 @@ import {
   getWoodeliveryId,
   migrateOrders,
   placeOrder,
+  removeRefImage,
   resendOrderConfirmationEmail,
   triggerOrderFailEmail,
   updateOrder,
@@ -50,13 +51,16 @@ orderRouter
     authenticateOrderAccess,
     uploadImage(process.env.AWS_BUCKET_PRODUCT_PATH!).array(
       'additionalRefImages',
-      5
+      10
     ),
     updateRefImages
-  );
-orderRouter.route('/:id').delete(deleteOrder);
+  )
+  .delete(authenticateOrderAccess, removeRefImage);
 
 // MIGRATION API
 orderRouter.route(MIGRATE).post(migrateOrders);
+
+// Generic /:id routes should come last to avoid conflicts
+orderRouter.route('/:id').delete(deleteOrder);
 
 export default orderRouter;

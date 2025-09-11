@@ -96,6 +96,7 @@ export interface ICustomiseCake {
   message: string;
   cakeMsgLocation: string;
   images: IPhoto[];
+  additionalRefImages: IPhoto[];
   bakes: IBakes[];
   baseColour: string;
   baseColourImg: IPhoto;
@@ -285,6 +286,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       enum: customiseOrderEnums.cakeMsgLocation,
     },
     images: [ImageSchema],
+    additionalRefImages: [ImageSchema],
     bakes: [BakesSchema],
     baseColour: String,
     baseColourImg: ImageSchema,
