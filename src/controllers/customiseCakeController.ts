@@ -834,14 +834,10 @@ export const submitAdminForm = catchAsync(
           customiseCakeOrder.user.email
         );
       }
-    } else {
-      // Normal flow: Generate payment link for unpaid orders
-      await generatePaymentLink(req, String(customiseCakeOrder._id), next);
-
-      // Update delivery if delivery details changed
-      if (delivery) {
-        await createDelivery(customiseCakeOrder, true);
-      }
+    }
+    // Update delivery if delivery details changed
+    if (delivery) {
+      await createDelivery(customiseCakeOrder, true);
     }
 
     if (user) {
