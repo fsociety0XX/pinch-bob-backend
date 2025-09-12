@@ -419,7 +419,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
 );
 
 customiseCakeSchema.pre('save', function (next) {
-  this.orderNumber = generateUniqueIds();
+  // Only generate order number if it doesn't exist (for new documents)
+  if (!this.orderNumber) {
+    this.orderNumber = generateUniqueIds();
+  }
   next();
 });
 

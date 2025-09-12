@@ -484,6 +484,28 @@ const createWoodeliveryTask = async (
   }
 };
 
+const updateWoodeliveryTaskId = async (
+  customiseCake: ICustomiseCake,
+  woodeliveryTaskId: string
+) => {
+  // Update CustomiseCake model
+  await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
+    woodeliveryTaskId,
+  });
+
+  // Update corresponding Order model
+  await Order.findOneAndUpdate(
+    {
+      $or: [
+        { orderNumber: customiseCake.orderNumber },
+        { customiseCakeFormDetails: customiseCake._id },
+      ],
+    },
+    { $set: { woodeliveryTaskId } },
+    { new: true }
+  );
+};
+
 const createDelivery = async (
   customiseCake: ICustomiseCake,
   update = false
@@ -514,15 +536,16 @@ const createDelivery = async (
 
       await createDeliveryDocument(customiseCake, isSelfCollect, task);
 
-      // Update customise cake with new task ID
-      await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
-        woodeliveryTaskId: task.data.guid,
-      });
+      // Update both CustomiseCake and Order models with new task ID
+      await updateWoodeliveryTaskId(customiseCake, task.data.guid);
     } else if (existingDelivery && update) {
       // Woodelivery task exists and we're updating, update existing task
       const response = await createWoodeliveryTask(customiseCake, true);
       const task = await response.json();
       await createDeliveryDocument(customiseCake, isSelfCollect, task);
+
+      // Update both CustomiseCake and Order models with updated task ID
+      await updateWoodeliveryTaskId(customiseCake, task.data.guid);
     } else {
       // Woodelivery task exists but no update needed, just update/create delivery document
       await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
@@ -564,6 +587,42 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     category,
     subCategory,
   } = customiseCakeOrder;
+
+  // Check if order already exists to prevent duplicates
+  // Check both by orderNumber and customiseCakeFormDetails to ensure uniqueness
+  const existingOrder = await Order.findOne({
+    $or: [{ orderNumber }, { customiseCakeFormDetails: _id }],
+  });
+  if (existingOrder) {
+    // Update existing order instead of creating duplicate
+    const updateData = {
+      paid,
+      moneyPaidForMoneyPulling,
+      moneyPullingPrepared,
+      moneyReceivedForMoneyPulling,
+      isMoneyPulling,
+      hitpayDetails,
+      woodeliveryTaskId,
+      // Update delivery details in case they changed
+      'delivery.date': delivery.date,
+      'delivery.collectionTime': delivery.time,
+      'delivery.instructions': delivery.instructions || '',
+      // Update pricing in case admin modified it
+      'pricingSummary.subTotal': String(price),
+      'pricingSummary.deliveryCharge': String(deliveryFee),
+      'pricingSummary.discountedAmt': String(discountedAmt),
+      'pricingSummary.total': String(total),
+      'pricingSummary.coupon': coupon,
+    };
+
+    await Order.findOneAndUpdate(
+      { _id: existingOrder._id },
+      { $set: updateData },
+      { new: true }
+    );
+    return;
+  }
+
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
     deliveryMethod = await DeliveryMethod.findOne({
@@ -640,14 +699,25 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     customFormProduct,
     customiseCakeFormDetails: _id,
   };
-  await Order.findOneAndUpdate(
-    { orderNumber },
-    { $set: orderData },
-    {
-      upsert: true,
-      setDefaultsOnInsert: true,
+
+  // Create new order only if it doesn't exist
+  try {
+    await Order.create(orderData);
+  } catch (error: unknown) {
+    // Handle duplicate key error (if order somehow already exists)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 11000
+    ) {
+      console.log(
+        `Order with orderNumber ${orderNumber} already exists, skipping creation`
+      );
+      return;
     }
-  );
+    throw error; // Re-throw other errors
+  }
 };
 
 const sendOrderConfirmationEmail = async (
@@ -714,7 +784,9 @@ export const submitAdminForm = catchAsync(
     ) {
       customFormData.delivery.address = null;
     }
-
+    if (customFormData.manuallyProcessed) {
+      customFormData.paid = true;
+    }
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
       req.params.id,
       customFormData,
@@ -846,6 +918,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
 
     // Create delivery (this was the missing piece!)
     await createDelivery(customiseCakeOrder);
+    // Sync to Order DB - but only if order doesn't already exist
     await syncOrderDB(customiseCakeOrder);
     await sendOrderConfirmationEmail(customiseCakeOrder, email);
   } catch (error) {
