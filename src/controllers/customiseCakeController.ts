@@ -784,7 +784,11 @@ export const submitAdminForm = catchAsync(
     ) {
       customFormData.delivery.address = null;
     }
-    if (customFormData.manuallyProcessed) {
+    if (
+      customFormData.manuallyProcessed &&
+      customFormData?.customPaymentStatus ===
+        customiseOrderEnums.customPaymentStatus[1]
+    ) {
       customFormData.paid = true;
     }
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
