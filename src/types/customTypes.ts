@@ -37,14 +37,14 @@ export const couponApplicableEnum = [
   'Supercategory',
 ];
 export const customiseOrderEnums = {
-  deliveryType: ['Self-collect', 'Delivery', 'TBC'],
+  deliveryType: ['Self-collect', 'Delivery', 'TBC', ''],
   cakeMsgLocation: [
     'Message on cake',
     'Message on cake board',
     'Message on gift card',
     '',
   ],
-  baseSponge: ['Chocolate', 'Vanilla', 'Pandan', 'Other'],
+  baseSponge: ['Chocolate', 'Vanilla', 'Pandan', 'Other', ''],
   colourCode: [
     'Unassigned',
     'Black & Grey',
@@ -59,8 +59,9 @@ export const customiseOrderEnums = {
     'Yellow, Gold, Ivory, Brown',
     'Black and Gray',
     'N/A',
+    '',
   ],
-  ediblePrintType: ['Flat', 'Stand', 'Wall'],
+  ediblePrintType: ['Flat', 'Stand', 'Wall', ''],
   fondantNameTypes: [
     'Banner',
     'Fondant cubes',
@@ -72,6 +73,7 @@ export const customiseOrderEnums = {
     'Regular fondant name (Stand)',
     'White Chocolate',
     'Other',
+    '',
   ],
   fondantColours: [
     'Pantone 100 U',
@@ -146,6 +148,7 @@ export const customiseOrderEnums = {
     'Pantone 7487',
     'Pantone 7620',
     'Other',
+    '',
   ],
   fondantNumberTypes: [
     'Fondant number (Flat)',
@@ -156,10 +159,12 @@ export const customiseOrderEnums = {
     'Gold Fondant number (Stand)',
     'Gold Fondant number (Wall)',
     'Other',
+    '',
   ],
-  formStatusEnum: ['New', 'Completed', 'Dismissed'],
-  enquiryTypeEnum: ['Regular', 'Business'],
+  formStatusEnum: ['New', 'Completed', 'Dismissed', ''],
+  enquiryTypeEnum: ['Regular', 'Business', ''],
   qtyType: ['Pieces', 'Dozen', 'Boxes', ''],
+  customPaymentStatus: ['Follow up payment', 'Paid', ''],
 };
 
 export const checkoutSessionFor = {
@@ -169,5 +174,4 @@ export const checkoutSessionFor = {
 
 export const SELF_COLLECT = 'Self-collect';
 export const REGULAR_DELIVERY = 'Regular Delivery';
-
 export const HITPAY_PAYMENT_PURPOSE = ['standard', 'customised'];
