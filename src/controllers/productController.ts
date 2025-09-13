@@ -93,7 +93,7 @@ async function syncProductWithMerchantCenter(
 
 const inventorySetup = (i: IInventory) => {
   const inventory = { ...i };
-  if (inventory && inventory.track && inventory.totalQty >= 0) {
+  if (inventory && inventory.track && inventory.totalt >= 0) {
     inventory.remainingQty = inventory.totalQty;
     inventory.available = inventory.remainingQty > 0;
 
@@ -1068,7 +1068,7 @@ export const getFbtAlsoLike = catchAsync(
         noOfMayLikeProducts - alsoLikeDocs.length,
         excludedIds
       );
-      console.log(randomProducts);
+
       if (randomProducts.length) {
         randomProducts.forEach((p) => {
           alsoLikeDocs.push(p);
