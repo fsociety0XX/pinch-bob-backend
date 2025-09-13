@@ -96,6 +96,7 @@ export interface ICustomiseCake {
   message: string;
   cakeMsgLocation: string;
   images: IPhoto[];
+  additionalRefImages: IPhoto[];
   bakes: IBakes[];
   baseColour: string;
   baseColourImg: IPhoto;
@@ -146,6 +147,7 @@ export interface ICustomiseCake {
   paid: boolean;
   hitpayDetails: IHitpayDetails;
   paymentLink: string;
+  customPaymentStatus: string;
   woodeliveryTaskId: string;
   manuallyProcessed: boolean;
   active: boolean;
@@ -285,6 +287,7 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
       enum: customiseOrderEnums.cakeMsgLocation,
     },
     images: [ImageSchema],
+    additionalRefImages: [ImageSchema],
     bakes: [BakesSchema],
     baseColour: String,
     baseColourImg: ImageSchema,
@@ -399,6 +402,11 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     hitpayDetails: Object,
     paymentLink: String,
+    customPaymentStatus: {
+      type: String,
+      enum: customiseOrderEnums.customPaymentStatus,
+      default: '',
+    },
     woodeliveryTaskId: String,
     manuallyProcessed: {
       type: Boolean,
@@ -417,7 +425,10 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
 );
 
 customiseCakeSchema.pre('save', function (next) {
-  this.orderNumber = generateUniqueIds();
+  // Only generate order number if it doesn't exist (for new documents)
+  if (!this.orderNumber) {
+    this.orderNumber = generateUniqueIds();
+  }
   next();
 });
 

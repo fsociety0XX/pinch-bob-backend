@@ -8,11 +8,14 @@ import {
   sendPaymentSms,
   submitAdminForm,
   submitCustomerForm,
+  addRefImages,
+  removeRefImage,
 } from '@src/controllers/customiseCakeController';
 import uploadImage from '@src/utils/uploadImage';
 import {
   SEND_PAYMENT_EMAIL,
   SEND_PAYMENT_SMS,
+  UPDATE_REF_IMG,
 } from '@src/constants/routeConstants';
 
 const customiseCakeRouter = express.Router();
@@ -22,7 +25,7 @@ customiseCakeRouter
   .post(
     uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).array(
       'images',
-      5
+      10
     ),
     submitCustomerForm
   );
@@ -34,14 +37,17 @@ customiseCakeRouter.route('/').get(getAllCustomiseForm);
 
 customiseCakeRouter
   .route('/:id')
-  .patch(
-    uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).fields([
-      { name: 'images', maxCount: 10 },
-      { name: 'baseColourImg', maxCount: 1 },
-    ]),
-    submitAdminForm
-  )
+  .patch(submitAdminForm) // Removed upload middleware since images are handled by dedicated APIs
   .get(getOneCustomiseCakeForm);
+
+// Image management routes - supports both additionalRefImages and baseColourImg
+customiseCakeRouter
+  .route(UPDATE_REF_IMG)
+  .post(
+    uploadImage(process.env.AWS_BUCKET_CUSTOMER_REQUEST_PATH!).any(), // Use .any() to handle flexible field names
+    addRefImages
+  )
+  .delete(removeRefImage);
 
 customiseCakeRouter.route(SEND_PAYMENT_SMS).get(sendPaymentSms);
 customiseCakeRouter.route(SEND_PAYMENT_EMAIL).get(sendPaymentEmail);

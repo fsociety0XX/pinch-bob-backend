@@ -36,6 +36,14 @@ import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
 import Order, { ICustomFormProduct } from '@src/models/orderModel';
 
+interface IPhoto {
+  key: string;
+  originalname: string;
+  mimetype: string;
+  size: number;
+  location: string;
+}
+
 interface IWoodeliveryResponse {
   data?: {
     guid: string;
@@ -476,6 +484,28 @@ const createWoodeliveryTask = async (
   }
 };
 
+const updateWoodeliveryTaskId = async (
+  customiseCake: ICustomiseCake,
+  woodeliveryTaskId: string
+) => {
+  // Update CustomiseCake model
+  await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
+    woodeliveryTaskId,
+  });
+
+  // Update corresponding Order model
+  await Order.findOneAndUpdate(
+    {
+      $or: [
+        { orderNumber: customiseCake.orderNumber },
+        { customiseCakeFormDetails: customiseCake._id },
+      ],
+    },
+    { $set: { woodeliveryTaskId } },
+    { new: true }
+  );
+};
+
 const createDelivery = async (
   customiseCake: ICustomiseCake,
   update = false
@@ -506,15 +536,16 @@ const createDelivery = async (
 
       await createDeliveryDocument(customiseCake, isSelfCollect, task);
 
-      // Update customise cake with new task ID
-      await CustomiseCake.findByIdAndUpdate(customiseCake._id, {
-        woodeliveryTaskId: task.data.guid,
-      });
+      // Update both CustomiseCake and Order models with new task ID
+      await updateWoodeliveryTaskId(customiseCake, task.data.guid);
     } else if (existingDelivery && update) {
       // Woodelivery task exists and we're updating, update existing task
       const response = await createWoodeliveryTask(customiseCake, true);
       const task = await response.json();
       await createDeliveryDocument(customiseCake, isSelfCollect, task);
+
+      // Update both CustomiseCake and Order models with updated task ID
+      await updateWoodeliveryTaskId(customiseCake, task.data.guid);
     } else {
       // Woodelivery task exists but no update needed, just update/create delivery document
       await createDeliveryDocument(customiseCake, isSelfCollect, undefined);
@@ -556,6 +587,42 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     category,
     subCategory,
   } = customiseCakeOrder;
+
+  // Check if order already exists to prevent duplicates
+  // Check both by orderNumber and customiseCakeFormDetails to ensure uniqueness
+  const existingOrder = await Order.findOne({
+    $or: [{ orderNumber }, { customiseCakeFormDetails: _id }],
+  });
+  if (existingOrder) {
+    // Update existing order instead of creating duplicate
+    const updateData = {
+      paid,
+      moneyPaidForMoneyPulling,
+      moneyPullingPrepared,
+      moneyReceivedForMoneyPulling,
+      isMoneyPulling,
+      hitpayDetails,
+      woodeliveryTaskId,
+      // Update delivery details in case they changed
+      'delivery.date': delivery.date,
+      'delivery.collectionTime': delivery.time,
+      'delivery.instructions': delivery.instructions || '',
+      // Update pricing in case admin modified it
+      'pricingSummary.subTotal': String(price),
+      'pricingSummary.deliveryCharge': String(deliveryFee),
+      'pricingSummary.discountedAmt': String(discountedAmt),
+      'pricingSummary.total': String(total),
+      'pricingSummary.coupon': coupon,
+    };
+
+    await Order.findOneAndUpdate(
+      { _id: existingOrder._id },
+      { $set: updateData },
+      { new: true }
+    );
+    return;
+  }
+
   let deliveryMethod;
   if (delivery.specificTimeSlot) {
     deliveryMethod = await DeliveryMethod.findOne({
@@ -632,14 +699,25 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     customFormProduct,
     customiseCakeFormDetails: _id,
   };
-  await Order.findOneAndUpdate(
-    { orderNumber },
-    { $set: orderData },
-    {
-      upsert: true,
-      setDefaultsOnInsert: true,
+
+  // Create new order only if it doesn't exist
+  try {
+    await Order.create(orderData);
+  } catch (error: unknown) {
+    // Handle duplicate key error (if order somehow already exists)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 11000
+    ) {
+      console.log(
+        `Order with orderNumber ${orderNumber} already exists, skipping creation`
+      );
+      return;
     }
-  );
+    throw error; // Re-throw other errors
+  }
 };
 
 const sendOrderConfirmationEmail = async (
@@ -681,16 +759,12 @@ export const submitAdminForm = catchAsync(
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
     const customFormData = { ...req.body };
 
-    if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.images?.length) {
-        customFormData.images = files.images;
-      }
+    // Get the original order state to check payment status
+    const originalOrder = await CustomiseCake.findById(req.params.id);
+    const wasAlreadyPaid = originalOrder!.paid === true;
 
-      if (files.baseColourImg?.length) {
-        [customFormData.baseColourImg] = files.baseColourImg;
-      }
-    }
+    // Image uploads are handled by dedicated APIs (addRefImages/removeRefImage)
+    // This API focuses on form data updates only
 
     if (coupon === '') {
       customFormData.coupon = null;
@@ -710,11 +784,13 @@ export const submitAdminForm = catchAsync(
     ) {
       customFormData.delivery.address = null;
     }
-
-    // Get the original order state BEFORE updating to check if it was already paid
-    const originalOrder = await CustomiseCake.findById(req.params.id);
-    const wasAlreadyPaid = originalOrder!.paid === true;
-
+    if (
+      customFormData.manuallyProcessed &&
+      customFormData?.customPaymentStatus ===
+        customiseOrderEnums.customPaymentStatus[1]
+    ) {
+      customFormData.paid = true;
+    }
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
       req.params.id,
       customFormData,
@@ -762,14 +838,10 @@ export const submitAdminForm = catchAsync(
           customiseCakeOrder.user.email
         );
       }
-    } else {
-      // Normal flow: Generate payment link for unpaid orders
-      await generatePaymentLink(req, String(customiseCakeOrder._id), next);
-
-      // Update delivery if delivery details changed
-      if (delivery) {
-        await createDelivery(customiseCakeOrder, true);
-      }
+    }
+    // Update delivery if delivery details changed
+    if (delivery) {
+      await createDelivery(customiseCakeOrder, true);
     }
 
     if (user) {
@@ -846,6 +918,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
 
     // Create delivery (this was the missing piece!)
     await createDelivery(customiseCakeOrder);
+    // Sync to Order DB - but only if order doesn't already exist
     await syncOrderDB(customiseCakeOrder);
     await sendOrderConfirmationEmail(customiseCakeOrder, email);
   } catch (error) {
@@ -950,3 +1023,156 @@ export const getAllCustomiseForm = catchAsync(
 );
 
 export const getOneCustomiseCakeForm = getOne(CustomiseCake);
+
+export const addRefImages = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { imageType = 'additionalRefImages' } = req.body;
+
+    // Ensure files are attached
+    if (!req.files || (Array.isArray(req.files) && req.files.length === 0)) {
+      return next(new AppError('No images provided', StatusCode.BAD_REQUEST));
+    }
+
+    const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    // Handle different upload formats from multer .any()
+    let files: Express.Multer.File[] = [];
+    if (Array.isArray(req.files)) {
+      files = req.files;
+    } else {
+      // req.files is an object with field names as keys
+      const fileObj = req.files as {
+        [fieldname: string]: Express.Multer.File[];
+      };
+      if (fileObj.additionalRefImages) {
+        files = fileObj.additionalRefImages;
+      } else if (fileObj.baseColourImg) {
+        files = fileObj.baseColourImg;
+      } else {
+        // Get first available field
+        const firstKey = Object.keys(fileObj)[0];
+        if (firstKey) {
+          files = fileObj[firstKey];
+        }
+      }
+    }
+
+    if (files.length === 0) {
+      return next(new AppError('No images provided', StatusCode.BAD_REQUEST));
+    }
+
+    if (imageType === 'baseColourImg') {
+      // For baseColourImg, only allow single image
+      if (files.length > 1) {
+        return next(
+          new AppError(
+            'Only one base colour image allowed',
+            StatusCode.BAD_REQUEST
+          )
+        );
+      }
+      customiseCakeOrder.baseColourImg = files[0] as unknown as IPhoto;
+    } else {
+      // For additionalRefImages, allow multiple images
+      if (!customiseCakeOrder.additionalRefImages) {
+        customiseCakeOrder.additionalRefImages = [];
+      }
+      customiseCakeOrder.additionalRefImages.push(
+        ...(files as unknown as IPhoto[])
+      );
+    }
+
+    await customiseCakeOrder.save();
+
+    const responseData: Record<string, unknown> = {};
+    if (imageType === 'baseColourImg') {
+      responseData.baseColourImg = customiseCakeOrder.baseColourImg;
+    } else {
+      responseData.additionalRefImages = customiseCakeOrder.additionalRefImages;
+    }
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: `${
+        imageType === 'baseColourImg'
+          ? 'Base colour image'
+          : 'Additional reference images'
+      } uploaded successfully`,
+      data: responseData,
+    });
+  }
+);
+
+export const removeRefImage = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { imageKey, imageType = 'additionalRefImages' } = req.body;
+
+    if (!imageKey) {
+      return next(
+        new AppError('Image key is required', StatusCode.BAD_REQUEST)
+      );
+    }
+
+    const customiseCakeOrder = await CustomiseCake.findById(req.params.id);
+    if (!customiseCakeOrder) {
+      return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
+    }
+
+    let removedFromArray = false;
+
+    if (imageType === 'images') {
+      // Remove from customer uploaded images
+      if (customiseCakeOrder.images && customiseCakeOrder.images.length > 0) {
+        customiseCakeOrder.images = customiseCakeOrder.images.filter(
+          (img: IPhoto) => img.key !== imageKey
+        );
+        removedFromArray = true;
+      }
+    } else if (imageType === 'additionalRefImages') {
+      // Remove from admin uploaded additional images
+      if (
+        customiseCakeOrder.additionalRefImages &&
+        customiseCakeOrder.additionalRefImages.length > 0
+      ) {
+        customiseCakeOrder.additionalRefImages =
+          customiseCakeOrder.additionalRefImages.filter(
+            (img: IPhoto) => img.key !== imageKey
+          );
+        removedFromArray = true;
+      }
+    } else if (imageType === 'baseColourImg') {
+      // Remove base colour image
+      if (
+        customiseCakeOrder.baseColourImg &&
+        customiseCakeOrder.baseColourImg.key === imageKey
+      ) {
+        customiseCakeOrder.set('baseColourImg', undefined);
+        removedFromArray = true;
+      }
+    }
+
+    if (!removedFromArray) {
+      return next(
+        new AppError(
+          `No image found with key: ${imageKey}`,
+          StatusCode.NOT_FOUND
+        )
+      );
+    }
+
+    await customiseCakeOrder.save();
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: 'Image removed successfully',
+      data: {
+        images: customiseCakeOrder.images,
+        additionalRefImages: customiseCakeOrder.additionalRefImages,
+        baseColourImg: customiseCakeOrder.baseColourImg,
+      },
+    });
+  }
+);

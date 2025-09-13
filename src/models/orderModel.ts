@@ -134,6 +134,7 @@ export interface IOtherProduct {
   specialInstructions?: string;
   ediblePrints: string;
   refImages: string[];
+  additionalRefImages?: IPhoto[];
   giftCardMsg: string;
   notes: string;
   fondantName?: string;
@@ -252,6 +253,7 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   specialInstructions: String,
   ediblePrints: String,
   refImages: [String],
+  additionalRefImages: [ProductImageSchema],
   giftCardMsg: String,
   notes: String,
   fondantName: String,
