@@ -93,7 +93,7 @@ async function syncProductWithMerchantCenter(
 
 const inventorySetup = (i: IInventory) => {
   const inventory = { ...i };
-  if (inventory && inventory.track && inventory.totalQty >= 0) {
+  if (inventory && inventory.track && inventory.totalt >= 0) {
     inventory.remainingQty = inventory.totalQty;
     inventory.available = inventory.remainingQty > 0;
 
@@ -347,9 +347,6 @@ async function getProductBySuperCategory(
         active: true,
         available: true,
         'superCategory.name': superCategory,
-        $expr: {
-          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
-        },
       },
     },
     {
@@ -494,9 +491,6 @@ async function getRandomProducts(
         brand,
         active: true,
         available: true,
-        $expr: {
-          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
-        },
       },
     },
     {
@@ -599,9 +593,6 @@ async function getRandomProductsFromSameSupercategory(
           { available: true },
         ],
         _id: { $nin: excludedIds },
-        $expr: {
-          $lt: [{ $ifNull: ['$sold', 0] }, { $ifNull: ['$maxQty', 0] }],
-        },
       },
     },
     {
@@ -687,6 +678,30 @@ async function getGiftCardProduct(
       },
     },
     {
+      $lookup: {
+        from: 'supercategories',
+        localField: 'superCategory',
+        foreignField: '_id',
+        as: 'superCategory',
+      },
+    },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    {
+      $lookup: {
+        from: 'subcategories',
+        localField: 'subCategory',
+        foreignField: '_id',
+        as: 'subCategory',
+      },
+    },
+    {
       $project: {
         _id: 1,
         name: 1,
@@ -696,6 +711,35 @@ async function getGiftCardProduct(
         slug: 1,
         brand: 1,
         refImageType: 1,
+        superCategory: {
+          $map: {
+            input: '$superCategory',
+            as: 'sc',
+            in: { _id: '$$sc._id', name: '$$sc.name', active: '$$sc.active' },
+          },
+        },
+        category: {
+          $map: {
+            input: '$category',
+            as: 'cat',
+            in: {
+              _id: '$$cat._id',
+              name: '$$cat.name',
+              active: '$$cat.active',
+            },
+          },
+        },
+        subCategory: {
+          $map: {
+            input: '$subCategory',
+            as: 'sub',
+            in: {
+              _id: '$$sub._id',
+              name: '$$sub.name',
+              active: '$$sub.active',
+            },
+          },
+        },
       },
     },
     { $limit: 1 },
@@ -1024,6 +1068,7 @@ export const getFbtAlsoLike = catchAsync(
         noOfMayLikeProducts - alsoLikeDocs.length,
         excludedIds
       );
+
       if (randomProducts.length) {
         randomProducts.forEach((p) => {
           alsoLikeDocs.push(p);
