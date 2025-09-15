@@ -147,7 +147,7 @@ export interface ICustomiseCake {
   paid: boolean;
   hitpayDetails: IHitpayDetails;
   paymentLink: string;
-  customPaymentStatus: string;
+  followUpPayment: boolean;
   woodeliveryTaskId: string;
   manuallyProcessed: boolean;
   active: boolean;
@@ -402,10 +402,9 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     },
     hitpayDetails: Object,
     paymentLink: String,
-    customPaymentStatus: {
-      type: String,
-      enum: customiseOrderEnums.customPaymentStatus,
-      default: '',
+    followUpPayment: {
+      type: Boolean,
+      default: false,
     },
     woodeliveryTaskId: String,
     manuallyProcessed: {

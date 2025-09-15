@@ -556,7 +556,40 @@ const createDelivery = async (
   }
 };
 
-const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
+// Helper function to get delivery method based on delivery type
+const getDeliveryMethod = async (
+  delivery: { specificTimeSlot?: boolean; deliveryType?: string },
+  brand: string
+) => {
+  if (delivery.specificTimeSlot) {
+    return DeliveryMethod.findOne({
+      name: 'Specific Delivery',
+      brand,
+    });
+  }
+  if (delivery.deliveryType === customiseOrderEnums.deliveryType[0]) {
+    return DeliveryMethod.findOne({
+      name: 'Self-collect',
+      brand,
+    });
+  }
+  return DeliveryMethod.findOne({
+    name: 'Regular Delivery',
+    brand,
+  });
+};
+
+/**
+ * Reusable function to build order payload for both create and update operations
+ * This ensures consistency between Order creation and CustomiseCake synchronization
+ * @param customiseCakeOrder - The customise cake order data
+ * @param forUpdate - If true, returns flattened update object for MongoDB $set operations
+ * @returns Promise<Object> - Standardized order payload or update object
+ */
+const buildOrderPayload = async (
+  customiseCakeOrder: ICustomiseCake,
+  forUpdate = false
+) => {
   const {
     _id,
     orderNumber,
@@ -588,58 +621,9 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     subCategory,
   } = customiseCakeOrder;
 
-  // Check if order already exists to prevent duplicates
-  // Check both by orderNumber and customiseCakeFormDetails to ensure uniqueness
-  const existingOrder = await Order.findOne({
-    $or: [{ orderNumber }, { customiseCakeFormDetails: _id }],
-  });
-  if (existingOrder) {
-    // Update existing order instead of creating duplicate
-    const updateData = {
-      paid,
-      moneyPaidForMoneyPulling,
-      moneyPullingPrepared,
-      moneyReceivedForMoneyPulling,
-      isMoneyPulling,
-      hitpayDetails,
-      woodeliveryTaskId,
-      // Update delivery details in case they changed
-      'delivery.date': delivery.date,
-      'delivery.collectionTime': delivery.time,
-      'delivery.instructions': delivery.instructions || '',
-      // Update pricing in case admin modified it
-      'pricingSummary.subTotal': String(price),
-      'pricingSummary.deliveryCharge': String(deliveryFee),
-      'pricingSummary.discountedAmt': String(discountedAmt),
-      'pricingSummary.total': String(total),
-      'pricingSummary.coupon': coupon,
-    };
+  // Get delivery method
+  const deliveryMethod = await getDeliveryMethod(delivery, brand);
 
-    await Order.findOneAndUpdate(
-      { _id: existingOrder._id },
-      { $set: updateData },
-      { new: true }
-    );
-    return;
-  }
-
-  let deliveryMethod;
-  if (delivery.specificTimeSlot) {
-    deliveryMethod = await DeliveryMethod.findOne({
-      name: 'Specific Delivery',
-      brand,
-    });
-  } else if (delivery.deliveryType === customiseOrderEnums.deliveryType[0]) {
-    deliveryMethod = await DeliveryMethod.findOne({
-      name: 'Self-collect',
-      brand,
-    });
-  } else {
-    deliveryMethod = await DeliveryMethod.findOne({
-      name: 'Regular Delivery',
-      brand,
-    });
-  }
   const deliveryDetails = {
     method: deliveryMethod?.id || deliveryMethod?._id,
     date: delivery.date,
@@ -647,6 +631,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     address: delivery.address,
     instructions: delivery.instructions || '',
   };
+
   const pricingSummary = {
     subTotal: String(price),
     gst: '0',
@@ -655,6 +640,7 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
     discountedAmt: String(discountedAmt),
     total: String(total),
   };
+
   const customFormProduct: ICustomFormProduct[] = [
     ...bakes,
     ...candlesAndSparklers,
@@ -671,18 +657,22 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       subCategory,
     },
   ];
-  const orderData = {
+
+  const basePayload = {
     orderNumber,
     brand,
     user,
+    customFormProduct,
     paid,
+    corporate: false, // Customise cake orders are not corporate
     moneyPaidForMoneyPulling,
     moneyPullingPrepared,
-    moneyReceivedForMoneyPulling,
+    moneyReceivedForMoneyPulling: moneyReceivedForMoneyPulling || false, // Use value from customise cake or default to false
     isMoneyPulling,
     hitpayDetails,
     woodeliveryTaskId,
     customiseCakeForm: true,
+    customiseCakeFormDetails: _id,
     delivery: deliveryDetails,
     pricingSummary,
     recipInfo: {
@@ -696,9 +686,83 @@ const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
       email: user?.email || '',
       phone: user?.phone || '',
     },
-    customFormProduct,
-    customiseCakeFormDetails: _id,
   };
+
+  // If it's for update, return flattened object for MongoDB $set operations
+  if (forUpdate) {
+    return {
+      // Core fields
+      orderNumber,
+      brand,
+      user,
+      paid,
+      corporate: false,
+      moneyPaidForMoneyPulling,
+      moneyPullingPrepared,
+      moneyReceivedForMoneyPulling: moneyReceivedForMoneyPulling || false,
+      isMoneyPulling,
+      hitpayDetails,
+      woodeliveryTaskId,
+      customiseCakeForm: true,
+      customiseCakeFormDetails: _id,
+      customFormProduct,
+      // Flatten delivery details for proper nested updates
+      'delivery.method': deliveryDetails.method,
+      'delivery.date': deliveryDetails.date,
+      'delivery.collectionTime': deliveryDetails.collectionTime,
+      'delivery.address': deliveryDetails.address,
+      'delivery.instructions': deliveryDetails.instructions,
+      // Flatten pricing summary for proper nested updates
+      'pricingSummary.subTotal': pricingSummary.subTotal,
+      'pricingSummary.gst': pricingSummary.gst,
+      'pricingSummary.deliveryCharge': pricingSummary.deliveryCharge,
+      'pricingSummary.coupon': pricingSummary.coupon,
+      'pricingSummary.discountedAmt': pricingSummary.discountedAmt,
+      'pricingSummary.total': pricingSummary.total,
+      // Update other nested fields
+      'recipInfo.sameAsSender': false,
+      'recipInfo.name': delivery.recipientName,
+      'recipInfo.contact': delivery.recipientPhone,
+      'customer.firstName': user.firstName,
+      'customer.lastName': user.lastName,
+      'customer.email': user?.email || '',
+      'customer.phone': user?.phone || '',
+    };
+  }
+
+  // Return complete payload for creation
+  return basePayload;
+};
+
+/**
+ * Synchronizes CustomiseCake data with Order model
+ * Creates new order if it doesn't exist, updates existing order if found
+ * Prevents duplicate orders by checking both orderNumber and customiseCakeFormDetails
+ * @param customiseCakeOrder - The customise cake order data to sync
+ */
+const syncOrderDB = async (customiseCakeOrder: ICustomiseCake) => {
+  const { _id, orderNumber } = customiseCakeOrder;
+
+  // Check if order already exists to prevent duplicates
+  // Check both by orderNumber and customiseCakeFormDetails to ensure uniqueness
+  const existingOrder = await Order.findOne({
+    $or: [{ orderNumber }, { customiseCakeFormDetails: _id }],
+  });
+
+  if (existingOrder) {
+    // Update existing order using the same payload builder to ensure consistency
+    const updateData = await buildOrderPayload(customiseCakeOrder, true);
+
+    await Order.findOneAndUpdate(
+      { _id: existingOrder._id },
+      { $set: updateData },
+      { new: true }
+    );
+    return;
+  }
+
+  // Create new order using the reusable payload builder
+  const orderData = await buildOrderPayload(customiseCakeOrder);
 
   // Create new order only if it doesn't exist
   try {
@@ -784,11 +848,7 @@ export const submitAdminForm = catchAsync(
     ) {
       customFormData.delivery.address = null;
     }
-    if (
-      customFormData.manuallyProcessed &&
-      customFormData?.customPaymentStatus ===
-        customiseOrderEnums.customPaymentStatus[1]
-    ) {
+    if (customFormData.manuallyProcessed) {
       customFormData.paid = true;
     }
     const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
