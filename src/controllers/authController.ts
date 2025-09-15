@@ -471,10 +471,13 @@ export const sendPhoneOtp = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // (optional) Only allow Singapore mobiles: +65 8/9xxxxxxx
-  // if (!/^\+65[89]\d{7}$/.test(phone)) {
-  //   return res.status(400).json({ status: 'fail', message: 'Only Singapore mobile numbers are allowed' });
-  // }
+  // Validate Singapore phone number format: +65 8/9xxxxxxx
+  if (!/^\+65[89]\d{7}$/.test(phone)) {
+    return res.status(StatusCode.BAD_REQUEST).json({
+      status: 'fail',
+      message: 'Only Singapore mobile numbers are allowed',
+    });
+  }
 
   const now = new Date();
   const DAY_MS = 24 * 60 * 60 * 1000;
