@@ -164,7 +164,6 @@ export const customiseOrderEnums = {
   formStatusEnum: ['New', 'Completed', 'Dismissed', ''],
   enquiryTypeEnum: ['Regular', 'Business', ''],
   qtyType: ['Pieces', 'Dozen', 'Boxes', ''],
-  customPaymentStatus: ['Follow up payment', 'Paid', ''],
 };
 
 export const checkoutSessionFor = {
