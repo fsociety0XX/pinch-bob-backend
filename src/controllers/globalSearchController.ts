@@ -141,6 +141,9 @@ export const createSearchQuery = (
           customiseCakeFormDetails: {
             id: '$customiseCakeOrder',
           },
+          order: {
+            _id: '$order',
+          },
           id: '$_id',
         },
       }

@@ -275,7 +275,7 @@ export const fetchCustomerDataByOrder = catchAsync(
             },
           },
           // Corporate Orders - set to 0 for now (will be calculated separately)
-          corporateOrders: { $sum: 0 },
+          csvOrders: { $sum: 0 },
           // Calculate Amounts by Customer Type (excluding corporate orders)
           newCustomerAmount: {
             $sum: {
@@ -329,7 +329,7 @@ export const fetchCustomerDataByOrder = catchAsync(
             },
           },
           // Corporate Amount - set to 0 for now (will be calculated separately)
-          corporateAmount: { $sum: 0 },
+          csvAmount: { $sum: 0 },
         },
       },
       {
@@ -416,8 +416,8 @@ export const fetchCustomerDataByOrder = catchAsync(
               },
             },
           },
-          corporateOrders: { $sum: 1 },
-          corporateAmount: { $sum: '$totalAmountValue' },
+          csvOrders: { $sum: 1 },
+          csvAmount: { $sum: '$totalAmountValue' },
         },
       },
     ]);
@@ -428,10 +428,8 @@ export const fetchCustomerDataByOrder = catchAsync(
     const enrichedData = reportData[0].data.map(
       (item: Record<string, unknown>) => ({
         ...item,
-        corporateOrders:
-          corporateMap.get(item._id as string)?.corporateOrders || 0,
-        corporateAmount:
-          corporateMap.get(item._id as string)?.corporateAmount || 0,
+        csvOrders: corporateMap.get(item._id as string)?.csvOrders || 0,
+        csvAmount: corporateMap.get(item._id as string)?.csvAmount || 0,
       })
     );
 
