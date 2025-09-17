@@ -3,7 +3,7 @@ import { PipelineStage, Types } from 'mongoose';
 import catchAsync from '@src/utils/catchAsync';
 import Order from '@src/models/orderModel';
 import AppError from '@src/utils/appError';
-import { StatusCode } from '@src/types/customTypes';
+import { CANCELLED, StatusCode } from '@src/types/customTypes';
 
 export const fetchCustomerDataByOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -83,6 +83,7 @@ export const fetchCustomerDataByOrder = catchAsync(
             $exists: true,
           },
           paid: true,
+          status: { $ne: CANCELLED },
           ...(brand && { brand }),
         },
       },
@@ -384,6 +385,7 @@ export const fetchCustomerDataByOrder = catchAsync(
             },
           ],
           paid: true,
+          status: { $ne: CANCELLED },
           ...(brand && { brand }),
         },
       },
@@ -528,6 +530,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
         $match: {
           deliveryDateConverted: { $gte: start, $lte: end, $ne: null },
           paid: true,
+          status: { $ne: CANCELLED },
           ...(brand ? { brand } : {}),
         },
       },
@@ -580,6 +583,7 @@ export const fetchCustomerDataByDelivery = catchAsync(
               $match: {
                 $expr: { $in: ['$user', '$$userIds'] },
                 paid: true,
+                status: { $ne: CANCELLED },
               },
             },
             {
@@ -868,6 +872,7 @@ export const aggregatedCustomerReport = catchAsync(
     // Create base match for paid orders
     const baseMatch = {
       paid: true,
+      status: { $ne: CANCELLED },
       ...(brand ? { brand } : {}),
     };
 
@@ -1034,6 +1039,7 @@ export const aggregatedCustomerReport = catchAsync(
               $match: {
                 $expr: { $in: ['$user', '$$userIds'] },
                 paid: true,
+                status: { $ne: CANCELLED },
               },
             },
             {
@@ -1240,6 +1246,7 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
         ],
         brand,
         paid: true,
+        status: { $ne: CANCELLED },
       },
     },
     // Add total amount conversion for later use
