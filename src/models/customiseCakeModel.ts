@@ -445,7 +445,6 @@ customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
     });
     this.populate({
       path: 'bakes.product candlesAndSparklers.product flavour superCategory category subCategory',
-      select: 'name images',
     });
     this.populate({
       path: 'coupon',
