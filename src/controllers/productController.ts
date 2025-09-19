@@ -220,9 +220,17 @@ export const getAllProduct = catchAsync(
     }
 
     if (req.query.tag) {
-      req.query.tag = {
-        $in: (req.query.tag as string).split(','),
-      };
+      // Handle both string and array cases for tag parameter
+      const tagValue = req.query.tag;
+      if (typeof tagValue === 'string') {
+        req.query.tag = {
+          $in: tagValue.split(','),
+        };
+      } else if (Array.isArray(tagValue)) {
+        req.query.tag = {
+          $in: tagValue,
+        };
+      }
     }
 
     if (req.query.filterColours) {
