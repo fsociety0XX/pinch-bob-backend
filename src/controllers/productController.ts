@@ -207,6 +207,12 @@ export const getAllProduct = catchAsync(
       };
     }
 
+    if (req.query.tag) {
+      req.query.tag = {
+        $in: (req.query.tag as string).split(','),
+      };
+    }
+
     if (req.query.colour) {
       req.query.colour = {
         $in: (req.query.colour as string).split(','),
