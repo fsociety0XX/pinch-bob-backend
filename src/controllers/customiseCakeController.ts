@@ -529,7 +529,7 @@ const createDelivery = async (
     }
 
     // Regular delivery: Handle woodelivery task creation/updates
-    if (!customiseCake.woodeliveryTaskId) {
+    if (!customiseCake.woodeliveryTaskId && customiseCake.paid) {
       // No woodelivery task exists, create new one regardless of delivery existence
       const response = await createWoodeliveryTask(customiseCake, false);
       const task = await response.json();
@@ -538,7 +538,7 @@ const createDelivery = async (
 
       // Update both CustomiseCake and Order models with new task ID
       await updateWoodeliveryTaskId(customiseCake, task.data.guid);
-    } else if (existingDelivery && update) {
+    } else if (existingDelivery && update && customiseCake.paid) {
       // Woodelivery task exists and we're updating, update existing task
       const response = await createWoodeliveryTask(customiseCake, true);
       const task = await response.json();

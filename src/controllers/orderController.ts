@@ -26,12 +26,7 @@ import {
   inventoryEnum,
 } from '@src/types/customTypes';
 import sendEmail from '@src/utils/sendEmail';
-import {
-  getAll,
-  getOne,
-  softDeleteMany,
-  softDeleteOne,
-} from '@src/utils/factoryHandler';
+import { getAll, getOne } from '@src/utils/factoryHandler';
 import AppError from '@src/utils/appError';
 import {
   PINCH_EMAILS,
@@ -1221,15 +1216,127 @@ export const bulkCreateOrders = catchAsync(
   }
 );
 
-export const deleteOrder = softDeleteOne(Order, {
-  action: ActivityActions.DELETE_ORDER,
-  module: 'order',
-});
+export const deleteOrder = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const orderId = req.params.id;
 
-export const deleteManyOrder = softDeleteMany(Order, {
-  action: ActivityActions.DELETE_ORDER,
-  module: 'order',
-});
+    // Update the order status to cancelled
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      {
+        status: CANCELLED,
+        active: false,
+      },
+      { new: true }
+    );
+
+    if (!order) {
+      return next(
+        new AppError('No order found with that ID', StatusCode.NOT_FOUND)
+      );
+    }
+
+    // Update the corresponding delivery status
+    await Delivery.findOneAndUpdate(
+      { orderNumber: order.orderNumber },
+      {
+        status: CANCELLED,
+        active: false,
+      },
+      { new: true }
+    );
+
+    // Log the activity (same as softDeleteOne does)
+    await logActivity({
+      user: {
+        _id: req.user._id,
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.DELETE_ORDER,
+      module: 'order',
+      targetId: order._id.toString(),
+      metadata: {
+        orderNumber: order.orderNumber,
+        cancelled: true,
+      },
+      brand: req.brand,
+    });
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: 'Order cancelled successfully',
+      data: {
+        data: order,
+      },
+    });
+  }
+);
+
+export const deleteManyOrder = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return next(
+        new AppError('Please provide valid order IDs', StatusCode.BAD_REQUEST)
+      );
+    }
+
+    // Update multiple orders to cancelled status
+    const result = await Order.updateMany(
+      { _id: { $in: ids } },
+      {
+        status: CANCELLED,
+        active: false,
+      }
+    );
+
+    // Get the order numbers for the cancelled orders
+    const cancelledOrders = await Order.find(
+      { _id: { $in: ids } },
+      { orderNumber: 1 }
+    );
+    const orderNumbers = cancelledOrders.map((order) => order.orderNumber);
+
+    // Update corresponding deliveries using order numbers
+    await Delivery.updateMany(
+      { orderNumber: { $in: orderNumbers } },
+      {
+        status: CANCELLED,
+        active: false,
+      }
+    );
+
+    // Log activity for bulk cancellation
+    await logActivity({
+      user: {
+        _id: req.user._id,
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.DELETE_ORDER,
+      module: 'order',
+      targetId: 'bulk',
+      metadata: {
+        cancelledOrderIds: ids,
+        cancelledCount: result.modifiedCount,
+      },
+      brand: req.brand,
+    });
+
+    res.status(StatusCode.SUCCESS).json({
+      status: 'success',
+      message: `${result.modifiedCount} orders cancelled successfully`,
+      data: {
+        modifiedCount: result.modifiedCount,
+        cancelledIds: ids,
+      },
+    });
+  }
+);
 
 export const getOneOrder = getOne(Order);
 
@@ -1241,6 +1348,7 @@ export const getAllOrder = catchAsync(
       category,
       subCategory,
       flavour,
+      // tag,
       moneyPullingOrders,
       deliveryStartDate,
       deliveryEndDate,
@@ -1381,6 +1489,34 @@ export const getAllOrder = catchAsync(
         filter.$or = flavourConditions;
       }
     }
+    // if (tag) {
+    //   const tagValues = (tag as string).split(',');
+    //   const query = {};
+    //   query.tag = {
+    //     $in: tagValues,
+    //   };
+    //   const products = await Product.find(query);
+    //   const productIds = products.map((product) => product._id);
+
+    //   const tagConditions = [];
+    //   // Only add product-based conditions if products exist
+    //   if (products.length > 0) {
+    //     tagConditions.push(
+    //       { 'product.product': { $in: productIds } },
+    //       { 'customFormProduct.product': { $in: productIds } }
+    //     );
+    //   }
+
+    //   // If we already have other $or conditions, combine them with $and
+    //   if (tagConditions.length > 0) {
+    //     if (filter.$or) {
+    //       filter.$and = [{ $or: filter.$or }, { $or: tagConditions }];
+    //       delete filter.$or;
+    //     } else {
+    //       filter.$or = tagConditions;
+    //     }
+    //   }
+    // }
     if (moneyPullingOrders) {
       // Check for both isMoneyPulling at order level AND wantMoneyPulling in product array
       const moneyPullingValue =
@@ -1465,6 +1601,7 @@ export const getAllOrder = catchAsync(
     delete req.query.category;
     delete req.query.subCategory;
     delete req.query.flavour;
+    delete req.query.tag;
     delete req.query.moneyPullingOrders;
     delete req.query.deliveryStartDate;
     delete req.query.deliveryEndDate;
