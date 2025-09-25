@@ -61,7 +61,6 @@ export interface IInventory {
   track: boolean;
   totalQty: number;
   remainingQty: number;
-  available: boolean; // will be used in admin panel to track product quantity
   status: string;
 }
 
@@ -175,10 +174,6 @@ const Inventory = new mongoose.Schema<IInventory>({
   },
   totalQty: Number,
   remainingQty: Number,
-  available: {
-    type: Boolean,
-    default: true,
-  },
   status: {
     type: String,
     enum: inventoryEnum,
