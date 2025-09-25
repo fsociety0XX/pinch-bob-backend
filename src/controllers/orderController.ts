@@ -752,6 +752,12 @@ const createDelivery = async (id: string, update = false) => {
     throw error;
   }
 };
+const getInventoryStatus = (remainingQty: number): string => {
+  if (remainingQty === 0) return inventoryEnum[0]; // "Out of stock"
+  if (remainingQty <= 20) return inventoryEnum[1]; // "Low stock"
+  return inventoryEnum[2]; // "In stock"
+};
+
 async function updateProductAfterPurchase(orderId: string) {
   const order = await Order.findById(orderId).populate('product.product');
 
@@ -759,45 +765,44 @@ async function updateProductAfterPurchase(orderId: string) {
     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
   }
 
-  // Process each product individually instead of using bulkWrite
+  // Process each product individually
   for (let i = 0; i < order.product.length; i += 1) {
     const p = order.product[i];
 
     try {
-      const { inventory, available } = p?.product;
-      let inventoryUpdateQuery = { ...inventory };
-      let isProductAvailable = available;
+      const { inventory } = p?.product;
 
       if (inventory && inventory.track) {
-        let updatedRemQty = inventory.remainingQty - p.quantity;
-        updatedRemQty = Math.max(0, updatedRemQty);
+        const updatedRemQty = Math.max(0, inventory.remainingQty - p.quantity);
+        const isProductAvailable = updatedRemQty > 0;
+        const inventoryStatus = getInventoryStatus(updatedRemQty);
 
-        inventoryUpdateQuery = {
-          'inventory.remainingQty': updatedRemQty,
-          maxQty: updatedRemQty,
-          'inventory.available': updatedRemQty > 0,
-        };
-
-        if (!updatedRemQty) {
-          inventoryUpdateQuery['inventory.status'] = inventoryEnum[0];
-          isProductAvailable = false;
-        } else if (updatedRemQty <= 20) {
-          inventoryUpdateQuery['inventory.status'] = inventoryEnum[1];
-        } else {
-          inventoryUpdateQuery['inventory.status'] = inventoryEnum[2];
-        }
+        await Product.findByIdAndUpdate(
+          p.product._id,
+          {
+            $inc: { sold: p.quantity },
+            $set: {
+              'inventory.remainingQty': updatedRemQty,
+              'inventory.status': inventoryStatus,
+              maxQty: updatedRemQty,
+              available: isProductAvailable,
+            },
+          },
+          { new: true }
+        );
+      } else {
+        // For products not tracking inventory, just increment sold count
+        await Product.findByIdAndUpdate(
+          p.product._id,
+          {
+            $inc: { sold: p.quantity },
+          },
+          { new: true }
+        );
       }
-
-      await Product.findByIdAndUpdate(
-        p.product._id,
-        {
-          $inc: { sold: p.quantity },
-          $set: { ...inventoryUpdateQuery, available: isProductAvailable },
-        },
-        { new: true }
-      );
     } catch (error) {
       console.error(`Error updating product ${i}:`, error);
+      // Continue with other products even if one fails
     }
   }
 }

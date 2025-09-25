@@ -91,20 +91,43 @@ async function syncProductWithMerchantCenter(
   }
 }
 
-const inventorySetup = (i: IInventory) => {
-  const inventory = { ...i };
-  if (inventory && inventory.track && inventory.totalt >= 0) {
-    inventory.remainingQty = inventory.totalQty;
-    inventory.available = inventory.remainingQty > 0;
+const getInventoryStatus = (remainingQty: number): string => {
+  if (remainingQty === 0) return inventoryEnum[0]; // "Out of stock"
+  if (remainingQty <= 20) return inventoryEnum[1]; // "Low stock"
+  return inventoryEnum[2]; // "In stock"
+};
 
-    // Set status based on remainingQty
-    if (!inventory.remainingQty) {
-      inventory.status = inventoryEnum[0];
-    } else if (inventory.remainingQty <= 20) {
-      inventory.status = inventoryEnum[1];
+const inventorySetup = (i: IInventory, existingInventory?: IInventory) => {
+  const inventory = { ...i };
+
+  if (inventory && inventory.track && inventory.totalQty >= 0) {
+    // Handle restocking: if totalQty increased, update remainingQty accordingly
+    if (existingInventory && existingInventory.totalQty !== undefined) {
+      const qtyDifference = inventory.totalQty - existingInventory.totalQty;
+      if (qtyDifference > 0) {
+        // Restocking: add the difference to remainingQty
+        inventory.remainingQty =
+          (existingInventory.remainingQty || 0) + qtyDifference;
+      } else if (qtyDifference < 0) {
+        // Reducing total: adjust remainingQty but don't go below 0
+        inventory.remainingQty = Math.max(
+          0,
+          (existingInventory.remainingQty || 0) + qtyDifference
+        );
+      } else {
+        // Total qty unchanged, keep existing remainingQty
+        inventory.remainingQty =
+          existingInventory.remainingQty || inventory.totalQty;
+      }
     } else {
-      inventory.status = inventoryEnum[2];
+      // New product or no existing inventory: set remainingQty = totalQty
+      inventory.remainingQty = inventory.totalQty;
     }
+
+    inventory.status = getInventoryStatus(inventory.remainingQty);
+  } else if (inventory && !inventory.track) {
+    // Not tracking inventory: set status to "In stock"
+    inventory.status = inventoryEnum[2]; // "In stock"
   }
 
   return inventory;
@@ -140,15 +163,28 @@ export const updateProduct = catchAsync(
     }
 
     const updatedPayload = { ...req.body };
+    const before = await Product.findById(req.params.id);
 
     // Handle inventory setup
     if (updatedPayload?.inventory) {
-      const updatedInventory = inventorySetup(updatedPayload.inventory);
+      const existingInventory = before?.inventory;
+
+      const updatedInventory = inventorySetup(
+        updatedPayload.inventory,
+        existingInventory
+      );
       updatedPayload.inventory = updatedInventory;
       updatedPayload.maxQty = updatedInventory.remainingQty;
-    }
 
-    const before = await Product.findById(req.params.id);
+      // Set product availability based on tracking status
+      if (updatedInventory.track) {
+        // Tracking enabled: availability based on remainingQty
+        updatedPayload.available = updatedInventory.remainingQty > 0;
+      } else {
+        // Tracking disabled: always available
+        updatedPayload.available = true;
+      }
+    }
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
@@ -305,6 +341,15 @@ export const createProduct = catchAsync(
       const updatedInventory = inventorySetup(updatedPayload.inventory);
       updatedPayload.inventory = updatedInventory;
       updatedPayload.maxQty = updatedInventory.remainingQty;
+
+      // Set product availability based on tracking status
+      if (updatedInventory.track) {
+        // Tracking enabled: availability based on remainingQty
+        updatedPayload.available = updatedInventory.remainingQty > 0;
+      } else {
+        // Tracking disabled: always available
+        updatedPayload.available = true;
+      }
     }
 
     const product = await Product.create(updatedPayload);
@@ -332,7 +377,7 @@ export const checkGlobalSearchParams = catchAsync(
     req.query.name = { $regex: name, $options: 'i' };
     req.query.brand = brand;
     req.query.fields =
-      'name,images,price,discountedPrice,slug,category,superCategory,tag';
+      'name,images,price,discountedPrice,slug,category,superCategory,tag,available';
 
     next();
   }
