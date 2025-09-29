@@ -101,6 +101,7 @@ export interface IProduct {
   filterColours: string[]; // will be used to filter cakes from colour filter option on website
   sold: number;
   fondantName: boolean;
+  fondantNameTwo: boolean;
   fondantNameLimit: number;
   fondantNumber: boolean;
   priority: number; // for product sequencing
@@ -116,6 +117,10 @@ export interface IProduct {
   baseColour: string;
   cakeMsgLocation: string;
   fondantNameDetails: {
+    value: string;
+    colour: string;
+  };
+  fondantNameTwoDetails: {
     value: string;
     colour: string;
   };
@@ -335,6 +340,10 @@ const productSchema = new mongoose.Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    fondantNameTwo: {
+      type: Boolean,
+      default: false,
+    },
     fondantNameLimit: {
       type: Number,
       default: 9,
@@ -379,6 +388,10 @@ const productSchema = new mongoose.Schema<IProduct>(
     baseColour: String,
     cakeMsgLocation: String,
     fondantNameDetails: {
+      value: String,
+      colour: String,
+    },
+    fondantNameTwoDetails: {
       value: String,
       colour: String,
     },

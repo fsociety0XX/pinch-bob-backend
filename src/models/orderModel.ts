@@ -100,6 +100,7 @@ export interface IProduct {
   cakeMsg: string; // message on cake or board
   specialInstructions?: string;
   fondantName?: string;
+  fondantNameTwo?: string;
   fondantNumber?: string;
   wantMoneyPulling?: boolean;
   ediblePrints?: string;
@@ -138,6 +139,7 @@ export interface IOtherProduct {
   giftCardMsg: string;
   notes: string;
   fondantName?: string;
+  fondantNameTwo?: string;
   fondantNumber?: string;
   complexAccessories?: string;
   moneyPulling: IMoneyPulling[];
@@ -257,6 +259,7 @@ const OtherProductSchema = new mongoose.Schema<IOtherProduct>({
   giftCardMsg: String,
   notes: String,
   fondantName: String,
+  fondantNameTwo: String,
   fondantNumber: String,
   complexAccessories: String,
   moneyPulling: [MoneyPullingSchema],
@@ -343,6 +346,7 @@ const ProductSchema = new mongoose.Schema<IProduct>({
   cakeMsg: String,
   specialInstructions: String,
   fondantName: String,
+  fondantNameTwo: String,
   fondantNumber: String,
   complexFonAcc: String,
   ediblePrints: String,
