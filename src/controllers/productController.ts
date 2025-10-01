@@ -421,7 +421,8 @@ async function getProductBySuperCategory(
       },
     },
     { $sort: { sold: -1 } },
-    { $limit: 1 },
+    { $limit: 20 },
+    { $sample: { size: 1 } },
   ]).then((result) => {
     return result[0];
   });
@@ -465,8 +466,8 @@ async function getProductBySuperCategoryAndCategory(
     {
       $match: {
         $and: [
-          { 'category.0': { $exists: true, $ne: null } },
-          { 'category.0': categoryId },
+          // { 'category.0': { $exists: true, $ne: null } },
+          { 'category.name': categoryName },
         ],
       },
     },
@@ -532,7 +533,8 @@ async function getProductBySuperCategoryAndCategory(
       },
     },
     { $sort: { sold: -1 } },
-    { $limit: 1 },
+    { $limit: 20 },
+    { $sample: { size: 1 } },
   ]).then((result) => {
     return result[0];
   });
@@ -807,6 +809,84 @@ async function getGiftCardProduct(
   return result[0];
 }
 
+async function getTopBySuperAndCategoryName(
+  brand: string,
+  superCategory: string,
+  categoryName: string,
+  excludedIds: Array<mongoose.Types.ObjectId>
+) {
+  const [product] = await Product.aggregate([
+    {
+      $match: {
+        _id: { $nin: excludedIds },
+        brand,
+        active: true,
+        available: true,
+      },
+    },
+    {
+      $lookup: {
+        from: 'supercategories',
+        localField: 'superCategory',
+        foreignField: '_id',
+        as: 'superCategory',
+      },
+    },
+    { $unwind: '$superCategory' },
+    { $match: { 'superCategory.name': superCategory } },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: 'category',
+        foreignField: '_id',
+        as: 'category',
+      },
+    },
+    // now that "category" is an array of category docs, match by name:
+    { $match: { 'category.name': categoryName } },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        images: 1,
+        price: 1,
+        discountedPrice: 1,
+        slug: 1,
+        brand: 1,
+        refImageType: 1,
+        // you can keep these if your client needs them:
+        superCategory: 1,
+        category: 1,
+        subCategory: 1,
+      },
+    },
+    { $sort: { sold: -1 } },
+    { $limit: 40 },
+    { $sample: { size: 1 } },
+  ]);
+  return product;
+}
+
+async function tryCategoryListInOrder(
+  brand: string,
+  superCategory: string,
+  categoryNames: string[],
+  excludedIds: Array<mongoose.Types.ObjectId>
+) {
+  /* eslint-disable no-await-in-loop */
+  for (const name of categoryNames) {
+    const p = await getTopBySuperAndCategoryName(
+      brand,
+      superCategory,
+      name,
+      excludedIds
+    );
+    if (p && Object.keys(p).length) return p;
+  }
+  /* eslint-enable no-await-in-loop */
+  return undefined;
+}
+
 const insertIntoFbtSlot = (
   slot: IProduct,
   fbtDocs: IProduct[],
@@ -901,35 +981,51 @@ export const getFbtAlsoLike = catchAsync(
       }
       case superCategories[1]: {
         // Customised
-        slotOne = await getProductBySuperCategoryAndCategory(
+        slotOne = await tryCategoryListInOrder(
           brand,
           superCategories[1],
-          category.name,
-          category._id,
+          ['Bento-Cakes', 'Mini-Customised-Cakes', 'Customised-Cupcakes'],
           excludedIds
         );
         if (slotOne && Object.keys(slotOne).length) {
           insertIntoFbtSlot(slotOne, fbtDocs, excludedIds);
         }
 
-        slotTwo = await getProductBySuperCategoryAndCategory(
+        // Slot 2: "Customised Cupcake" OR "Bento Cake" OR "Mini Customised Cakes"
+        slotTwo = await tryCategoryListInOrder(
           brand,
           superCategories[1],
-          category.name,
-          category._id,
+          ['Customised-Cupcakes', 'Bento-Cakes', 'Mini-Customised-Cakes'],
           excludedIds
         );
+
         if (slotTwo && Object.keys(slotTwo).length) {
           insertIntoFbtSlot(slotTwo, fbtDocs, excludedIds);
         }
 
-        slotThree = await getProductBySuperCategoryAndCategory(
+        // Slot 3: "Pastries" OR "Fondant" OR "Candles"
+        // First attempt: anything from the Pastries supercategory
+        slotThree = await getProductBySuperCategory(
           brand,
           superCategories[2],
-          category.name,
-          category._id,
           excludedIds
-        );
+        ); // "Pastries"
+        if (!slotThree) {
+          // Fallbacks from Accessories by specific categories
+          slotThree =
+            (await getTopBySuperAndCategoryName(
+              brand,
+              superCategories[4],
+              'Fondant',
+              excludedIds
+            )) || // Fondant Toppers
+            (await getTopBySuperAndCategoryName(
+              brand,
+              superCategories[4],
+              'Candles',
+              excludedIds
+            ));
+        }
         if (slotThree && Object.keys(slotThree).length) {
           insertIntoFbtSlot(slotThree, fbtDocs, excludedIds);
         }
