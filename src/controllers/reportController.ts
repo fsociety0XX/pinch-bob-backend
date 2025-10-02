@@ -5,6 +5,12 @@ import Order from '@src/models/orderModel';
 import AppError from '@src/utils/appError';
 import { CANCELLED, StatusCode } from '@src/types/customTypes';
 
+// Constants for excluded products from reports
+const EXCLUDED_PRODUCT_IDS = {
+  BIRTHDAY_KIT: '67f72f6fc8364d1b276fde2a',
+  EXCLUDED_PRODUCT: '68786052ab31550a66870f47',
+} as const;
+
 export const fetchCustomerDataByOrder = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const startDate = req.query.startDate as string;
@@ -1351,11 +1357,15 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
     },
     { $unwind: { path: '$allProducts', preserveNullAndEmptyArrays: false } },
     // Filter out products where product is null (main custom cakes without specific product reference)
-    // Also exclude "Birthday Kit" product
+    // Also exclude "Birthday Kit" product and specified product
     {
       $match: {
         'allProducts.product': {
-          $nin: [null, new Types.ObjectId('67f72f6fc8364d1b276fde2a')], // Exclude null and Birthday Kit
+          $nin: [
+            null,
+            new Types.ObjectId(EXCLUDED_PRODUCT_IDS.BIRTHDAY_KIT),
+            new Types.ObjectId(EXCLUDED_PRODUCT_IDS.EXCLUDED_PRODUCT),
+          ],
         },
       },
     },
@@ -1377,7 +1387,7 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
           $sum: {
             $multiply: [
               { $ifNull: ['$allProducts.quantity', 0] },
-              { $ifNull: ['$productInfo.price', 0] },
+              { $ifNull: ['$allProducts.price', '$productInfo.price'] },
             ],
           },
         },
