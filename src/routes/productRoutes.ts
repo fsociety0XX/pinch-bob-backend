@@ -8,8 +8,8 @@ import {
   getOneProductViaSlug,
   updateProduct,
   checkGlobalSearchParams,
-  getFbtAlsoLike,
 } from '@src/controllers/productController';
+import { getFbtAlsoLike } from '@src/controllers/productFbtController';
 import { Role } from '@src/types/customTypes';
 import uploadImage from '@src/utils/uploadImage';
 import { FBT_ALSO_LIKE } from '@src/constants/routeConstants';
