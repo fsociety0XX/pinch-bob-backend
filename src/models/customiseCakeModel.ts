@@ -8,7 +8,6 @@ import {
   customiseOrderEnums,
   notesEnum,
 } from '@src/types/customTypes';
-import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
 interface IPhoto {
@@ -422,14 +421,6 @@ const customiseCakeSchema = new mongoose.Schema<ICustomiseCake>(
     toObject: { virtuals: true },
   }
 );
-
-customiseCakeSchema.pre('save', function (next) {
-  // Only generate order number if it doesn't exist (for new documents)
-  if (!this.orderNumber) {
-    this.orderNumber = generateUniqueIds();
-  }
-  next();
-});
 
 customiseCakeSchema.pre<Query<ICustomiseCake, ICustomiseCake>>(
   /^find/,

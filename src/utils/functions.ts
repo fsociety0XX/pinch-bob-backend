@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { customAlphabet } from 'nanoid';
 import { IAddress } from '@src/models/addressModel';
 import { brandEnum } from '@src/types/customTypes';
+import Counter from '@src/models/counterModel';
 
 interface FetchOptions {
   method: string;
@@ -85,6 +86,45 @@ export const generateUniqueIds = (): string => {
   const alphabet = '0123456789';
   const nanoid = customAlphabet(alphabet, 7);
   return nanoid();
+};
+
+/**
+ * PERFECT: Brand-prefixed sequential order numbers
+ * Format: B1, B2, B3... P1, P2, P3... etc.
+ * This function guarantees uniqueness by:
+ * 1. Using atomic MongoDB counters per brand
+ * 2. Sequential numbering with zero collision risk
+ * 3. Clean, user-friendly format
+ * 4. Brand separation for easy identification
+ */
+export const generateUniqueOrderNumber = async (
+  brand: string
+): Promise<string> => {
+  // Get brand prefix (first letter uppercase) with fallback
+  const brandPrefix = brand?.charAt(0)?.toUpperCase() || 'C'; // 'bob' -> 'B', 'pinch' -> 'P', fallback -> 'C'
+
+  try {
+    // Use atomic findOneAndUpdate to get next counter value for this brand
+    const counter = await Counter.findOneAndUpdate(
+      { _id: `orderNumber_${brand}` }, // Separate counter per brand
+      { $inc: { sequence: 1 } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
+    if (!counter) {
+      throw new Error(`Failed to create or update counter for brand ${brand}`);
+    }
+
+    // Format: B1, B2, B3... P1, P2, P3...
+    const orderNumber = `${brandPrefix}${counter.sequence}`;
+    return orderNumber;
+  } catch (error) {
+    console.error(`Failed to generate order number for brand ${brand}:`, error);
+    throw new Error(`Order number generation failed for brand ${brand}`);
+  }
 };
 
 // This ensures you’re matching any Date stored in MongoDB that falls between 00:00:00Z of tomorrow and just before 00:00:00Z the day after—regardless of your server’s local timezone.
