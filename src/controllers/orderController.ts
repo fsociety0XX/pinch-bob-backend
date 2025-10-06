@@ -43,6 +43,7 @@ import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
   generateUniqueIds,
+  generateUniqueOrderNumber,
   toUtcDateOnly,
 } from '@src/utils/functions';
 import Delivery from '@src/models/deliveryModel';
@@ -485,6 +486,8 @@ export const placeOrder = catchAsync(
         email: user?.email,
         phone: user?.phone,
       };
+      // Generate unique order number for the brand
+      req.body.orderNumber = await generateUniqueOrderNumber(req.body.brand);
       const order = await Order.create(req.body);
       orderId = order.id;
     }
@@ -1035,7 +1038,7 @@ export const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
   const createdAddress = await Address.create(newAddress);
   req.body.delivery.address = createdAddress.id; // Because Order model accepts only object id for address
-  req.body.orderNumber = generateUniqueIds();
+  req.body.orderNumber = await generateUniqueOrderNumber(brand);
   req.body.delivery.date = toUtcDateOnly(date);
   req.body.customer = {
     firstName: customer?.firstName,
@@ -1174,7 +1177,7 @@ export const bulkCreateOrders = catchAsync(
         phone: senderDetails?.phone || user?.phone,
       };
       // Generate order number and create order
-      orderData.orderNumber = generateUniqueIds();
+      orderData.orderNumber = await generateUniqueOrderNumber(orderData.brand);
       const newOrder = await Order.create(orderData);
       const order = await Order.findById(newOrder?.id).lean();
 
@@ -2135,7 +2138,9 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
 
     // ─ IDs & OrderNumber ──────────────────────────────────
     const _id = new mongoose.Types.ObjectId();
-    const orderNumber = o.orderNumber ?? generateUniqueIds();
+    const orderNumber = o.orderNumber
+      ? o.orderNumber
+      : await generateUniqueOrderNumber(o.brand);
 
     // ─ Delivery subdoc (IDelivery) ───────────────────────
     const delivery = {
