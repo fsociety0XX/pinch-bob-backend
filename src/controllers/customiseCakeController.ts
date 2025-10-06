@@ -15,6 +15,7 @@ import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
   toUtcDateOnly,
+  generateUniqueOrderNumber,
 } from '@src/utils/functions';
 import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
@@ -297,7 +298,38 @@ export const submitCustomerForm = catchAsync(
       req.body.images = req.files;
     }
 
-    const doc = await CustomiseCake.create(req.body);
+    if (!req.body.orderNumber) {
+      req.body.orderNumber = await generateUniqueOrderNumber(req.body.brand);
+    }
+
+    // Use session for atomic operations
+    const session = await mongoose.startSession();
+    let doc;
+
+    try {
+      await session.withTransaction(async () => {
+        // Double-check order number uniqueness within transaction
+        const [existingOrder, existingCustomiseCake] = await Promise.all([
+          Order.findOne({ orderNumber: req.body.orderNumber }).session(session),
+          CustomiseCake.findOne({ orderNumber: req.body.orderNumber }).session(
+            session
+          ),
+        ]);
+
+        if (existingOrder || existingCustomiseCake) {
+          // Generate new order number if collision detected
+          req.body.orderNumber = await generateUniqueOrderNumber(
+            req.body.brand
+          );
+        }
+
+        const createdDocs = await CustomiseCake.create([req.body], { session });
+        [doc] = createdDocs; // create() with session returns array
+      });
+    } finally {
+      await session.endSession();
+    }
+
     res.status(StatusCode.CREATE).json({
       status: 'success',
       data: {
@@ -976,7 +1008,7 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
       await user!.save();
     }
 
-    // Create delivery (this was the missing piece!)
+    // Create delivery
     await createDelivery(customiseCakeOrder);
     // Sync to Order DB - but only if order doesn't already exist
     await syncOrderDB(customiseCakeOrder);

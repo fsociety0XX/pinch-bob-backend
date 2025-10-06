@@ -10,7 +10,6 @@ import {
   notesEnum,
   preparationStatusType,
 } from '@src/types/customTypes';
-import { generateUniqueIds } from '@src/utils/functions';
 import { IUser } from './userModel';
 
 type StripeWebhookEvent = Stripe.Event;
@@ -500,13 +499,6 @@ const orderSchema = new mongoose.Schema<IOrder>(
     toObject: { virtuals: true },
   }
 );
-
-orderSchema.pre('save', function (next) {
-  if (!this.orderNumber) {
-    this.orderNumber = generateUniqueIds();
-  }
-  next();
-});
 
 orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
   this.populate({
