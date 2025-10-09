@@ -1909,15 +1909,28 @@ function verifyHitPayHmac(req: Request, hitpaySignature: string) {
 
 const updateBobOrderAfterPaymentSuccess = catchAsync(
   async (session, res: Response) => {
-    const { id, status, amount, payment_methods, reference_number, email } =
-      session;
+    const {
+      id,
+      status,
+      amount,
+      payment_methods,
+      reference_number,
+      email,
+      refunded_amount,
+      refunded_at,
+      created_at,
+      updated_at,
+    } = session;
     const orderId = reference_number;
     const hitpayDetails = {
       status,
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
-      paymentDate: new Date(),
+      paymentDate: created_at,
+      updatedAt: updated_at,
+      refundedAmount: refunded_amount,
+      refundedAt: refunded_at || null,
     };
     const order = await Order.findByIdAndUpdate(
       orderId,
@@ -1955,7 +1968,15 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
 
 const handlePaymentFaliureForBob = catchAsync(
   async (session: IHitpayDetails, res: Response) => {
-    const { id, status, amount, payment_methods, reference_number } = session;
+    const {
+      id,
+      status,
+      amount,
+      payment_methods,
+      reference_number,
+      refundedAmount = 0,
+      refundedAt = null,
+    } = session;
 
     const orderId = reference_number;
     const hitpayDetails = {
@@ -1964,6 +1985,8 @@ const handlePaymentFaliureForBob = catchAsync(
       paymentMethod: payment_methods,
       paymentRequestId: id,
       paymentDate: new Date(),
+      refundedAmount,
+      refundedAt,
     };
     await Order.findByIdAndUpdate(orderId, {
       hitpayDetails,
@@ -2105,6 +2128,8 @@ export const migrateOrders = catchAsync(async (req: Request, res: Response) => {
       transactionId: o.hitpayDetails.transactionId ?? '',
       paymentRequestId: o.hitpayDetails.paymentRequestId,
       receiptUrl: o.hitpayDetails.receiptUrl ?? '',
+      refundedAmount: o.hitpayDetails.refundedAmount ?? 0,
+      refundedAt: o.hitpayDetails.refundedAt ?? null,
     };
 
     // ─ Products (IProduct[]) ─────────────────────────────

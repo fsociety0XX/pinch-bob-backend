@@ -75,6 +75,9 @@ export interface IHitpayDetails {
   paymentRequestId: string;
   receiptUrl: string;
   paymentDate: Date;
+  updatedAt: Date;
+  refundedAmount: number;
+  refundedAt: Date;
 }
 
 interface IMoneyPulling {
