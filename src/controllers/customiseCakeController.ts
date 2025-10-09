@@ -961,23 +961,40 @@ interface IHitpaySession {
   id: string;
   status: string;
   amount: number;
+  refunded_amount: number;
+  refunded_at: Date;
   payment_methods: string[];
   reference_number: string;
   email: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
   session: IHitpaySession
 ): Promise<AppError | undefined> => {
-  const { id, status, amount, payment_methods, reference_number, email } =
-    session;
+  const {
+    id,
+    status,
+    amount,
+    payment_methods,
+    reference_number,
+    email,
+    refunded_amount,
+    refunded_at,
+    created_at,
+    updated_at,
+  } = session;
   const customiseCakeOrderId = reference_number;
   const hitpayDetails = {
     status,
     amount,
     paymentMethod: payment_methods,
     paymentRequestId: id,
-    paymentDate: new Date(),
+    paymentDate: created_at,
+    updatedAt: updated_at,
+    refundedAmount: refunded_amount,
+    refundedAt: refunded_at || null,
   };
 
   const customiseCakeOrder = await CustomiseCake.findByIdAndUpdate(
