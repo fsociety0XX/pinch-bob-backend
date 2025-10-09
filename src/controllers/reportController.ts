@@ -113,11 +113,36 @@ export const fetchCustomerDataByOrder = catchAsync(
       {
         $addFields: {
           totalAmountValue: {
-            $convert: {
-              input: '$pricingSummary.total',
-              to: 'double',
-              onError: 0,
-              onNull: 0,
+            $cond: {
+              if: { $ifNull: ['$hitpayDetails.amount', false] },
+              then: {
+                $subtract: [
+                  {
+                    $convert: {
+                      input: '$hitpayDetails.amount',
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                  {
+                    $convert: {
+                      input: { $ifNull: ['$hitpayDetails.refundedAmount', 0] },
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                ],
+              },
+              else: {
+                $convert: {
+                  input: '$pricingSummary.total',
+                  to: 'double',
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
             },
           },
         },
@@ -405,11 +430,36 @@ export const fetchCustomerDataByOrder = catchAsync(
             },
           },
           totalAmountValue: {
-            $convert: {
-              input: '$pricingSummary.total',
-              to: 'double',
-              onError: 0,
-              onNull: 0,
+            $cond: {
+              if: { $ifNull: ['$hitpayDetails.amount', false] },
+              then: {
+                $subtract: [
+                  {
+                    $convert: {
+                      input: '$hitpayDetails.amount',
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                  {
+                    $convert: {
+                      input: { $ifNull: ['$hitpayDetails.refundedAmount', 0] },
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                ],
+              },
+              else: {
+                $convert: {
+                  input: '$pricingSummary.total',
+                  to: 'double',
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
             },
           },
         },
@@ -557,11 +607,36 @@ export const fetchCustomerDataByDelivery = catchAsync(
       {
         $addFields: {
           totalAmountValue: {
-            $convert: {
-              input: '$pricingSummary.total',
-              to: 'double',
-              onError: 0,
-              onNull: 0,
+            $cond: {
+              if: { $ifNull: ['$hitpayDetails.amount', false] },
+              then: {
+                $subtract: [
+                  {
+                    $convert: {
+                      input: '$hitpayDetails.amount',
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                  {
+                    $convert: {
+                      input: { $ifNull: ['$hitpayDetails.refundedAmount', 0] },
+                      to: 'double',
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                ],
+              },
+              else: {
+                $convert: {
+                  input: '$pricingSummary.total',
+                  to: 'double',
+                  onError: 0,
+                  onNull: 0,
+                },
+              },
             },
           },
         },
@@ -1259,11 +1334,36 @@ export const productReport = catchAsync(async (req: Request, res: Response) => {
     {
       $addFields: {
         totalAmountValue: {
-          $convert: {
-            input: '$pricingSummary.total',
-            to: 'double',
-            onError: 0,
-            onNull: 0,
+          $cond: {
+            if: { $ifNull: ['$hitpayDetails.amount', false] },
+            then: {
+              $subtract: [
+                {
+                  $convert: {
+                    input: '$hitpayDetails.amount',
+                    to: 'double',
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+                {
+                  $convert: {
+                    input: { $ifNull: ['$hitpayDetails.refundedAmount', 0] },
+                    to: 'double',
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+              ],
+            },
+            else: {
+              $convert: {
+                input: '$pricingSummary.total',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
           },
         },
       },
