@@ -1017,8 +1017,8 @@ export const updateCustomiseCakeOrderAfterPaymentSuccess = async (
     amount,
     paymentMethod: payment_methods,
     paymentRequestId: id,
-    paymentDate: created_at,
-    updatedAt: updated_at,
+    paymentDate: new Date(created_at),
+    updatedAt: new Date(updated_at),
     refundedAmount: refunded_amount,
     refundedAt: refunded_at || null,
   };
