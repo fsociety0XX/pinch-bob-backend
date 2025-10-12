@@ -1,6 +1,7 @@
 /* eslint-disable camelcase */
 import mongoose, { ObjectId } from 'mongoose';
 import { Express, NextFunction, Request, Response } from 'express';
+import { IRequestWithUser } from './authController';
 import catchAsync from '@src/utils/catchAsync';
 import {
   HITPAY_PAYMENT_PURPOSE,
@@ -36,6 +37,7 @@ import { getAll, getOne } from '@src/utils/factoryHandler';
 import DeliveryMethod from '@src/models/deliveryMethodModel';
 import sendSms from '@src/utils/sendTwilioOtp';
 import Order, { ICustomFormProduct } from '@src/models/orderModel';
+import logActivity, { ActivityActions } from '@src/utils/activityLogger';
 
 interface IPhoto {
   key: string;
@@ -851,7 +853,7 @@ const sendOrderConfirmationEmail = async (
 };
 
 export const submitAdminForm = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { coupon, candlesAndSparklers, bakes, delivery, user } = req.body;
     const customFormData = { ...req.body };
 
@@ -896,6 +898,27 @@ export const submitAdminForm = catchAsync(
       return next(new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND));
     }
 
+    // Log the activity
+    await logActivity({
+      user: {
+        _id: req.user?._id || '',
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.UPDATE_CUSTOMISE_CAKE,
+      module: 'customiseCake',
+      targetId: customiseCakeOrder?._id?.toString() || '',
+      metadata: {
+        before: originalOrder,
+        after: customiseCakeOrder,
+        wasAlreadyPaid,
+        isNewlyPaid: customiseCakeOrder.paid === true && !wasAlreadyPaid,
+        orderNumber: customiseCakeOrder?.orderNumber || '',
+      },
+      brand: customiseCakeOrder?.brand || '',
+    });
+
     await syncOrderDB(customiseCakeOrder);
     // Check if this is a newly paid order (manual processing) vs existing paid order being updated
     const isNewlyPaid = customiseCakeOrder.paid === true && !wasAlreadyPaid;
@@ -927,7 +950,7 @@ export const submitAdminForm = catchAsync(
       if (isNewlyPaid) {
         await sendOrderConfirmationEmail(
           customiseCakeOrder,
-          customiseCakeOrder.user.email
+          customiseCakeOrder.user?.email || ''
         );
       }
     }
@@ -937,7 +960,10 @@ export const submitAdminForm = catchAsync(
     }
 
     if (user) {
-      await User.findByIdAndUpdate(customiseCakeOrder.user?._id, user);
+      await User.findByIdAndUpdate(
+        customiseCakeOrder.user?._id || customiseCakeOrder.user,
+        user
+      );
     }
 
     // Handle address cleanup for self-collect orders
@@ -1134,7 +1160,7 @@ export const getAllCustomiseForm = catchAsync(
 export const getOneCustomiseCakeForm = getOne(CustomiseCake);
 
 export const addRefImages = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { imageType = 'additionalRefImages' } = req.body;
 
     // Ensure files are attached
@@ -1183,10 +1209,10 @@ export const addRefImages = catchAsync(
           )
         );
       }
-      customiseCakeOrder.baseColourImg = files[0] as unknown as IPhoto;
+      customiseCakeOrder.baseColourImg = files?.[0] as unknown as IPhoto;
     } else {
       // For additionalRefImages, allow multiple images
-      if (!customiseCakeOrder.additionalRefImages) {
+      if (!customiseCakeOrder?.additionalRefImages) {
         customiseCakeOrder.additionalRefImages = [];
       }
       customiseCakeOrder.additionalRefImages.push(
@@ -1196,11 +1222,33 @@ export const addRefImages = catchAsync(
 
     await customiseCakeOrder.save();
 
+    // Log the activity
+    await logActivity({
+      user: {
+        _id: req.user?._id || '',
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.ADD_CUSTOMISE_CAKE_REF_IMAGES,
+      module: 'customiseCake',
+      targetId: customiseCakeOrder?._id?.toString() || '',
+      metadata: {
+        imageType,
+        imagesAdded: files?.length || 0,
+        orderNumber: customiseCakeOrder?.orderNumber || '',
+        imageFileNames:
+          files?.map((file) => file?.originalname || 'unknown') || [],
+      },
+      brand: customiseCakeOrder?.brand || '',
+    });
+
     const responseData: Record<string, unknown> = {};
     if (imageType === 'baseColourImg') {
-      responseData.baseColourImg = customiseCakeOrder.baseColourImg;
+      responseData.baseColourImg = customiseCakeOrder?.baseColourImg || null;
     } else {
-      responseData.additionalRefImages = customiseCakeOrder.additionalRefImages;
+      responseData.additionalRefImages =
+        customiseCakeOrder?.additionalRefImages || [];
     }
 
     res.status(StatusCode.SUCCESS).json({
@@ -1216,7 +1264,7 @@ export const addRefImages = catchAsync(
 );
 
 export const removeRefImage = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: IRequestWithUser, res: Response, next: NextFunction) => {
     const { imageKey, imageType = 'additionalRefImages' } = req.body;
 
     if (!imageKey) {
@@ -1234,29 +1282,29 @@ export const removeRefImage = catchAsync(
 
     if (imageType === 'images') {
       // Remove from customer uploaded images
-      if (customiseCakeOrder.images && customiseCakeOrder.images.length > 0) {
+      if (customiseCakeOrder?.images && customiseCakeOrder.images.length > 0) {
         customiseCakeOrder.images = customiseCakeOrder.images.filter(
-          (img: IPhoto) => img.key !== imageKey
+          (img: IPhoto) => img?.key !== imageKey
         );
         removedFromArray = true;
       }
     } else if (imageType === 'additionalRefImages') {
       // Remove from admin uploaded additional images
       if (
-        customiseCakeOrder.additionalRefImages &&
+        customiseCakeOrder?.additionalRefImages &&
         customiseCakeOrder.additionalRefImages.length > 0
       ) {
         customiseCakeOrder.additionalRefImages =
           customiseCakeOrder.additionalRefImages.filter(
-            (img: IPhoto) => img.key !== imageKey
+            (img: IPhoto) => img?.key !== imageKey
           );
         removedFromArray = true;
       }
     } else if (imageType === 'baseColourImg') {
       // Remove base colour image
       if (
-        customiseCakeOrder.baseColourImg &&
-        customiseCakeOrder.baseColourImg.key === imageKey
+        customiseCakeOrder?.baseColourImg &&
+        customiseCakeOrder.baseColourImg?.key === imageKey
       ) {
         customiseCakeOrder.set('baseColourImg', undefined);
         removedFromArray = true;
@@ -1274,13 +1322,33 @@ export const removeRefImage = catchAsync(
 
     await customiseCakeOrder.save();
 
+    // Log the activity
+    await logActivity({
+      user: {
+        _id: req.user?._id || '',
+        firstName: req.user?.firstName || '',
+        lastName: req.user?.lastName || '',
+        email: req.user?.email || '',
+      },
+      action: ActivityActions.REMOVE_CUSTOMISE_CAKE_REF_IMAGE,
+      module: 'customiseCake',
+      targetId: customiseCakeOrder?._id?.toString() || '',
+      metadata: {
+        imageType,
+        imageKey,
+        orderNumber: customiseCakeOrder?.orderNumber || '',
+        removedFromArray: true,
+      },
+      brand: customiseCakeOrder?.brand || '',
+    });
+
     res.status(StatusCode.SUCCESS).json({
       status: 'success',
       message: 'Image removed successfully',
       data: {
-        images: customiseCakeOrder.images,
-        additionalRefImages: customiseCakeOrder.additionalRefImages,
-        baseColourImg: customiseCakeOrder.baseColourImg,
+        images: customiseCakeOrder?.images || [],
+        additionalRefImages: customiseCakeOrder?.additionalRefImages || [],
+        baseColourImg: customiseCakeOrder?.baseColourImg || null,
       },
     });
   }
