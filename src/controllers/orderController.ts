@@ -1927,8 +1927,8 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
-      paymentDate: created_at,
-      updatedAt: updated_at,
+      paymentDate: new Date(created_at),
+      updatedAt: new Date(updated_at),
       refundedAmount: refunded_amount,
       refundedAt: refunded_at || null,
     };
@@ -1976,6 +1976,8 @@ const handlePaymentFaliureForBob = catchAsync(
       reference_number,
       refundedAmount = 0,
       refundedAt = null,
+      created_at,
+      updated_at,
     } = session;
 
     const orderId = reference_number;
@@ -1984,7 +1986,8 @@ const handlePaymentFaliureForBob = catchAsync(
       amount,
       paymentMethod: payment_methods,
       paymentRequestId: id,
-      paymentDate: new Date(),
+      paymentDate: new Date(created_at),
+      updatedAt: new Date(updated_at),
       refundedAmount,
       refundedAt,
     };

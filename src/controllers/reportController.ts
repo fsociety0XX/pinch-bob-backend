@@ -80,23 +80,42 @@ export const fetchCustomerDataByOrder = catchAsync(
     const skip = (pageNum - 1) * limitNum;
 
     const reportData = await Order.aggregate([
-      // Step 1: Match Orders by Date Range, Paid Status, and HitPay Details Only
+      // Step 1: Match Orders with a broader date range to catch invalid dates
       {
         $match: {
-          'hitpayDetails.paymentDate': {
-            $gte: adjustedStart,
-            $lte: adjustedEnd,
-            $exists: true,
-          },
+          $or: [
+            // Try to match HitPay payment dates that are valid
+            {
+              'hitpayDetails.paymentDate': {
+                $gte: adjustedStart,
+                $lte: adjustedEnd,
+                $type: 'date',
+              },
+            },
+            // Fallback to createdAt for orders with invalid paymentDate formats
+            {
+              'hitpayDetails.paymentDate': { $exists: true, $type: 'string' },
+              createdAt: {
+                $gte: adjustedStart,
+                $lte: adjustedEnd,
+              },
+            },
+          ],
           paid: true,
           status: { $ne: CANCELLED },
           ...(brand && { brand }),
         },
       },
-      // Step 2: Add computed field for payment date (only HitPay orders now)
+      // Step 2: Add computed field for effective payment date
       {
         $addFields: {
-          effectivePaymentDate: '$hitpayDetails.paymentDate',
+          effectivePaymentDate: {
+            $cond: {
+              if: { $eq: [{ $type: '$hitpayDetails.paymentDate' }, 'date'] },
+              then: '$hitpayDetails.paymentDate',
+              else: '$createdAt', // Use createdAt for invalid date strings
+            },
+          },
         },
       },
       {
@@ -162,7 +181,7 @@ export const fetchCustomerDataByOrder = catchAsync(
           users: { $addToSet: '$user' },
         },
       },
-      // Get first order date for all users in this batch (HitPay orders only for new customer determination)
+      // Get first order date for all users in this batch (handle both valid and invalid date formats)
       {
         $lookup: {
           from: 'orders',
@@ -176,9 +195,22 @@ export const fetchCustomerDataByOrder = catchAsync(
               },
             },
             {
+              $addFields: {
+                effectiveFirstOrderDate: {
+                  $cond: {
+                    if: {
+                      $eq: [{ $type: '$hitpayDetails.paymentDate' }, 'date'],
+                    },
+                    then: '$hitpayDetails.paymentDate',
+                    else: '$createdAt', // Use createdAt for invalid date strings
+                  },
+                },
+              },
+            },
+            {
               $group: {
                 _id: '$user',
-                firstOrderDate: { $min: '$hitpayDetails.paymentDate' },
+                firstOrderDate: { $min: '$effectiveFirstOrderDate' },
               },
             },
           ],
