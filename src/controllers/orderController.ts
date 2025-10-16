@@ -46,6 +46,7 @@ import {
   generateUniqueOrderNumber,
   toUtcDateOnly,
 } from '@src/utils/functions';
+import { normalizeImagesToCdn } from '@src/utils/cdn';
 import Delivery from '@src/models/deliveryModel';
 import User from '@src/models/userModel';
 import Address from '@src/models/addressModel';
@@ -1747,7 +1748,9 @@ export const updateRefImages = catchAsync(
       productItem.additionalRefImages = [];
     }
 
-    productItem.additionalRefImages.push(...req.files);
+    // NEW: normalize uploaded images to use brand-specific CDN URLs
+    const normalizedFiles = normalizeImagesToCdn(req.files, order.brand);
+    productItem.additionalRefImages.push(...normalizedFiles);
 
     await order.save();
 

@@ -18,6 +18,7 @@ import {
   toUtcDateOnly,
   generateUniqueOrderNumber,
 } from '@src/utils/functions';
+import { normalizeImagesToCdn } from '@src/utils/cdn';
 import CustomiseCake, { ICustomiseCake } from '@src/models/customiseCakeModel';
 import Address from '@src/models/addressModel';
 import AppError from '@src/utils/appError';
@@ -298,6 +299,10 @@ export const submitCustomerForm = catchAsync(
 
     if (req.files?.length) {
       req.body.images = req.files;
+    }
+    // NEW: ensure customise cake uploads store brand-specific CDN URLs
+    if (Array.isArray(req.body.images)) {
+      req.body.images = normalizeImagesToCdn(req.body.images, req.body.brand);
     }
 
     if (!req.body.orderNumber) {
@@ -653,6 +658,7 @@ const buildOrderPayload = async (
     superCategory,
     category,
     subCategory,
+    createdAt,
   } = customiseCakeOrder;
 
   // Get delivery method
@@ -708,6 +714,7 @@ const buildOrderPayload = async (
     customiseCakeForm: true,
     customiseCakeFormDetails: _id,
     delivery: deliveryDetails,
+    createdAt,
     pricingSummary,
     recipInfo: {
       sameAsSender: false,
@@ -740,6 +747,7 @@ const buildOrderPayload = async (
       customiseCakeForm: true,
       customiseCakeFormDetails: _id,
       customFormProduct,
+      createdAt,
       // Flatten delivery details for proper nested updates
       'delivery.method': deliveryDetails.method,
       'delivery.date': deliveryDetails.date,
@@ -1209,14 +1217,24 @@ export const addRefImages = catchAsync(
           )
         );
       }
-      customiseCakeOrder.baseColourImg = files?.[0] as unknown as IPhoto;
+      // NEW: normalize base colour image to use brand-specific CDN URL
+      const normalizedFile = normalizeImagesToCdn(
+        [files[0]],
+        customiseCakeOrder.brand
+      );
+      customiseCakeOrder.baseColourImg = normalizedFile[0] as unknown as IPhoto;
     } else {
       // For additionalRefImages, allow multiple images
       if (!customiseCakeOrder?.additionalRefImages) {
         customiseCakeOrder.additionalRefImages = [];
       }
+      // NEW: normalize images to use brand-specific CDN URLs
+      const normalizedFiles = normalizeImagesToCdn(
+        files,
+        customiseCakeOrder.brand
+      );
       customiseCakeOrder.additionalRefImages.push(
-        ...(files as unknown as IPhoto[])
+        ...(normalizedFiles as unknown as IPhoto[])
       );
     }
 

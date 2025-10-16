@@ -10,6 +10,7 @@ import {
 import { StatusCode } from '@src/types/customTypes';
 import AppError from '@src/utils/appError';
 import { NO_DATA_FOUND } from '@src/constants/messages';
+import { normalizeImagesToCdn } from '@src/utils/cdn';
 
 export const updateBlog = updateOne(Blog);
 export const deleteBlog = deleteOne(Blog);
@@ -18,8 +19,13 @@ export const getAllBlog = getAll(Blog);
 
 export const createBlog = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const brand = req.body?.brand;
     if (req.files?.length) {
       req.body.images = req.files;
+    }
+    // NEW: make new blog uploads store brand-specific CDN URLs
+    if (Array.isArray(req.body.images)) {
+      req.body.images = normalizeImagesToCdn(req.body.images, brand);
     }
     if (req.body.category === '') {
       req.body.category = [];

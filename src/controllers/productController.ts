@@ -16,6 +16,7 @@ import { brandEnum, inventoryEnum, StatusCode } from '@src/types/customTypes';
 import { PRODUCTION } from '@src/constants/static';
 import ProductViewsModel from '@src/models/productViewsModel';
 import logActivity, { ActivityActions } from '@src/utils/activityLogger';
+import { normalizeImagesToCdn } from '@src/utils/cdn';
 
 async function syncProductWithMerchantCenter(
   p: IProduct,
@@ -138,6 +139,10 @@ export const updateProduct = catchAsync(
 
     if (req.files?.length) {
       req.body.images = req.files;
+    }
+    // NEW: ensure updated uploads store CDN URLs
+    if (Array.isArray(req.body.images)) {
+      req.body.images = normalizeImagesToCdn(req.body.images, brand);
     }
 
     // Normalize fields to avoid empty strings
@@ -331,6 +336,10 @@ export const createProduct = catchAsync(
     const brand = req.body?.brand;
     if (req.files?.length) {
       req.body.images = req.files;
+    }
+    // NEW: make new uploads store CDN URLs in images[].location
+    if (Array.isArray(req.body.images)) {
+      req.body.images = normalizeImagesToCdn(req.body.images, brand);
     }
     if (req.body.subCategory === '') {
       req.body.subCategory = [];
