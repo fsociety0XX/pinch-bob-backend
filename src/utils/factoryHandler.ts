@@ -12,6 +12,7 @@ import { NO_DATA_FOUND } from '@src/constants/messages';
 import APIFeatures, { QueryString } from './apiFeatures';
 import { IRequestWithUser } from '@src/controllers/authController';
 import logActivity, { ActivityActions } from './activityLogger';
+import { normalizeImagesToCdn } from './cdn';
 
 interface IPopulateOptions {
   path: string;
@@ -28,9 +29,16 @@ export const createOne = (
   catchAsync(async (req: Request, res: Response) => {
     if (req.files?.length) {
       req.body.images = req.files;
+      // NEW: normalize images to use CDN URLs
+      if (Array.isArray(req.body.images)) {
+        req.body.images = normalizeImagesToCdn(req.body.images);
+      }
     }
     if (req.file) {
       req.body.image = req.file;
+      // NEW: normalize single image to use CDN URL
+      const [normalizedImage] = normalizeImagesToCdn([req.file]);
+      req.body.image = normalizedImage;
     }
     const doc = await model.create(req.body);
     res.status(StatusCode.CREATE).json({
@@ -48,9 +56,16 @@ export const updateOne = (
   catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     if (req.files?.length) {
       req.body.images = req.files;
+      // NEW: normalize images to use CDN URLs
+      if (Array.isArray(req.body.images)) {
+        req.body.images = normalizeImagesToCdn(req.body.images);
+      }
     }
     if (req.file) {
       req.body.image = req.file;
+      // NEW: normalize single image to use CDN URL
+      const [normalizedImage] = normalizeImagesToCdn([req.file]);
+      req.body.image = normalizedImage;
     }
 
     const before = audit ? await model.findById(req.params.id) : null;
