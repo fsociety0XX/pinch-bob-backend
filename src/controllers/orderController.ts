@@ -1748,8 +1748,8 @@ export const updateRefImages = catchAsync(
       productItem.additionalRefImages = [];
     }
 
-    // NEW: normalize uploaded images to use brand-specific CDN URLs
-    const normalizedFiles = normalizeImagesToCdn(req.files, order.brand);
+    // NEW: normalize uploaded images to use CDN URLs
+    const normalizedFiles = normalizeImagesToCdn(req.files);
     productItem.additionalRefImages.push(...normalizedFiles);
 
     await order.save();

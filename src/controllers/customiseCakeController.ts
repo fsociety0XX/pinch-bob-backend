@@ -300,9 +300,9 @@ export const submitCustomerForm = catchAsync(
     if (req.files?.length) {
       req.body.images = req.files;
     }
-    // NEW: ensure customise cake uploads store brand-specific CDN URLs
+    // NEW: ensure customise cake uploads store CDN URLs
     if (Array.isArray(req.body.images)) {
-      req.body.images = normalizeImagesToCdn(req.body.images, req.body.brand);
+      req.body.images = normalizeImagesToCdn(req.body.images);
     }
 
     if (!req.body.orderNumber) {
@@ -1217,22 +1217,16 @@ export const addRefImages = catchAsync(
           )
         );
       }
-      // NEW: normalize base colour image to use brand-specific CDN URL
-      const normalizedFile = normalizeImagesToCdn(
-        [files[0]],
-        customiseCakeOrder.brand
-      );
+      // NEW: normalize base colour image to use CDN URL
+      const normalizedFile = normalizeImagesToCdn([files[0]]);
       customiseCakeOrder.baseColourImg = normalizedFile[0] as unknown as IPhoto;
     } else {
       // For additionalRefImages, allow multiple images
       if (!customiseCakeOrder?.additionalRefImages) {
         customiseCakeOrder.additionalRefImages = [];
       }
-      // NEW: normalize images to use brand-specific CDN URLs
-      const normalizedFiles = normalizeImagesToCdn(
-        files,
-        customiseCakeOrder.brand
-      );
+      // NEW: normalize images to use CDN URLs
+      const normalizedFiles = normalizeImagesToCdn(files);
       customiseCakeOrder.additionalRefImages.push(
         ...(normalizedFiles as unknown as IPhoto[])
       );

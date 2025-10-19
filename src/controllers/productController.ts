@@ -142,7 +142,7 @@ export const updateProduct = catchAsync(
     }
     // NEW: ensure updated uploads store CDN URLs
     if (Array.isArray(req.body.images)) {
-      req.body.images = normalizeImagesToCdn(req.body.images, brand);
+      req.body.images = normalizeImagesToCdn(req.body.images);
     }
 
     // Normalize fields to avoid empty strings
@@ -339,7 +339,7 @@ export const createProduct = catchAsync(
     }
     // NEW: make new uploads store CDN URLs in images[].location
     if (Array.isArray(req.body.images)) {
-      req.body.images = normalizeImagesToCdn(req.body.images, brand);
+      req.body.images = normalizeImagesToCdn(req.body.images);
     }
     if (req.body.subCategory === '') {
       req.body.subCategory = [];

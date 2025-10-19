@@ -19,13 +19,12 @@ export const getAllBlog = getAll(Blog);
 
 export const createBlog = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const brand = req.body?.brand;
     if (req.files?.length) {
       req.body.images = req.files;
     }
-    // NEW: make new blog uploads store brand-specific CDN URLs
+    // NEW: make new blog uploads store CDN URLs
     if (Array.isArray(req.body.images)) {
-      req.body.images = normalizeImagesToCdn(req.body.images, brand);
+      req.body.images = normalizeImagesToCdn(req.body.images);
     }
     if (req.body.category === '') {
       req.body.category = [];

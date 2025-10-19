@@ -179,12 +179,9 @@ export const signup = catchAsync(
     }
     if (req.file) {
       req.body.photo = req.file;
-      // NEW: normalize user photo to use brand-specific CDN URL
+      // NEW: normalize user photo to use CDN URL
       const { normalizeImagesToCdn } = await import('@src/utils/cdn');
-      const [normalizedPhoto] = normalizeImagesToCdn(
-        [req.file],
-        req.body.brand
-      );
+      const [normalizedPhoto] = normalizeImagesToCdn([req.file]);
       req.body.photo = normalizedPhoto;
     }
     const newUser = await User.create(req.body);
