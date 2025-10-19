@@ -153,6 +153,7 @@ export interface ICustomiseCake {
   woodeliveryTaskId: string;
   manuallyProcessed: boolean;
   active: boolean;
+  createdAt: Date;
 }
 
 const MoneyPullingSchema = new mongoose.Schema<IMoneyPulling>({

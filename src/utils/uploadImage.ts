@@ -24,6 +24,7 @@ const s3Storage = (destinationPath: string) =>
     s3,
     bucket: process.env.AWS_BUCKET!,
     contentType: multerS3.AUTO_CONTENT_TYPE,
+    cacheControl: 'public, max-age=31536000, immutable', // Long-term cache headers for CloudFront
     metadata: (req, file, cb) => {
       cb(null, { fieldname: file.fieldname });
     },
