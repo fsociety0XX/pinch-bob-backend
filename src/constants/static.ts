@@ -92,4 +92,41 @@ export const BLACK_LISTED_EMAILS = [
   'onegoodday.mattlam@gmail.com',
   'kentay.propnex@gmail.com',
   'admin@skinbelief.com.sg',
+  'san.ohnmar@fareastflora.com',
 ];
+
+export const BLACK_LISTED_PHONE_NUMBERS = [
+  // Add blocked phone numbers here, Supports formats: +65 81573062, 81573062, +6581573062
+  '+65 81573062',
+];
+
+/**
+ * Normalizes phone number to a consistent format for comparison
+ * Removes spaces, country code prefixes to match against blocklist
+ * @param phoneNumber - Phone number in any format
+ * @returns Normalized phone number (digits only, without country code)
+ */
+export const normalizePhoneNumber = (phoneNumber: string): string => {
+  if (!phoneNumber) return '';
+  // Remove all spaces and special characters except +
+  let normalized = phoneNumber.replace(/[\s\-()]/g, '');
+  // Remove country code prefix if present (+65 or 65)
+  normalized = normalized.replace(/^\+?65/, '');
+
+  return normalized;
+};
+
+/**
+ * Checks if a phone number is in the blocklist
+ * @param phoneNumber - Phone number to check (in any format)
+ * @returns true if phone number is blocked, false otherwise
+ */
+export const isPhoneNumberBlocked = (phoneNumber: string): boolean => {
+  if (!phoneNumber) return false;
+  const normalizedInput = normalizePhoneNumber(phoneNumber);
+
+  return BLACK_LISTED_PHONE_NUMBERS.some((blockedNumber) => {
+    const normalizedBlocked = normalizePhoneNumber(blockedNumber);
+    return normalizedInput === normalizedBlocked;
+  });
+};
