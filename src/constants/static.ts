@@ -45,4 +45,5 @@ export const BLACK_LISTED_EMAILS = [
   'onegoodday.mattlam@gmail.com',
   'kentay.propnex@gmail.com',
   'admin@skinbelief.com.sg',
+  'san.ohnmar@fareastflora.com',
 ];
