@@ -1400,17 +1400,35 @@ export const getAllOrder = catchAsync(
       };
     }
 
+    // STABLE FILTER LOGIC - Accumulate all $or conditions without mutation
+    const allOrConditions = []; // Array to hold all $or condition groups
+
+    // PARALLEL PRODUCT QUERIES - Execute all Product.find() in parallel to avoid race conditions
+    const [superProducts, categoryProducts, subCategoryProducts] =
+      await Promise.all([
+        superCategory
+          ? Product.find({
+              superCategory: { $in: (superCategory as string).split(',') },
+            })
+          : Promise.resolve([]),
+        category
+          ? Product.find({
+              category: { $in: (category as string).split(',') },
+            })
+          : Promise.resolve([]),
+        subCategory
+          ? Product.find({
+              subCategory: { $in: (subCategory as string).split(',') },
+            })
+          : Promise.resolve([]),
+      ]);
+
     // Collect category filter conditions
     const categoryOrConditions = [];
 
     if (superCategory) {
       const superCategoryIds = (superCategory as string).split(',');
-      const query = {};
-      query.superCategory = {
-        $in: superCategoryIds,
-      };
-      const products = await Product.find(query);
-      const productIds = products.map((product) => product._id);
+      const productIds = superProducts.map((product) => product._id);
 
       // Add conditions for regular products, otherProduct, and customFormProduct with matching superCategory
       // Always add direct category conditions, even if no products found (for otherProduct and customFormProduct)
@@ -1420,7 +1438,7 @@ export const getAllOrder = catchAsync(
       );
 
       // Only add product-based conditions if products exist
-      if (products.length > 0) {
+      if (productIds.length > 0) {
         categoryOrConditions.push(
           { 'product.product': { $in: productIds } },
           { 'customFormProduct.product': { $in: productIds } }
@@ -1429,12 +1447,7 @@ export const getAllOrder = catchAsync(
     }
     if (category) {
       const categoryIds = (category as string).split(',');
-      const query = {};
-      query.category = {
-        $in: categoryIds,
-      };
-      const products = await Product.find(query);
-      const productIds = products.map((product) => product._id);
+      const productIds = categoryProducts.map((product) => product._id);
 
       // Add conditions for regular products, otherProduct, and customFormProduct with matching category
       // Always add direct category conditions, even if no products found
@@ -1444,7 +1457,7 @@ export const getAllOrder = catchAsync(
       );
 
       // Only add product-based conditions if products exist
-      if (products.length > 0) {
+      if (productIds.length > 0) {
         categoryOrConditions.push(
           { 'product.product': { $in: productIds } },
           { 'customFormProduct.product': { $in: productIds } }
@@ -1453,12 +1466,7 @@ export const getAllOrder = catchAsync(
     }
     if (subCategory) {
       const subCategoryIds = (subCategory as string).split(',');
-      const query = {};
-      query.subCategory = {
-        $in: subCategoryIds,
-      };
-      const products = await Product.find(query);
-      const productIds = products.map((product) => product._id);
+      const productIds = subCategoryProducts.map((product) => product._id);
 
       // Add conditions for regular products, otherProduct, and customFormProduct with matching subCategory
       // Always add direct category conditions, even if no products found
@@ -1468,7 +1476,7 @@ export const getAllOrder = catchAsync(
       );
 
       // Only add product-based conditions if products exist
-      if (products.length > 0) {
+      if (productIds.length > 0) {
         categoryOrConditions.push(
           { 'product.product': { $in: productIds } },
           { 'customFormProduct.product': { $in: productIds } }
@@ -1476,10 +1484,12 @@ export const getAllOrder = catchAsync(
       }
     }
 
-    // Apply category filters if any exist
+    // Add category conditions to allOrConditions if any exist
     if (categoryOrConditions.length > 0) {
-      filter.$or = categoryOrConditions;
+      allOrConditions.push({ $or: categoryOrConditions });
     }
+
+    // Handle flavour filter
     if (flavour) {
       const flavourConditions = [
         { 'product.flavour': { $in: (flavour as string).split(',') } },
@@ -1489,43 +1499,10 @@ export const getAllOrder = catchAsync(
         // Note: otherProduct.flavour is a string field, not ObjectId, so we need to handle it differently
         // For now, we'll skip otherProduct.flavour as it would require flavour name matching instead of ID matching
       ];
-
-      // If we already have category filters, combine them with $and
-      if (filter.$or) {
-        filter.$and = [{ $or: filter.$or }, { $or: flavourConditions }];
-        delete filter.$or;
-      } else {
-        filter.$or = flavourConditions;
-      }
+      allOrConditions.push({ $or: flavourConditions });
     }
-    // if (tag) {
-    //   const tagValues = (tag as string).split(',');
-    //   const query = {};
-    //   query.tag = {
-    //     $in: tagValues,
-    //   };
-    //   const products = await Product.find(query);
-    //   const productIds = products.map((product) => product._id);
 
-    //   const tagConditions = [];
-    //   // Only add product-based conditions if products exist
-    //   if (products.length > 0) {
-    //     tagConditions.push(
-    //       { 'product.product': { $in: productIds } },
-    //       { 'customFormProduct.product': { $in: productIds } }
-    //     );
-    //   }
-
-    //   // If we already have other $or conditions, combine them with $and
-    //   if (tagConditions.length > 0) {
-    //     if (filter.$or) {
-    //       filter.$and = [{ $or: filter.$or }, { $or: tagConditions }];
-    //       delete filter.$or;
-    //     } else {
-    //       filter.$or = tagConditions;
-    //     }
-    //   }
-    // }
+    // Handle moneyPulling filter
     if (moneyPullingOrders) {
       // Check for both isMoneyPulling at order level AND wantMoneyPulling in product array
       const moneyPullingValue =
@@ -1535,14 +1512,7 @@ export const getAllOrder = catchAsync(
         { isMoneyPulling: moneyPullingValue },
         { 'product.wantMoneyPulling': moneyPullingValue },
       ];
-
-      // If we already have other $or conditions, combine them with $and
-      if (filter.$or) {
-        filter.$and = [{ $or: filter.$or }, { $or: moneyPullingConditions }];
-        delete filter.$or;
-      } else {
-        filter.$or = moneyPullingConditions;
-      }
+      allOrConditions.push({ $or: moneyPullingConditions });
     }
     if (deliveryStartDate || deliveryEndDate) {
       const dateFilter: any = {};
@@ -1587,20 +1557,27 @@ export const getAllOrder = catchAsync(
       filter.active = true;
     }
 
+    // STABLE COMBINATION - Combine all $or conditions into $and without deletion
+    // If we have multiple $or condition groups (category, flavour, moneyPulling), we need ALL of them to match
+    if (allOrConditions.length > 0) {
+      // Combine all $or groups with $and
+      if (allOrConditions.length === 1) {
+        // Single $or group, can use directly
+        filter.$or = allOrConditions[0].$or;
+      } else {
+        // Multiple $or groups, wrap in $and
+        filter.$and = filter.$and || [];
+        filter.$and.push(...allOrConditions);
+      }
+    }
+
     // Combine all base conditions that need to be ANDed together
     if (baseConditions.length > 0) {
       if (filter.$and) {
         // Already have $and, add base conditions
         filter.$and = [...baseConditions, ...filter.$and];
-      } else if (filter.$or) {
-        // Have $or, convert to $and with base conditions
-        filter.$and = [...baseConditions, { $or: filter.$or }];
-        delete filter.$or;
-      } else if (baseConditions.length === 1) {
-        // Single base condition, merge it directly
-        Object.assign(filter, baseConditions[0]);
       } else {
-        // Multiple base conditions, use $and
+        // No $and yet, create it with base conditions
         filter.$and = baseConditions;
       }
     }
@@ -1625,6 +1602,7 @@ export const getAllOrder = catchAsync(
     // Apply all filters to req.query
     req.query = { ...req.query, ...filter };
 
+    // Use factory handler getAll() which now uses .lean() for better performance
     await getAll(Order)(req, res, next);
   }
 );

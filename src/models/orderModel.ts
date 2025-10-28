@@ -504,30 +504,33 @@ const orderSchema = new mongoose.Schema<IOrder>(
 );
 
 orderSchema.pre<Query<IOrder, IOrder>>(/^find/, function (next) {
-  this.populate({
-    path: 'delivery.address',
-    select:
-      'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
-  });
-  this.populate({
-    path: 'delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
-    select: 'name images inventory updatedAt duration',
-  });
-  this.populate({
-    path: 'user',
-    select: 'firstName lastName email phone',
-  });
-  this.populate({
-    path: 'pricingSummary.coupon',
-    select: 'code type applicableOn ids discountType discount',
-  });
-  this.populate({
-    path: 'customiseCakeFormDetails',
-  });
-  this.populate({
-    path: 'product.product',
-    populate: [{ path: 'flavour', model: 'Flavour' }],
-  });
+  // BATCH POPULATE - Execute all populations in parallel for better performance
+  this.populate([
+    {
+      path: 'delivery.address',
+      select:
+        'firstName lastName email city country company address1 address2 postalCode phone unitNumber',
+    },
+    {
+      path: 'delivery.method product.size product.colour product.pieces product.flavour customFormProduct.product customFormProduct.flavour',
+      select: 'name images inventory updatedAt duration',
+    },
+    {
+      path: 'user',
+      select: 'firstName lastName email phone',
+    },
+    {
+      path: 'pricingSummary.coupon',
+      select: 'code type applicableOn ids discountType discount',
+    },
+    {
+      path: 'customiseCakeFormDetails',
+    },
+    {
+      path: 'product.product',
+      populate: [{ path: 'flavour', model: 'Flavour' }],
+    },
+  ]);
   next();
 });
 
