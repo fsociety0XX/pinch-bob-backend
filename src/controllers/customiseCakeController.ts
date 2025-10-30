@@ -727,6 +727,7 @@ const buildOrderPayload = async (
       email: user?.email || '',
       phone: user?.phone || '',
     },
+    status: 'Unassigned',
   };
 
   // If it's for update, return flattened object for MongoDB $set operations
