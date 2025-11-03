@@ -450,7 +450,14 @@ const createWoodeliveryTask = async (
   const {
     brand,
     orderNumber,
-    delivery: { address, date, time, instructions },
+    delivery: {
+      address,
+      date,
+      time,
+      instructions,
+      recipientName,
+      recipientPhone,
+    },
     user,
     woodeliveryTaskId,
   } = customiseCake;
@@ -471,8 +478,8 @@ const createWoodeliveryTask = async (
       .beforeDateTime,
     requesterEmail: currentUser!.email!,
     recipientEmail: currentUser!.email!,
-    recipientName: currentUser?.firstName || '',
-    recipientPhone: String(currentUser?.phone || ''),
+    recipientName: recipientName || currentUser?.firstName || '',
+    recipientPhone: String(recipientPhone || currentUser?.phone || ''),
     tag1: brand,
     destinationNotes: instructions || '',
   };
