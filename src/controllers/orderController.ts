@@ -44,7 +44,7 @@ import {
   ORDER_FAIL_EMAIL,
   REF_IMG_UPDATE,
 } from '@src/constants/messages';
-import { WOODELIVERY_TASK } from '@src/constants/routeConstants';
+import { GA_URL, WOODELIVERY_TASK } from '@src/constants/routeConstants';
 import {
   calculateBeforeAndAfterDateTime,
   fetchAPI,
@@ -130,42 +130,53 @@ function cancelOrder(id: string) {
   });
 }
 
-// const sendPurchaseEventToGA4 = catchAsync(async (id: string) => {
-//   const API_URL = `${GA_URL}?measurement_id=${process.env.GMEASUREMENT_ID}&api_secret=${process.env.GA_SECRET}`;
-//   const order = await Order.findById(id);
-//   if (!order) {
-//     return new AppError(NO_DATA_FOUND, StatusCode.NOT_FOUND);
-//   }
+const sendPurchaseEventToGA4 = catchAsync(async (order) => {
+  if (!order) return;
 
-//   const payload = {
-//     client_id: order?.gaClientId || order?.user?._id,
-//     events: [
-//       {
-//         name: 'purchase',
-//         params: {
-//           currency: 'SGD',
-//           transaction_id: order?.orderNumber,
-//           value:
-//             (+order?.pricingSummary?.subTotal ?? 0) -
-//             (+order?.pricingSummary?.discountedAmt ?? 0),
-//           coupon: order?.pricingSummary?.coupon?.code || '',
-//           shipping: +order?.pricingSummary?.deliveryCharge,
-//           items: order?.product?.map((p) => ({
-//             item_id: p?.product?.id,
-//             item_name: p?.product?.name,
-//             price: p?.price,
-//             quantity: p?.quantity,
-//           })),
-//         },
-//       },
-//     ],
-//   };
+  const API_URL = `${GA_URL}?measurement_id=${process.env.GMEASUREMENT_ID}&api_secret=${process.env.GA_SECRET}`;
 
-//   await fetch(API_URL, {
-//     method: 'POST',
-//     body: JSON.stringify(payload),
-//   });
-// });
+  // Ensure correct numeric conversions
+  const totalValue = parseFloat(order?.pricingSummary?.total || '0');
+  const shipping = parseFloat(order?.pricingSummary?.deliveryCharge || '0');
+
+  // Build payload
+  const payload = {
+    client_id: order?.gaClientId || `server_event_${order?.orderNumber}`,
+    events: [
+      {
+        name: 'purchase',
+        params: {
+          transaction_id: order?.orderNumber,
+          currency: 'SGD',
+          value: totalValue,
+          shipping,
+          coupon: order?.pricingSummary?.coupon?.code || '',
+          items: (order?.product || []).map((p) => ({
+            item_id: String(p?.product?.id || ''),
+            item_name: p?.product?.name || 'Unknown Product',
+            price: parseFloat(p?.price || 0),
+            quantity: parseInt(p?.quantity || 1),
+          })),
+        },
+      },
+    ],
+  };
+
+  // Send request
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  // Optional: error handling for debugging
+  if (!res.ok) {
+    const text = await res.text();
+    console.error('GA4 purchase event failed:', text);
+  } else {
+    console.log(`GA4 purchase event sent for Order ${order?.orderNumber}`);
+  }
+});
 
 const prepareCompleteAddress = (order: IOrder) => {
   let completeAddress = '';
@@ -681,6 +692,8 @@ const updateOrderAfterPaymentSuccess = async (
     { new: true }
   ).lean();
 
+  await sendPurchaseEventToGA4(order);
+
   // If customer has applied coupon
   if (
     order!.pricingSummary.coupon &&
@@ -705,7 +718,6 @@ const updateOrderAfterPaymentSuccess = async (
   await updateProductAfterPurchase(order!);
   await createDelivery(orderId);
   await sendOrderConfirmationEmail(object.customer_email!, order);
-  // await sendPurchaseEventToGA4(orderId);
 
   res.status(StatusCode.SUCCESS).send({
     status: 'success',
@@ -1250,6 +1262,9 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
       { hitpayDetails, paid: true },
       { new: true }
     ).lean();
+
+    await sendPurchaseEventToGA4(order);
+
     // If customer has applied coupon
     if (
       order!.pricingSummary.coupon &&
@@ -1273,7 +1288,6 @@ const updateBobOrderAfterPaymentSuccess = catchAsync(
     await updateProductAfterPurchase(order!);
     await createDelivery(orderId);
     await sendOrderConfirmationEmail(email, order);
-    // await sendPurchaseEventToGA4(orderId);
 
     res.status(StatusCode.SUCCESS).send({
       status: 'success',
