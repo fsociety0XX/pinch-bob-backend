@@ -171,9 +171,10 @@ cron.schedule('0 0 * * *', async () => {
       const date = formatShortDate(order.delivery.date as Date);
       const timeRange = order.delivery.collectionTime;
       const url = makeStatusUrl(brand, order.id);
-      return `<${brandDisplayName}> Your delivery from ${
-        order.recipInfo?.name || 'Bob the Baker Boy'
-      } will arrive at ${addr} on ${date} between ${timeRange}. Details at: ${url}`;
+      const senderName = order.customer
+        ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`
+        : 'Bob the Baker Boy';
+      return `<${brandDisplayName}> Your delivery from ${senderName} will arrive at ${addr} on ${date} between ${timeRange}. Details at: ${url}`;
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
