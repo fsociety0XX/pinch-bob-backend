@@ -119,6 +119,7 @@ export interface IProduct {
   fondantNameDetails: {
     value: string;
     colour: string;
+    otherValue: string;
   };
   fondantNameTwoDetails: {
     value: string;
@@ -390,6 +391,7 @@ const productSchema = new mongoose.Schema<IProduct>(
     fondantNameDetails: {
       value: String,
       colour: String,
+      otherValue: String,
     },
     fondantNameTwoDetails: {
       value: String,
