@@ -41,9 +41,16 @@ export const createSearchQuery = (
   }
 
   if (isLikelyPhone) {
-    matchConditions.push({ 'customer.phone': search });
-    matchConditions.push({ recipientPhone: search });
-    matchConditions.push({ 'recipInfo.contact': search });
+    // Normalize phone number by removing spaces, dashes, parentheses, and +65 prefix
+    const normalizedSearch = search
+      .replace(/[\s\-()]/g, '')
+      .replace(/^\+?65/, '');
+    // Create regex that matches the digits anywhere in the phone number
+    const phoneRegex = new RegExp(normalizedSearch, 'i');
+
+    matchConditions.push({ 'customer.phone': phoneRegex });
+    matchConditions.push({ recipientPhone: phoneRegex });
+    matchConditions.push({ 'recipInfo.contact': phoneRegex });
   }
 
   // Order number search (always include)
